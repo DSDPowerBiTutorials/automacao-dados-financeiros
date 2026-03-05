@@ -22,7 +22,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { getSQLServerConnection } from "@/lib/sqlserver";
 import { syncGoCardlessTransactions } from "@/lib/gocardless";
 import { syncAllQuickBooksData, testConnection as testQuickBooksConnection } from "@/lib/quickbooks";
 import {
@@ -32,7 +31,7 @@ import {
     warnBotTask,
     BOT_CONSOLE_NAME
 } from "@/lib/botella";
-import crypto from "crypto";
+
 
 interface SyncResult {
     name: string;
@@ -183,65 +182,33 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================
-    // 4. HUBSPOT DEALS
+    // 4. HUBSPOT DEALS (via API enriquecida)
     // ============================================
     try {
         const hubspotStart = Date.now();
-        console.log("\n📊 [4/5] Sincronizando HubSpot Deals...");
+        console.log("\n📊 [4/5] Sincronizando HubSpot Deals (API enriquecida)...");
 
-        const pool = await getSQLServerConnection();
+        const hubspotUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/hubspot/sync`;
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const result = await pool.request().query(`
-            SELECT TOP 5000 *
-            FROM [dbo].[Deal]
-            WHERE hs_lastmodifieddate >= DATEADD(DAY, -30, GETDATE())
-            ORDER BY hs_lastmodifieddate DESC
-        `);
+        const response = await fetch(hubspotUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ startDate: thirtyDaysAgo.toISOString().split('T')[0] }),
+        });
+        const result = await response.json();
 
-        if (result.recordset.length > 0) {
-            const rows = result.recordset.map((row: any) => {
-                const customData: Record<string, any> = {};
-                Object.keys(row).forEach((key) => {
-                    if (row[key] !== null && row[key] !== undefined) {
-                        customData[key] = row[key];
-                    }
-                });
-
-                return {
-                    id: crypto.randomUUID(),
-                    source: "hubspot",
-                    date: row.closedate || row.createdate || new Date().toISOString(),
-                    description: row.dealname || "HubSpot Deal",
-                    amount: parseFloat(row.amount) || 0,
-                    currency: row.deal_currency_code || "EUR",
-                    reconciled: false,
-                    file_name: "hubspot-sync",
-                    custom_data: customData,
-                };
-            });
-
-            const { error } = await supabaseAdmin.from("csv_rows").upsert(rows, {
-                onConflict: "id",
-                ignoreDuplicates: false,
-            });
-
-            results.push({
-                name: "HubSpot Deals",
-                success: !error,
-                message: error ? error.message : `${rows.length} deals synced`,
-                count: rows.length,
-                duration_ms: Date.now() - hubspotStart,
-                error: error?.message,
-            });
-        } else {
-            results.push({
-                name: "HubSpot Deals",
-                success: true,
-                message: "No new deals",
-                count: 0,
-                duration_ms: Date.now() - hubspotStart,
-            });
-        }
+        results.push({
+            name: "HubSpot Deals",
+            success: result.success === true,
+            message: result.success
+                ? `${result.totalSynced || 0} deals synced (enriched query)`
+                : result.error,
+            count: result.totalSynced || 0,
+            duration_ms: Date.now() - hubspotStart,
+            error: result.error,
+        });
     } catch (error: any) {
         results.push({
             name: "HubSpot Deals",

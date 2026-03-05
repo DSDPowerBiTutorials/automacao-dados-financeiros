@@ -54,6 +54,17 @@ function mapStatus(paidStatus: string | undefined): string {
     return "pending";
 }
 
+function detectPaymentMethod(cd: Record<string, any>): string | null {
+    if (cd.gateway_name) return cd.gateway_name;
+    if (cd.payment_method) return cd.payment_method;
+    if (cd.braintree_transaction_id) return "Braintree";
+    const site = (cd.order_site || "").toLowerCase();
+    if (site.includes("stripe")) return "Stripe";
+    if (site.includes("gocardless")) return "GoCardless";
+    if (site.includes("paypal")) return "PayPal";
+    return null;
+}
+
 export async function POST(req: NextRequest) {
     try {
         console.log('🔄 [from-hubspot] Sincronizando csv_rows → ar_invoices...');
@@ -77,8 +88,7 @@ export async function POST(req: NextRequest) {
 
         console.log(`📦 Total csv_rows hubspot: ${allRows.length}`);
 
-        // Filtrar: data >= 2025-12-01, não TEST_, ecommerce_deal != false
-        const minDate = new Date('2025-12-01');
+        // Filtrar: não futuras, não TEST_, ecommerce_deal != false
         const today = new Date();
         today.setHours(23, 59, 59, 999);
 
@@ -87,7 +97,7 @@ export async function POST(req: NextRequest) {
             const dateStr = cd.date_ordered || cd.date_paid || row.date;
             if (!dateStr) return false;
             const d = new Date(dateStr);
-            if (d < minDate || d > today) return false;
+            if (d > today) return false;
             const dealname = (cd.dealname || "").toUpperCase();
             const orderCode = (cd.order_code || "").toUpperCase();
             if (dealname.startsWith('TEST_') || orderCode.startsWith('TEST_')) return false;
@@ -146,6 +156,12 @@ export async function POST(req: NextRequest) {
 
             const recon = existingRecon.get(sourceId);
 
+            // Detectar payment_method a partir de dados disponíveis
+            const detectedPayment = detectPaymentMethod(cd);
+            const currency = cd.currency || "EUR";
+            const dynamicScope = currency === "USD" ? "US" : "ES";
+            const dynamicCountry = cd.customer_country || cd.company_country || (currency === "USD" ? "US" : "ES");
+
             const base: any = {
                 invoice_number: `HS-${shortId}`,
                 order_id: orderCode,
@@ -153,23 +169,24 @@ export async function POST(req: NextRequest) {
                 order_status: cd.paid_status || null,
                 deal_status: getDealStatus(cd.dealstage as string, cd.paid_status as string),
                 invoice_date: invoiceDate,
+                payment_date: cd.date_paid || null,
                 products: productName,
                 company_name: cd.company_name || cd.company || null,
                 client_name: clientName,
                 email: cd.customer_email || null,
                 total_amount: parseFloat(String(cd.final_price || cd.total_price || row.amount)) || 0,
-                currency: cd.currency || "EUR",
+                currency,
                 charged_amount: cd.total_payment ? parseFloat(String(cd.total_payment)) : null,
-                payment_method: cd.gateway_name || cd.payment_method || null,
+                payment_method: detectedPayment,
                 billing_entity: cd.order_site || null,
                 discount_code: cd.coupon_code || null,
                 note: cd.product_description || null,
                 status: mapStatus(cd.paid_status as string),
-                country_code: cd.customer_country || cd.company_country || "ES",
-                scope: "ES",
+                country_code: dynamicCountry,
+                scope: dynamicScope,
                 source: "hubspot",
                 source_id: sourceId,
-                source_data: cd, // Guardar custom_data completo para referência
+                source_data: cd,
             };
 
             if (recon) {
