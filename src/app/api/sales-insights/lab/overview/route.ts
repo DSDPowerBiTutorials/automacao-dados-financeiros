@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
         while (true) {
             const { data, error } = await supabaseAdmin
                 .from("csv_rows")
-                .select("id, date, amount, custom_data")
+                .select("id, date, amount, description, custom_data")
                 .eq("source", "invoice-orders")
                 .gte("date", yearStart)
                 .lte("date", yearEnd)
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
             while (true) {
                 const { data, error } = await supabaseAdmin
                     .from("csv_rows")
-                    .select("id, date, amount, custom_data")
+                    .select("id, date, amount, description, custom_data")
                     .eq("source", "invoice-orders")
                     .gte("date", prevMonthStart)
                     .lte("date", prevMonthEnd)
@@ -119,7 +119,8 @@ export async function GET(request: NextRequest) {
             email: string;
             region: string;
             monthlyRevenue: Map<string, number>;
-            products: Map<string, { revenue: number; count: number }>;
+            faProducts: Map<string, { revenue: number; count: number }>;
+            descProducts: Map<string, { revenue: number; count: number }>;
             totalRevenue: number;
             firstDate: string;
             lastDate: string;
@@ -128,9 +129,18 @@ export async function GET(request: NextRequest) {
 
         const clientMap = new Map<string, ClientData>();
 
-        // Also build per-product and per-month totals
+        // Per FA-code and per-month totals
         const productMonthly = new Map<string, Map<string, number>>(); // FA code → (YM → revenue)
         const monthlyTotals = new Map<string, { revenue: number; orders: number; clients: Set<string> }>();
+
+        // Per-product (description) aggregation
+        interface DescProductData {
+            monthlyRevenue: Map<string, number>;
+            totalRevenue: number;
+            totalCount: number;
+            clients: Set<string>;
+        }
+        const descProductMap = new Map<string, DescProductData>();
 
         for (const tx of labTx) {
             const cd = tx.custom_data || {};
@@ -148,6 +158,8 @@ export async function GET(request: NextRequest) {
             const ym = date.substring(0, 7);
             const email = String(cd.email || "").trim().toLowerCase();
 
+            const productDesc = String(tx.description || "").trim();
+
             // Client aggregation
             let client = clientMap.get(customerName);
             if (!client) {
@@ -156,7 +168,8 @@ export async function GET(request: NextRequest) {
                     email,
                     region: txRegion,
                     monthlyRevenue: new Map(),
-                    products: new Map(),
+                    faProducts: new Map(),
+                    descProducts: new Map(),
                     totalRevenue: 0,
                     firstDate: date,
                     lastDate: date,
@@ -167,14 +180,36 @@ export async function GET(request: NextRequest) {
             if (!client.email && email) client.email = email;
 
             client.monthlyRevenue.set(ym, (client.monthlyRevenue.get(ym) || 0) + amount);
-            const prod = client.products.get(fa) || { revenue: 0, count: 0 };
-            prod.revenue += amount;
-            prod.count += 1;
-            client.products.set(fa, prod);
+            const faProd = client.faProducts.get(fa) || { revenue: 0, count: 0 };
+            faProd.revenue += amount;
+            faProd.count += 1;
+            client.faProducts.set(fa, faProd);
+
+            // Per-description product in client
+            if (productDesc) {
+                const dp = client.descProducts.get(productDesc) || { revenue: 0, count: 0 };
+                dp.revenue += amount;
+                dp.count += 1;
+                client.descProducts.set(productDesc, dp);
+            }
+
             client.totalRevenue += amount;
             client.txCount += 1;
             if (date < client.firstDate) client.firstDate = date;
             if (date > client.lastDate) client.lastDate = date;
+
+            // Per-product (description) global aggregation
+            if (productDesc && amount > 0) {
+                let dpg = descProductMap.get(productDesc);
+                if (!dpg) {
+                    dpg = { monthlyRevenue: new Map(), totalRevenue: 0, totalCount: 0, clients: new Set() };
+                    descProductMap.set(productDesc, dpg);
+                }
+                dpg.monthlyRevenue.set(ym, (dpg.monthlyRevenue.get(ym) || 0) + amount);
+                dpg.totalRevenue += amount;
+                dpg.totalCount += 1;
+                dpg.clients.add(customerName);
+            }
 
             // Product monthly
             if (!productMonthly.has(fa)) productMonthly.set(fa, new Map());
@@ -204,6 +239,7 @@ export async function GET(request: NextRequest) {
             first_date: string;
             last_date: string;
             products: { code: string; name: string; revenue: number; count: number }[];
+            product_details: { name: string; revenue: number; count: number }[];
             months_active: number;
         }
 
@@ -215,9 +251,15 @@ export async function GET(request: NextRequest) {
             const revChange = revCurrent - revPrevious;
             const revChangePct = revPrevious > 0 ? (revChange / revPrevious) * 100 : (revCurrent > 0 ? 100 : 0);
 
-            const products = [...data.products.entries()].map(([code, d]) => ({
+            const products = [...data.faProducts.entries()].map(([code, d]) => ({
                 code,
                 name: FA_NAMES[code] || code,
+                revenue: d.revenue,
+                count: d.count,
+            })).sort((a, b) => b.revenue - a.revenue);
+
+            const productDetails = [...data.descProducts.entries()].map(([desc, d]) => ({
+                name: desc,
                 revenue: d.revenue,
                 count: d.count,
             })).sort((a, b) => b.revenue - a.revenue);
@@ -236,6 +278,7 @@ export async function GET(request: NextRequest) {
                 first_date: data.firstDate,
                 last_date: data.lastDate,
                 products,
+                product_details: productDetails,
                 months_active: data.monthlyRevenue.size,
             });
         }
@@ -264,7 +307,7 @@ export async function GET(request: NextRequest) {
             for (const [, rev] of monthMap) { ytd += rev; }
             // Count orders for this FA code
             for (const [, data] of clientMap) {
-                const p = data.products.get(fa);
+                const p = data.faProducts.get(fa);
                 if (p) count += p.count;
             }
             const current = monthMap.get(currentYM) || 0;
@@ -321,6 +364,38 @@ export async function GET(request: NextRequest) {
         const totalOrders = clients.reduce((sum, c) => sum + c.order_count, 0);
         const avgTicket = totalOrders > 0 ? totalRevenueYTD / totalOrders : 0;
 
+        // ── Product sales breakdown (by description) ──
+        interface ProductSales {
+            name: string;
+            revenue_ytd: number;
+            revenue_current: number;
+            revenue_previous: number;
+            change_pct: number;
+            order_count: number;
+            client_count: number;
+            pct_of_total: number;
+            avg_ticket: number;
+        }
+
+        const productSales: ProductSales[] = [];
+        for (const [name, dpg] of descProductMap) {
+            const revCur = dpg.monthlyRevenue.get(currentYM) || 0;
+            const revPrev = dpg.monthlyRevenue.get(prevYM) || 0;
+            const chgPct = revPrev > 0 ? ((revCur - revPrev) / revPrev) * 100 : (revCur > 0 ? 100 : 0);
+            productSales.push({
+                name,
+                revenue_ytd: dpg.totalRevenue,
+                revenue_current: revCur,
+                revenue_previous: revPrev,
+                change_pct: chgPct,
+                order_count: dpg.totalCount,
+                client_count: dpg.clients.size,
+                pct_of_total: totalRevenueYTD > 0 ? (dpg.totalRevenue / totalRevenueYTD) * 100 : 0,
+                avg_ticket: dpg.totalCount > 0 ? dpg.totalRevenue / dpg.totalCount : 0,
+            });
+        }
+        productSales.sort((a, b) => b.revenue_ytd - a.revenue_ytd);
+
         return NextResponse.json({
             success: true,
             year,
@@ -338,6 +413,7 @@ export async function GET(request: NextRequest) {
             },
             clients,
             product_breakdown: productBreakdown,
+            product_sales: productSales,
             timeline,
         });
     } catch (err: any) {

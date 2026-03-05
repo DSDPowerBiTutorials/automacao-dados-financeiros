@@ -46,6 +46,7 @@ interface LabClient {
     first_date: string;
     last_date: string;
     products: LabProduct[];
+    product_details: { name: string; revenue: number; count: number }[];
     months_active: number;
 }
 
@@ -58,6 +59,18 @@ interface ProductBreakdown {
     change_pct: number;
     order_count: number;
     pct_of_total: number;
+}
+
+interface ProductSales {
+    name: string;
+    revenue_ytd: number;
+    revenue_current: number;
+    revenue_previous: number;
+    change_pct: number;
+    order_count: number;
+    client_count: number;
+    pct_of_total: number;
+    avg_ticket: number;
 }
 
 interface TimelineEntry {
@@ -83,6 +96,7 @@ interface LabData {
     kpis: KPIs;
     clients: LabClient[];
     product_breakdown: ProductBreakdown[];
+    product_sales: ProductSales[];
     timeline: TimelineEntry[];
     year: number;
     month: number;
@@ -110,6 +124,8 @@ export default function LabAnalysisPage() {
     const [region, setRegion] = useState("all");
     const [expandedClient, setExpandedClient] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [productSearch, setProductSearch] = useState("");
+    const [showAllProducts, setShowAllProducts] = useState(false);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -367,12 +383,12 @@ export default function LabAnalysisPage() {
                         </Card>
                     </div>
 
-                    {/* Product Breakdown */}
+                    {/* FA Code Breakdown (compact) */}
                     <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700">
                         <CardHeader className="py-3 px-4">
                             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200 flex items-center gap-2">
                                 <Package className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                Product Breakdown (FA 104.x)
+                                Subscription Level Breakdown (FA 104.x)
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="px-4 pb-4">
@@ -382,15 +398,12 @@ export default function LabAnalysisPage() {
                                         const barColor = PRODUCT_COLORS[p.code] || "#6b7280";
                                         return (
                                             <div key={p.code} className="flex items-center gap-3">
-                                                {/* Code badge */}
                                                 <Badge variant="outline" className="text-[10px] font-mono w-12 justify-center bg-gray-100 dark:bg-[#0a0a0a] text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600">
                                                     {p.code}
                                                 </Badge>
-                                                {/* Name */}
                                                 <span className="text-xs text-gray-600 dark:text-gray-300 w-40 truncate" title={p.name}>
                                                     {p.name}
                                                 </span>
-                                                {/* Progress bar */}
                                                 <div className="flex-1 h-6 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden relative">
                                                     <div
                                                         className="h-full rounded-full transition-all duration-500"
@@ -403,40 +416,30 @@ export default function LabAnalysisPage() {
                                                         {p.pct_of_total.toFixed(1)}%
                                                     </span>
                                                 </div>
-                                                {/* Revenue YTD */}
                                                 <span className="text-xs font-medium text-gray-600 dark:text-gray-200 w-24 text-right">
                                                     {formatCurrency(p.revenue_ytd, "EUR")}
                                                 </span>
-                                                {/* MoM change */}
                                                 <span className={`text-xs w-20 text-right flex items-center justify-end gap-0.5 ${p.change_pct >= 0 ? "text-green-500" : "text-red-500"}`}>
-                                                    {p.change_pct >= 0
-                                                        ? <TrendingUp className="h-3 w-3" />
-                                                        : <TrendingDown className="h-3 w-3" />
-                                                    }
+                                                    {p.change_pct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                                                     {p.change_pct >= 0 ? "+" : ""}{p.change_pct.toFixed(0)}%
                                                 </span>
-                                                {/* Orders */}
                                                 <span className="text-[10px] text-gray-500 w-14 text-right">
                                                     {p.order_count} orders
                                                 </span>
                                             </div>
                                         );
                                     })}
-                                    {/* Total bar */}
                                     <div className="flex items-center gap-3 border-t border-gray-200 dark:border-gray-700 pt-3 mt-2">
                                         <Badge variant="outline" className="text-[10px] font-mono w-12 justify-center bg-gray-100 dark:bg-[#0a0a0a] text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 font-bold">
                                             Total
                                         </Badge>
-                                        <span className="text-xs text-gray-600 dark:text-gray-300 w-40 font-medium">All LAB Products</span>
+                                        <span className="text-xs text-gray-600 dark:text-gray-300 w-40 font-medium">All Levels</span>
                                         <div className="flex-1" />
                                         <span className="text-xs font-bold text-gray-600 dark:text-gray-200 w-24 text-right">
                                             {formatCurrency(data.kpis.revenue_ytd, "EUR")}
                                         </span>
                                         <span className={`text-xs w-20 text-right flex items-center justify-end gap-0.5 font-medium ${data.kpis.mom_growth >= 0 ? "text-green-500" : "text-red-500"}`}>
-                                            {data.kpis.mom_growth >= 0
-                                                ? <TrendingUp className="h-3 w-3" />
-                                                : <TrendingDown className="h-3 w-3" />
-                                            }
+                                            {data.kpis.mom_growth >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                                             {data.kpis.mom_growth >= 0 ? "+" : ""}{data.kpis.mom_growth.toFixed(0)}%
                                         </span>
                                         <span className="text-[10px] text-gray-500 w-14 text-right font-medium">
@@ -445,8 +448,161 @@ export default function LabAnalysisPage() {
                                     </div>
                                 </div>
                             ) : (
-                                <p className="text-sm text-gray-500 text-center py-6">No product data available</p>
+                                <p className="text-sm text-gray-500 text-center py-6">No data available</p>
                             )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Product Sales Breakdown (by product name) */}
+                    <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700">
+                        <CardHeader className="py-3 px-4">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200 flex items-center gap-2">
+                                    <ShoppingCart className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                    Product Sales Breakdown ({(data.product_sales || []).length} products)
+                                </CardTitle>
+                                <input
+                                    type="text"
+                                    placeholder="Search product..."
+                                    value={productSearch}
+                                    onChange={e => setProductSearch(e.target.value)}
+                                    className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-200 placeholder-gray-500 w-56 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="px-0 pb-0">
+                            {(() => {
+                                const allProducts = data.product_sales || [];
+                                const filtered = allProducts.filter(p =>
+                                    !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase())
+                                );
+                                const displayed = showAllProducts ? filtered : filtered.slice(0, 15);
+                                const hasMore = filtered.length > 15 && !showAllProducts;
+
+                                return (
+                                    <>
+                                        <div className="max-h-[500px] overflow-auto">
+                                            <Table>
+                                                <TableHeader className="sticky top-0 bg-gray-100 dark:bg-black z-10">
+                                                    <TableRow className="border-gray-200 dark:border-gray-700">
+                                                        <TableHead className="text-xs text-gray-700 dark:text-gray-300 w-8 text-center">#</TableHead>
+                                                        <TableHead className="text-xs text-gray-700 dark:text-gray-300">Product</TableHead>
+                                                        <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">
+                                                            Rev. {MONTH_NAMES[month - 1]}
+                                                        </TableHead>
+                                                        <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">
+                                                            Rev. {MONTH_NAMES[month === 1 ? 11 : month - 2]}
+                                                        </TableHead>
+                                                        <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">MoM Δ</TableHead>
+                                                        <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Revenue YTD</TableHead>
+                                                        <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">% Total</TableHead>
+                                                        <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Orders</TableHead>
+                                                        <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Clients</TableHead>
+                                                        <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Avg Ticket</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {displayed.map((p, idx) => (
+                                                        <TableRow key={p.name} className="border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-[#111111]">
+                                                            <TableCell className="py-2 text-center text-[10px] text-gray-500">{idx + 1}</TableCell>
+                                                            <TableCell className="py-2">
+                                                                <span className="text-xs text-gray-600 dark:text-gray-200 truncate block max-w-[300px]" title={p.name}>
+                                                                    {p.name}
+                                                                </span>
+                                                            </TableCell>
+                                                            <TableCell className="py-2 text-right">
+                                                                <span className="text-xs font-medium text-gray-600 dark:text-gray-200">
+                                                                    {formatCurrency(p.revenue_current, "EUR")}
+                                                                </span>
+                                                            </TableCell>
+                                                            <TableCell className="py-2 text-right">
+                                                                <span className="text-xs text-gray-500">
+                                                                    {formatCurrency(p.revenue_previous, "EUR")}
+                                                                </span>
+                                                            </TableCell>
+                                                            <TableCell className="py-2 text-right">
+                                                                {p.revenue_current === 0 && p.revenue_previous === 0 ? (
+                                                                    <Minus className="h-3.5 w-3.5 text-gray-500 ml-auto" />
+                                                                ) : (
+                                                                    <span className={`text-xs flex items-center justify-end gap-0.5 ${p.change_pct >= 0 ? "text-green-500" : "text-red-500"}`}>
+                                                                        {p.change_pct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                                                        {p.change_pct >= 0 ? "+" : ""}{p.change_pct.toFixed(0)}%
+                                                                    </span>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="py-2 text-right">
+                                                                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                                    {formatCurrency(p.revenue_ytd, "EUR")}
+                                                                </span>
+                                                            </TableCell>
+                                                            <TableCell className="py-2 text-right">
+                                                                <div className="flex items-center justify-end gap-1">
+                                                                    <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                                                                        <div
+                                                                            className="h-full bg-blue-500 rounded-full"
+                                                                            style={{ width: `${Math.min(p.pct_of_total, 100)}%` }}
+                                                                        />
+                                                                    </div>
+                                                                    <span className="text-[10px] text-gray-500 w-10 text-right">
+                                                                        {p.pct_of_total.toFixed(1)}%
+                                                                    </span>
+                                                                </div>
+                                                            </TableCell>
+                                                            <TableCell className="py-2 text-right text-xs text-gray-500">
+                                                                {p.order_count}
+                                                            </TableCell>
+                                                            <TableCell className="py-2 text-right text-xs text-gray-500">
+                                                                {p.client_count}
+                                                            </TableCell>
+                                                            <TableCell className="py-2 text-right text-xs text-gray-500">
+                                                                {formatCurrency(p.avg_ticket, "EUR")}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                    {displayed.length === 0 && (
+                                                        <TableRow>
+                                                            <TableCell colSpan={10} className="text-center py-8 text-gray-500 text-sm">
+                                                                No products found
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                        {/* Footer */}
+                                        <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black px-4 py-2 flex items-center justify-between text-xs">
+                                            <span className="text-gray-500 dark:text-gray-400">
+                                                Showing {displayed.length} of {filtered.length} products
+                                            </span>
+                                            <div className="flex items-center gap-4">
+                                                {hasMore && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setShowAllProducts(true)}
+                                                        className="text-xs text-blue-500 hover:text-blue-400 h-6 px-2"
+                                                    >
+                                                        Show all {filtered.length} products
+                                                    </Button>
+                                                )}
+                                                {showAllProducts && filtered.length > 15 && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setShowAllProducts(false)}
+                                                        className="text-xs text-gray-500 hover:text-gray-400 h-6 px-2"
+                                                    >
+                                                        Show top 15
+                                                    </Button>
+                                                )}
+                                                <span className="text-gray-500 dark:text-gray-400">
+                                                    Total: <span className="font-medium text-gray-700 dark:text-gray-200">{formatCurrency(data.kpis.revenue_ytd, "EUR")}</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </CardContent>
                     </Card>
 
@@ -679,30 +835,42 @@ function RevenueChangeCell({ change, pct }: { change: number; pct: number }) {
 
 function ClientDetail({ client, year }: { client: LabClient; year: number }) {
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Products breakdown */}
-            <div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Products by description */}
+            <div className="lg:col-span-2">
                 <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
                     Products Purchased ({year} YTD)
                 </h4>
                 <div className="space-y-1.5">
-                    {client.products.length > 0 ? client.products.map(p => (
-                        <div key={p.code} className="flex items-center justify-between bg-gray-100 dark:bg-black/50 rounded px-3 py-1.5">
-                            <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-[9px] bg-gray-100 dark:bg-[#0a0a0a] text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 font-mono">
-                                    {p.code}
-                                </Badge>
-                                <span className="text-xs text-gray-700 dark:text-gray-300">{p.name}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <span className="text-[10px] text-gray-500">{p.count} tx</span>
-                                <span className="text-xs font-medium text-gray-600 dark:text-gray-200">{formatCurrency(p.revenue, "EUR")}</span>
+                    {(client.product_details || []).length > 0 ? (client.product_details || []).map((p, i) => (
+                        <div key={i} className="flex items-center justify-between bg-gray-100 dark:bg-black/50 rounded px-3 py-1.5">
+                            <span className="text-xs text-gray-700 dark:text-gray-300 truncate max-w-[350px]" title={p.name}>
+                                {p.name}
+                            </span>
+                            <div className="flex items-center gap-3 shrink-0">
+                                <span className="text-[10px] text-gray-500">{p.count} orders</span>
+                                <span className="text-xs font-medium text-gray-600 dark:text-gray-200 w-20 text-right">{formatCurrency(p.revenue, "EUR")}</span>
                             </div>
                         </div>
                     )) : (
                         <p className="text-xs text-gray-500">No products found</p>
                     )}
                 </div>
+                {/* FA level summary */}
+                {client.products.length > 0 && (
+                    <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-2">
+                        <h4 className="text-[10px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">
+                            By Subscription Level
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                            {client.products.map(p => (
+                                <Badge key={p.code} variant="outline" className="text-[9px] bg-gray-100 dark:bg-[#0a0a0a] text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600">
+                                    {p.code} {p.name} — {formatCurrency(p.revenue, "EUR")} ({p.count}x)
+                                </Badge>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 <div className="mt-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-2">
                     <span className="text-xs text-gray-500">Total {year} YTD</span>
                     <span className="text-xs font-bold text-gray-600 dark:text-gray-200">{formatCurrency(client.revenue_ytd, "EUR")}</span>
