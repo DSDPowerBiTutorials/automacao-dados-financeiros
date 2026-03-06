@@ -440,15 +440,52 @@ export async function POST(request: NextRequest) {
         console.log("💾 Salvando no Supabase...");
         console.log("📊 Primeiro registro para debug:", JSON.stringify(rows[0], null, 2));
 
-        // Deletar registros antigos (opcional - para evitar duplicatas)
-        // await supabaseAdmin.from("csv_rows").delete().eq("source", "invoice-orders");
+        // ── Deduplicação: verificar invoice_numbers já existentes ──
+        const invoiceNumbers = rows
+            .map((r: any) => r.custom_data?.invoice_number || r.custom_data?.Number || "")
+            .filter(Boolean);
+
+        const existingInvoices = new Set<string>();
+        if (invoiceNumbers.length > 0) {
+            // Buscar invoice_numbers existentes em batches
+            const uniqueInvs = [...new Set(invoiceNumbers)];
+            for (let i = 0; i < uniqueInvs.length; i += 200) {
+                const batch = uniqueInvs.slice(i, i + 200);
+                const { data: existing } = await supabaseAdmin
+                    .from("csv_rows")
+                    .select("custom_data->>invoice_number")
+                    .eq("source", "invoice-orders")
+                    .in("custom_data->>invoice_number", batch);
+                if (existing) {
+                    for (const row of existing) {
+                        const inv = (row as any).invoice_number;
+                        if (inv) existingInvoices.add(inv);
+                    }
+                }
+            }
+        }
+
+        // Filtrar duplicados do próprio ficheiro (manter primeiro) e do DB
+        const seenInFile = new Set<string>();
+        const deduped = rows.filter((r: any) => {
+            const inv = r.custom_data?.invoice_number || r.custom_data?.Number || "";
+            if (!inv) return true; // Sem invoice_number, inserir (não duplicável)
+            if (existingInvoices.has(inv) || seenInFile.has(inv)) return false;
+            seenInFile.add(inv);
+            return true;
+        });
+
+        const skippedDuplicates = rows.length - deduped.length;
+        if (skippedDuplicates > 0) {
+            console.log(`⚠️ ${skippedDuplicates} registros duplicados ignorados (invoice_number já existe)`);
+        }
 
         // Inserir em batches de 500
         const batchSize = 500;
         let insertedCount = 0;
 
-        for (let i = 0; i < rows.length; i += batchSize) {
-            const batch = rows.slice(i, i + batchSize);
+        for (let i = 0; i < deduped.length; i += batchSize) {
+            const batch = deduped.slice(i, i + batchSize);
 
             const { error: insertError } = await supabaseAdmin.from("csv_rows").insert(batch);
 
@@ -461,7 +498,7 @@ export async function POST(request: NextRequest) {
             console.log(`📦 Batch ${Math.floor(i / batchSize) + 1}: ${batch.length} registros`);
         }
 
-        console.log(`🎉 Upload concluído! ${insertedCount} registros salvos`);
+        console.log(`🎉 Upload concluído! ${insertedCount} registros salvos (${skippedDuplicates} duplicados ignorados)`);
 
         return NextResponse.json({
             success: true,
@@ -469,6 +506,7 @@ export async function POST(request: NextRequest) {
                 fileName: file.name,
                 rowCount: insertedCount,
                 skipped: skippedCount,
+                skippedDuplicates,
                 headers: headers
             }
         });

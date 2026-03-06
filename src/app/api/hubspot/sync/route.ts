@@ -562,6 +562,40 @@ export async function POST(request: Request) {
         console.log('   📊 Distribuição por conta:', accountDistribution);
 
         // ============================================================
+        // DEDUP: Remover duplicados por ecomm_order_number nos dados recebidos
+        // ============================================================
+        // Quando múltiplos deals do HubSpot mapeiam para o mesmo pedido web,
+        // manter apenas o deal mais recente (por hs_lastmodifieddate/closedate)
+        const orderNumberMap = new Map<string, any>();
+        const rowsWithoutOrder: any[] = [];
+        let dedupedByOrder = 0;
+
+        for (const row of rows) {
+            const orderNum = row.custom_data?.ecomm_order_number || row.custom_data?.website_order_id;
+            if (!orderNum) {
+                rowsWithoutOrder.push(row);
+                continue;
+            }
+            const existing = orderNumberMap.get(orderNum);
+            if (!existing) {
+                orderNumberMap.set(orderNum, row);
+            } else {
+                // Manter o deal mais recente (por hs_lastmodifieddate, depois closedate)
+                const existingDate = existing.custom_data?.hs_lastmodifieddate || existing.custom_data?.date_ordered || '';
+                const newDate = row.custom_data?.hs_lastmodifieddate || row.custom_data?.date_ordered || '';
+                if (newDate > existingDate) {
+                    orderNumberMap.set(orderNum, row);
+                }
+                dedupedByOrder++;
+            }
+        }
+
+        const dedupedRows = [...orderNumberMap.values(), ...rowsWithoutOrder];
+        if (dedupedByOrder > 0) {
+            console.log(`🔀 Dedup por order_number: ${rows.length} → ${dedupedRows.length} (${dedupedByOrder} duplicados removidos)`);
+        }
+
+        // ============================================================
         // UPSERT: Preservar reconciliações existentes
         // ============================================================
         console.log('🔍 Buscando reconciliações existentes para preservar...');
@@ -578,27 +612,99 @@ export async function POST(request: Request) {
         }
 
         // Criar mapa de deal_id -> dados de reconciliação
+        // Detectar e marcar duplicados de deal_id existentes para limpeza
         const reconciliationMap = new Map<string, { id: string; reconciled: boolean; customData: any }>();
+        const duplicateDealIdRows: string[] = []; // IDs de rows duplicados para deletar
         for (const row of existingRows || []) {
             const dealId = row.custom_data?.deal_id;
             if (dealId) {
-                reconciliationMap.set(String(dealId), {
-                    id: row.id,
-                    reconciled: row.reconciled || false,
-                    customData: row.custom_data
-                });
+                const key = String(dealId);
+                const prev = reconciliationMap.get(key);
+                if (prev) {
+                    // Duplicado! Manter o reconciliado, ou o mais recente
+                    if (prev.reconciled && !row.reconciled) {
+                        duplicateDealIdRows.push(row.id);
+                    } else if (!prev.reconciled && row.reconciled) {
+                        duplicateDealIdRows.push(prev.id);
+                        reconciliationMap.set(key, {
+                            id: row.id,
+                            reconciled: row.reconciled || false,
+                            customData: row.custom_data
+                        });
+                    } else {
+                        // Ambos reconciliados ou ambos não — manter o primeiro, deletar o novo
+                        duplicateDealIdRows.push(row.id);
+                    }
+                } else {
+                    reconciliationMap.set(key, {
+                        id: row.id,
+                        reconciled: row.reconciled || false,
+                        customData: row.custom_data
+                    });
+                }
             }
         }
 
-        console.log(`📊 ${reconciliationMap.size} registros existentes encontrados`);
+        if (duplicateDealIdRows.length > 0) {
+            console.log(`🧹 Encontrados ${duplicateDealIdRows.length} registros com deal_id duplicado — serão removidos`);
+        }
+
+        // Também detectar duplicados existentes por order_number (deals diferentes, mesmo pedido)
+        const existingOrderMap = new Map<string, { id: string; reconciled: boolean; dealId: string }>();
+        const duplicateOrderRows: string[] = [];
+        for (const row of existingRows || []) {
+            const orderNum = row.custom_data?.ecomm_order_number || row.custom_data?.website_order_id;
+            const dealId = row.custom_data?.deal_id;
+            if (!orderNum || !dealId) continue;
+            // Pular se este row já está marcado para deletar (deal_id duplicado)
+            if (duplicateDealIdRows.includes(row.id)) continue;
+
+            const prev = existingOrderMap.get(orderNum);
+            if (prev) {
+                // Manter o reconciliado, ou o primeiro
+                if (prev.reconciled && !row.reconciled) {
+                    duplicateOrderRows.push(row.id);
+                } else if (!prev.reconciled && (row.reconciled || false)) {
+                    duplicateOrderRows.push(prev.id);
+                    existingOrderMap.set(orderNum, { id: row.id, reconciled: row.reconciled || false, dealId: String(dealId) });
+                } else {
+                    duplicateOrderRows.push(row.id);
+                }
+            } else {
+                existingOrderMap.set(orderNum, { id: row.id, reconciled: row.reconciled || false, dealId: String(dealId) });
+            }
+        }
+
+        if (duplicateOrderRows.length > 0) {
+            console.log(`🧹 Encontrados ${duplicateOrderRows.length} registros com order_number duplicado (deals diferentes) — serão removidos`);
+        }
+
+        // Deletar duplicados encontrados
+        const allDuplicateIds = [...duplicateDealIdRows, ...duplicateOrderRows];
+        if (allDuplicateIds.length > 0) {
+            console.log(`🗑️ Removendo ${allDuplicateIds.length} registros duplicados...`);
+            for (let i = 0; i < allDuplicateIds.length; i += 500) {
+                const batch = allDuplicateIds.slice(i, i + 500);
+                const { error: delDupError } = await supabaseAdmin
+                    .from('csv_rows')
+                    .delete()
+                    .in('id', batch);
+                if (delDupError) {
+                    console.error('❌ Erro ao deletar duplicados:', delDupError);
+                }
+            }
+            console.log(`✅ ${allDuplicateIds.length} duplicados removidos`);
+        }
+
+        console.log(`📊 ${reconciliationMap.size} registros existentes únicos encontrados`);
         const reconciledCount = Array.from(reconciliationMap.values()).filter(r => r.reconciled).length;
         console.log(`✅ ${reconciledCount} reconciliações serão preservadas`);
 
-        // Separar em updates e inserts
+        // Separar em updates e inserts (usando dedupedRows em vez de rows)
         const toUpdate: any[] = [];
         const toInsert: any[] = [];
 
-        for (const row of rows) {
+        for (const row of dedupedRows) {
             const dealId = String(row.custom_data?.deal_id);
             const existing = reconciliationMap.get(dealId);
 
@@ -677,7 +783,7 @@ export async function POST(request: Request) {
         }
 
         // Remover deals que não existem mais no HubSpot (opcional - deals deletados)
-        const currentDealIds = new Set(rows.map((r: any) => String(r.custom_data?.deal_id)));
+        const currentDealIds = new Set(dedupedRows.map((r: any) => String(r.custom_data?.deal_id)));
         const toDelete = Array.from(reconciliationMap.entries())
             .filter(([dealId]) => !currentDealIds.has(dealId))
             .map(([, data]) => data.id);
@@ -695,7 +801,7 @@ export async function POST(request: Request) {
             }
         }
 
-        console.log(`✅ Sincronização concluída! ${toUpdate.length} atualizados, ${toInsert.length} novos, ${reconciledCount} reconciliações preservadas`);
+        console.log(`✅ Sincronização concluída! ${toUpdate.length} atualizados, ${toInsert.length} novos, ${reconciledCount} reconciliações preservadas, ${allDuplicateIds.length} duplicados removidos`);
 
         // Trigger customer master data sync after successful web orders sync
         try {
@@ -706,10 +812,13 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
             success: true,
-            message: `${rows.length} deals sincronizados (${reconciledCount} reconciliações preservadas, ${withFinancialAccount} com Financial Account)`,
-            count: rows.length,
+            message: `${dedupedRows.length} deals sincronizados (${reconciledCount} reconciliações preservadas, ${withFinancialAccount} com Financial Account, ${allDuplicateIds.length} duplicados removidos)`,
+            count: dedupedRows.length,
             stats: {
-                total: rows.length,
+                total: dedupedRows.length,
+                totalFromHubSpot: rows.length,
+                dedupedByOrder: dedupedByOrder,
+                duplicatesDeleted: allDuplicateIds.length,
                 updated: toUpdate.length,
                 inserted: toInsert.length,
                 deleted: toDelete.length,
