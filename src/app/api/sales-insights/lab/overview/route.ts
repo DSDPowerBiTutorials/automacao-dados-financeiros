@@ -119,8 +119,8 @@ export async function GET(request: NextRequest) {
             email: string;
             region: string;
             monthlyRevenue: Map<string, number>;
-            faProducts: Map<string, { revenue: number; count: number }>;
-            descProducts: Map<string, { revenue: number; count: number }>;
+            faProducts: Map<string, { revenue: number; count: number; qty: number }>;
+            descProducts: Map<string, { revenue: number; count: number; qty: number }>;
             totalRevenue: number;
             firstDate: string;
             lastDate: string;
@@ -131,6 +131,7 @@ export async function GET(request: NextRequest) {
 
         // Per FA-code and per-month totals
         const productMonthly = new Map<string, Map<string, number>>(); // FA code → (YM → revenue)
+        const productQty = new Map<string, number>(); // FA code → total qty
         const monthlyTotals = new Map<string, { revenue: number; orders: number; clients: Set<string> }>();
 
         // Per-product (description) aggregation
@@ -138,6 +139,7 @@ export async function GET(request: NextRequest) {
             monthlyRevenue: Map<string, number>;
             totalRevenue: number;
             totalCount: number;
+            totalQty: number;
             clients: Set<string>;
         }
         const descProductMap = new Map<string, DescProductData>();
@@ -175,6 +177,7 @@ export async function GET(request: NextRequest) {
             const date = tx.date || "";
             const ym = date.substring(0, 7);
             const email = String(cd.email || "").trim().toLowerCase();
+            const qty = cd.calc_qty !== undefined && cd.calc_qty !== null ? (parseFloat(cd.calc_qty) || 1) : 1;
 
             const productDesc = String(tx.description || "").trim();
 
@@ -198,16 +201,18 @@ export async function GET(request: NextRequest) {
             if (!client.email && email) client.email = email;
 
             client.monthlyRevenue.set(ym, (client.monthlyRevenue.get(ym) || 0) + amount);
-            const faProd = client.faProducts.get(fa) || { revenue: 0, count: 0 };
+            const faProd = client.faProducts.get(fa) || { revenue: 0, count: 0, qty: 0 };
             faProd.revenue += amount;
             faProd.count += 1;
+            faProd.qty += qty;
             client.faProducts.set(fa, faProd);
 
             // Per-description product in client
             if (productDesc) {
-                const dp = client.descProducts.get(productDesc) || { revenue: 0, count: 0 };
+                const dp = client.descProducts.get(productDesc) || { revenue: 0, count: 0, qty: 0 };
                 dp.revenue += amount;
                 dp.count += 1;
+                dp.qty += qty;
                 client.descProducts.set(productDesc, dp);
             }
 
@@ -220,12 +225,13 @@ export async function GET(request: NextRequest) {
             if (productDesc && amount > 0) {
                 let dpg = descProductMap.get(productDesc);
                 if (!dpg) {
-                    dpg = { monthlyRevenue: new Map(), totalRevenue: 0, totalCount: 0, clients: new Set() };
+                    dpg = { monthlyRevenue: new Map(), totalRevenue: 0, totalCount: 0, totalQty: 0, clients: new Set() };
                     descProductMap.set(productDesc, dpg);
                 }
                 dpg.monthlyRevenue.set(ym, (dpg.monthlyRevenue.get(ym) || 0) + amount);
                 dpg.totalRevenue += amount;
                 dpg.totalCount += 1;
+                dpg.totalQty += qty;
                 dpg.clients.add(customerName);
             }
 
@@ -233,6 +239,7 @@ export async function GET(request: NextRequest) {
             if (!productMonthly.has(fa)) productMonthly.set(fa, new Map());
             const pm = productMonthly.get(fa)!;
             pm.set(ym, (pm.get(ym) || 0) + amount);
+            productQty.set(fa, (productQty.get(fa) || 0) + qty);
 
             // Monthly totals
             if (!monthlyTotals.has(ym)) monthlyTotals.set(ym, { revenue: 0, orders: 0, clients: new Set() });
@@ -282,8 +289,8 @@ export async function GET(request: NextRequest) {
             avg_ticket: number;
             first_date: string;
             last_date: string;
-            products: { code: string; name: string; revenue: number; count: number }[];
-            product_details: { name: string; revenue: number; count: number }[];
+            products: { code: string; name: string; revenue: number; count: number; qty: number }[];
+            product_details: { name: string; revenue: number; count: number; qty: number }[];
             months_active: number;
         }
 
@@ -300,12 +307,14 @@ export async function GET(request: NextRequest) {
                 name: FA_NAMES[code] || code,
                 revenue: d.revenue,
                 count: d.count,
+                qty: d.qty,
             })).sort((a, b) => b.revenue - a.revenue);
 
             const productDetails = [...data.descProducts.entries()].map(([desc, d]) => ({
                 name: desc,
                 revenue: d.revenue,
                 count: d.count,
+                qty: d.qty,
             })).sort((a, b) => b.revenue - a.revenue);
 
             clients.push({
@@ -339,6 +348,7 @@ export async function GET(request: NextRequest) {
             revenue_previous: number;
             change_pct: number;
             order_count: number;
+            total_qty: number;
             pct_of_total: number;
         }
 
@@ -366,6 +376,7 @@ export async function GET(request: NextRequest) {
                 revenue_previous: previous,
                 change_pct: changePct,
                 order_count: count,
+                total_qty: productQty.get(fa) || count,
                 pct_of_total: totalRevenueYTD > 0 ? (ytd / totalRevenueYTD) * 100 : 0,
             });
         }
@@ -416,6 +427,7 @@ export async function GET(request: NextRequest) {
             revenue_previous: number;
             change_pct: number;
             order_count: number;
+            total_qty: number;
             client_count: number;
             pct_of_total: number;
             avg_ticket: number;
@@ -433,6 +445,7 @@ export async function GET(request: NextRequest) {
                 revenue_previous: revPrev,
                 change_pct: chgPct,
                 order_count: dpg.totalCount,
+                total_qty: dpg.totalQty,
                 client_count: dpg.clients.size,
                 pct_of_total: totalRevenueYTD > 0 ? (dpg.totalRevenue / totalRevenueYTD) * 100 : 0,
                 avg_ticket: dpg.totalCount > 0 ? dpg.totalRevenue / dpg.totalCount : 0,

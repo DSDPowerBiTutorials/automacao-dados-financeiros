@@ -30,6 +30,7 @@ interface LabProduct {
     name: string;
     revenue: number;
     count: number;
+    qty: number;
 }
 
 interface LabClient {
@@ -46,7 +47,7 @@ interface LabClient {
     first_date: string;
     last_date: string;
     products: LabProduct[];
-    product_details: { name: string; revenue: number; count: number }[];
+    product_details: { name: string; revenue: number; count: number; qty: number }[];
     months_active: number;
 }
 
@@ -58,6 +59,7 @@ interface ProductBreakdown {
     revenue_previous: number;
     change_pct: number;
     order_count: number;
+    total_qty: number;
     pct_of_total: number;
 }
 
@@ -68,6 +70,7 @@ interface ProductSales {
     revenue_previous: number;
     change_pct: number;
     order_count: number;
+    total_qty: number;
     client_count: number;
     pct_of_total: number;
     avg_ticket: number;
@@ -475,6 +478,9 @@ export default function LabAnalysisPage() {
                                                 <span className="text-[10px] text-gray-500 w-14 text-right">
                                                     {p.order_count} orders
                                                 </span>
+                                                <span className="text-[10px] text-gray-500 w-14 text-right">
+                                                    {p.total_qty} units
+                                                </span>
                                             </div>
                                         );
                                     })}
@@ -493,6 +499,9 @@ export default function LabAnalysisPage() {
                                         </span>
                                         <span className="text-[10px] text-gray-500 w-14 text-right font-medium">
                                             {data.kpis.total_orders} orders
+                                        </span>
+                                        <span className="text-[10px] text-gray-500 w-14 text-right font-medium">
+                                            {data.product_breakdown.reduce((s, p) => s + p.total_qty, 0)} units
                                         </span>
                                     </div>
                                 </div>
@@ -546,6 +555,7 @@ export default function LabAnalysisPage() {
                                                         <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Revenue YTD</TableHead>
                                                         <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">% Total</TableHead>
                                                         <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Orders</TableHead>
+                                                        <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Qty</TableHead>
                                                         <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Clients</TableHead>
                                                         <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Avg Ticket</TableHead>
                                                     </TableRow>
@@ -601,6 +611,13 @@ export default function LabAnalysisPage() {
                                                                 {p.order_count}
                                                             </TableCell>
                                                             <TableCell className="py-2 text-right text-xs text-gray-500">
+                                                                {p.total_qty !== p.order_count ? (
+                                                                    <span className="font-medium text-blue-600 dark:text-blue-400">{Math.round(p.total_qty)}</span>
+                                                                ) : (
+                                                                    <span>{p.total_qty}</span>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="py-2 text-right text-xs text-gray-500">
                                                                 {p.client_count}
                                                             </TableCell>
                                                             <TableCell className="py-2 text-right text-xs text-gray-500">
@@ -610,7 +627,7 @@ export default function LabAnalysisPage() {
                                                     ))}
                                                     {displayed.length === 0 && (
                                                         <TableRow>
-                                                            <TableCell colSpan={10} className="text-center py-8 text-gray-500 text-sm">
+                                                            <TableCell colSpan={11} className="text-center py-8 text-gray-500 text-sm">
                                                                 No products found
                                                             </TableCell>
                                                         </TableRow>
