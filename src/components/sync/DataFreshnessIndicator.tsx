@@ -300,35 +300,52 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <button
-                    className={cn(
-                        "relative flex items-center gap-2 rounded-lg transition-all border",
-                        collapsed ? "p-2 justify-center" : "px-3 py-2 w-full",
-                        overallConfig.bgColor,
-                        overallConfig.borderColor,
-                        "hover:opacity-80"
-                    )}
-                    title="Data Freshness Indicator"
-                >
-                    <Activity className={cn("h-5 w-5", overallConfig.color)} />
-                    {!collapsed && (
-                        <>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white flex-1 text-left">Data Status</span>
-                            <Badge variant="outline" className={cn("text-xs", overallConfig.color, overallConfig.borderColor)}>
-                                {data.freshCount}/{data.sources.length}
-                            </Badge>
-                        </>
-                    )}
-                    {/* Dot indicator for issues */}
-                    {(data.hasErrors || data.staleCount > 0) && (
-                        <span
-                            className={cn(
-                                "absolute -top-1 -right-1 h-3 w-3 rounded-full animate-pulse",
-                                data.hasErrors ? "bg-red-500" : "bg-yellow-500"
-                            )}
-                        />
-                    )}
-                </button>
+                {placement === "topbar" && collapsed ? (
+                    <button
+                        className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        title="Data Freshness"
+                    >
+                        <Activity size={20} className={overallConfig.color} />
+                        {(data.hasErrors || data.staleCount > 0) && (
+                            <span
+                                className={cn(
+                                    "absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full animate-pulse",
+                                    data.hasErrors ? "bg-red-500" : "bg-yellow-500"
+                                )}
+                            />
+                        )}
+                    </button>
+                ) : (
+                    <button
+                        className={cn(
+                            "relative flex items-center gap-2 rounded-lg transition-all border",
+                            collapsed ? "p-2 justify-center" : "px-3 py-2 w-full",
+                            overallConfig.bgColor,
+                            overallConfig.borderColor,
+                            "hover:opacity-80"
+                        )}
+                        title="Data Freshness Indicator"
+                    >
+                        <Activity className={cn("h-5 w-5", overallConfig.color)} />
+                        {!collapsed && (
+                            <>
+                                <span className="text-sm font-medium text-gray-900 dark:text-white flex-1 text-left">Data Status</span>
+                                <Badge variant="outline" className={cn("text-xs", overallConfig.color, overallConfig.borderColor)}>
+                                    {data.freshCount}/{data.sources.length}
+                                </Badge>
+                            </>
+                        )}
+                        {/* Dot indicator for issues */}
+                        {(data.hasErrors || data.staleCount > 0) && (
+                            <span
+                                className={cn(
+                                    "absolute -top-1 -right-1 h-3 w-3 rounded-full animate-pulse",
+                                    data.hasErrors ? "bg-red-500" : "bg-yellow-500"
+                                )}
+                            />
+                        )}
+                    </button>
+                )}
             </PopoverTrigger>
             <PopoverContent
                 side={placement === "topbar" ? "bottom" : "right"}

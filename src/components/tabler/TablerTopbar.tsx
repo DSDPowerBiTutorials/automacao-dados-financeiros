@@ -10,7 +10,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { DataFreshnessIndicator } from "@/components/sync/DataFreshnessIndicator";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { SCOPE_CONFIG } from "@/lib/scope-utils";
-import { ChevronDown, ChevronUp, Search, KanbanSquare } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, KanbanSquare, BookOpen } from "lucide-react";
 
 export function TablerTopbar({
   mobileOpen,
@@ -178,13 +178,20 @@ export function TablerTopbar({
               <span className="d-none d-md-inline">DSD Workstream</span>
             </Link>
 
+            {/* Product Manual */}
+            <Link
+              href="/manual"
+              className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
+              title="Product Manual"
+            >
+              <BookOpen size={20} className="text-gray-700 dark:text-gray-300" />
+            </Link>
+
             {/* Mailbox (Notificações) */}
             <NotificationBell />
 
-            {/* Data Freshness Indicator (produção usa este Topbar) */}
-            <div className="d-inline-flex align-items-center">
-              <DataFreshnessIndicator collapsed placement="topbar" />
-            </div>
+            {/* Data Freshness Indicator */}
+            <DataFreshnessIndicator collapsed placement="topbar" />
 
             {/* User Menu (Avatar) */}
             <UserMenu />
