@@ -155,3 +155,27 @@ Before editing any file:
 
 **Do not:** modify `.env.local` files, expose API keys, alter CI/CD workflows without approval.
 
+---
+
+## Product Manual — Auto-Update Rule
+
+**MANDATORY:** Whenever a new page, feature, module, or significant functionality is created or modified, **always update the product manual** so it stays in sync with the application:
+
+1. **Interactive manual page** → [src/app/manual/page.tsx](src/app/manual/page.tsx) — update or add sections (both `en` and `es` translations)
+2. **Markdown manual** → [docs/PRODUCT-MANUAL.md](docs/PRODUCT-MANUAL.md) — update with equivalent content
+
+### What triggers a manual update
+- New route/page added to the app
+- New CSV upload/import handler
+- New API integration or sync
+- New report or dashboard
+- Changes to reconciliation logic or matching rules
+- New master data entity
+- Significant UI/UX changes (e.g., new sidebar section, new settings page)
+
+### Manual update checklist
+- [ ] Add/update relevant section in `manual/page.tsx` (both EN and ES content)
+- [ ] Add/update corresponding section in `docs/PRODUCT-MANUAL.md`
+- [ ] If new section, register it in the `sections` array inside `ManualPage()`
+- [ ] Verify the section title is searchable (matches the toolbar search)
+
