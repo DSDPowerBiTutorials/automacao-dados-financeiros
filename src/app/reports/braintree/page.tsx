@@ -170,7 +170,7 @@ export default function BraintreeDashboard() {
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <PageHeader title="Braintree Multi-Currency Dashboard" subtitle="Consolidated view across all payment currencies">
-        <div className="flex gap-2">
+        <div className="flex gap-2" data-tour="sync-button">
           <Button
             onClick={loadStats}
             disabled={isLoading}
@@ -187,7 +187,7 @@ export default function BraintreeDashboard() {
       </PageHeader>
 
       {/* Total Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4" data-tour="gateway-stats">
         <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium opacity-90">Total Currencies</CardTitle>
@@ -236,7 +236,7 @@ export default function BraintreeDashboard() {
       </div>
 
       {/* Currency Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-tour="settlement-batches">
         {stats.map((stat) => {
           const info = CURRENCY_INFO[stat.currency as keyof typeof CURRENCY_INFO] || {
             symbol: stat.currency,

@@ -531,7 +531,7 @@ export default function InvoiceOrdersPage() {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-tour="ar-stats">
                     <Card className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
@@ -627,6 +627,7 @@ export default function InvoiceOrdersPage() {
                                 className="bg-green-600 hover:bg-green-700 text-white border-green-500"
                                 onClick={runBankReconcile}
                                 disabled={bankReconciling}
+                                data-tour="bank-match-btn"
                             >
                                 {bankReconciling ? (
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -728,7 +729,7 @@ export default function InvoiceOrdersPage() {
                 </Card>
 
                 {/* Data Table */}
-                <Card className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700">
+                <Card className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700" data-tour="invoice-table">
                     <CardContent className="p-0">
                         {loading ? (
                             <div className="flex items-center justify-center h-64">

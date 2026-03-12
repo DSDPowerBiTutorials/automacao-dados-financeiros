@@ -3335,7 +3335,7 @@ export default function BankStatementsPage() {
                         </p>
                     </div>
                 </PageHeader>
-                <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3">
+                <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3" data-tour="reconciliation-modes">
                     {/* Action buttons */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -3368,7 +3368,7 @@ export default function BankStatementsPage() {
                 </div>
 
                 {/* ─── Bank Account Tabs ─── */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#0a0a0a]">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#0a0a0a]" data-tour="bank-selector">
                     {/* Hidden file inputs for each bank upload */}
                     {BANK_ACCOUNTS.map(bank => (
                         <input key={`upload-${bank.key}`} type="file" accept={bank.uploadAccept} onChange={e => handleBankUpload(bank.key, e)}
@@ -3407,7 +3407,8 @@ export default function BankStatementsPage() {
                                     <label htmlFor={`file-upload-${bank.key}`}
                                         className="absolute -top-1.5 -right-1.5 bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-full p-0.5 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#111111] hover:border-gray-400 transition-all"
                                         title={`Upload ${bank.uploadAccept} for ${bank.label}`}
-                                        onClick={e => e.stopPropagation()}>
+                                        onClick={e => e.stopPropagation()}
+                                        data-tour={bank.key === BANK_ACCOUNTS[0]?.key ? "upload-csv" : undefined}>
                                         {uploading ? <Loader2 className="h-3 w-3 text-gray-500 dark:text-gray-400 animate-spin" /> : <Upload className="h-3 w-3 text-gray-500 dark:text-gray-400" />}
                                     </label>
                                 </div>
@@ -3501,7 +3502,7 @@ export default function BankStatementsPage() {
                 )}
 
                 {/* ─── Filters ─── */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-2 bg-gray-100 dark:bg-[#0a0a0a]">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-2 bg-gray-100 dark:bg-[#0a0a0a]" data-tour="date-filter">
                     <div className="flex items-center gap-3 flex-wrap">
                         <Filter className="h-3.5 w-3.5 text-gray-500" />
                         <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(p => ({ ...p, start: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
