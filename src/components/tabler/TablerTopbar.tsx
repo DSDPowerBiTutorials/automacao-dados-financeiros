@@ -11,6 +11,7 @@ import { DataFreshnessIndicator } from "@/components/sync/DataFreshnessIndicator
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { SCOPE_CONFIG } from "@/lib/scope-utils";
 import { ChevronDown, ChevronUp, Search, KanbanSquare, BookOpen } from "lucide-react";
+import { TourMenu } from "@/components/tour/TourMenu";
 
 export function TablerTopbar({
   mobileOpen,
@@ -89,7 +90,7 @@ export function TablerTopbar({
               <span className="navbar-toggler-icon" />
             </button>
 
-            <Link href="/dashboard" className="text-decoration-none d-inline-flex align-items-center gap-2">
+            <Link href="/dashboard" className="text-decoration-none d-inline-flex align-items-center gap-2" data-tour="brand">
               <Image src="/favicon-32x32.png" alt="DSD" width={28} height={28} />
               <span className="d-none d-sm-inline fw-bold" style={{ background: 'linear-gradient(90deg, #FF7300, #ffa94d)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: '16px' }}>
                 DSD Finance Hub
@@ -106,6 +107,7 @@ export function TablerTopbar({
               onClick={onToggleNavVisible}
               aria-label={navVisible ? "Recolher menu" : "Expandir menu"}
               title={navVisible ? "Recolher menu" : "Expandir menu"}
+              data-tour="menu-toggle"
               style={{ background: navVisible ? '#FF7300' : 'var(--scope-inactive-bg)', color: navVisible ? '#fff' : 'var(--header-text)', border: 'none' }}
             >
               {navVisible ? (
@@ -116,7 +118,7 @@ export function TablerTopbar({
             </button>
 
             {/* Search */}
-            <div className="input-icon">
+            <div className="input-icon" data-tour="search">
               <span className="input-icon-addon" style={{ color: 'var(--header-text-muted)' }}><Search size={16} /></span>
               <input
                 type="text"
@@ -130,7 +132,7 @@ export function TablerTopbar({
             </div>
 
             {/* Scope Selector */}
-            <div className="btn-group btn-group-sm">
+            <div className="btn-group btn-group-sm" data-tour="scope-selector">
               {(["ES", "US", "GLOBAL"] as const).map((scope) => (
                 <button
                   key={scope}
@@ -158,6 +160,7 @@ export function TablerTopbar({
             {/* Workstream Link */}
             <Link
               href="/workstream"
+              data-tour="workstream"
               className="d-inline-flex align-items-center gap-1 px-2 py-1 rounded text-decoration-none"
               style={{
                 background: 'var(--workstream-bg)',
@@ -178,9 +181,13 @@ export function TablerTopbar({
               <span className="d-none d-md-inline">DSD Workstream</span>
             </Link>
 
+            {/* Guided Tours */}
+            <TourMenu />
+
             {/* Product Manual */}
             <Link
               href="/manual"
+              data-tour="manual"
               className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
               title="Product Manual"
             >
@@ -188,13 +195,13 @@ export function TablerTopbar({
             </Link>
 
             {/* Mailbox (Notificações) */}
-            <NotificationBell />
+            <span data-tour="notifications"><NotificationBell /></span>
 
             {/* Data Freshness Indicator */}
-            <DataFreshnessIndicator collapsed placement="topbar" />
+            <span data-tour="data-freshness"><DataFreshnessIndicator collapsed placement="topbar" /></span>
 
             {/* User Menu (Avatar) */}
-            <UserMenu />
+            <span data-tour="user-menu"><UserMenu /></span>
           </div>
         </div>
       </header>

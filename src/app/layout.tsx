@@ -8,6 +8,7 @@ import { TimezoneProvider } from "@/contexts/timezone-context"
 import { NotificationProvider } from "@/contexts/notification-context"
 import { LayoutContent } from "@/components/layout/LayoutContent"
 import { ThemeProvider } from "@/components/ui/theme-provider"
+import { TourProvider } from "@/contexts/tour-context"
 
 export const metadata = {
   title: "DSD Finance Hub",
@@ -33,10 +34,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <NotificationProvider>
                 <CompanyViewProvider>
                   <GlobalScopeProvider>
-                    <LayoutContent>
-                      {children}
-                    </LayoutContent>
-                    <Toaster />
+                    <TourProvider>
+                      <LayoutContent>
+                        {children}
+                      </LayoutContent>
+                      <Toaster />
+                    </TourProvider>
                   </GlobalScopeProvider>
                 </CompanyViewProvider>
               </NotificationProvider>

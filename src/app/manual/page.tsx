@@ -31,6 +31,7 @@ import {
     MousePointerClick,
     Eye,
     Link2,
+    Compass,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -979,6 +980,41 @@ function QuickReference({ lang }: { lang: Lang }) {
     );
 }
 
+function GuidedToursSection({ lang }: { lang: Lang }) {
+    return (
+        <>
+            <p>{t(lang,
+                "The system includes interactive guided tours that highlight key UI elements and explain workflows step by step. Tours are available in English and Spanish.",
+                "El sistema incluye tours guiados interactivos que resaltan elementos clave de la interfaz y explican los flujos de trabajo paso a paso. Los tours están disponibles en inglés y español."
+            )}</p>
+
+            <h4 className="font-semibold mt-4 mb-2">{t(lang, "How to Start a Tour", "Cómo Iniciar un Tour")}</h4>
+            <ol className="list-decimal pl-5 space-y-1 text-sm">
+                <li>{t(lang, "Click the compass icon (🧭) in the top header bar", "Haz clic en el icono de brújula (🧭) en la barra superior")}</li>
+                <li>{t(lang, "Choose a tour from the dropdown — available tours depend on which page you're on", "Elige un tour del desplegable — los tours disponibles dependen de la página en la que estés")}</li>
+                <li>{t(lang, 'Follow the highlighted steps. Click "Next" to advance or "X" to exit at any time', 'Sigue los pasos resaltados. Haz clic en "Siguiente" para avanzar o "X" para salir en cualquier momento')}</li>
+            </ol>
+
+            <h4 className="font-semibold mt-4 mb-2">{t(lang, "Available Tours", "Tours Disponibles")}</h4>
+            <InfoTable
+                headers={[t(lang, "Tour", "Tour"), t(lang, "Available On", "Disponible En"), t(lang, "What You'll Learn", "Lo que Aprenderás")]}
+                rows={[
+                    [t(lang, "Welcome Tour", "Tour de Bienvenida"), t(lang, "Any page", "Cualquier página"), t(lang, "Main interface: navigation, scope selector, search, data freshness, notifications", "Interfaz principal: navegación, selector de ámbito, búsqueda, frescura de datos, notificaciones")],
+                    [t(lang, "Bank Statement Import", "Importación de Extractos"), t(lang, "Bank Statements page", "Página de Extractos Bancarios"), t(lang, "Upload CSV, filter dates, use 5 reconciliation modes", "Subir CSV, filtrar fechas, usar 5 modos de conciliación")],
+                    [t(lang, "Payment Gateway Sync", "Sinc. Pasarelas de Pago"), t(lang, "Braintree hub page", "Página hub de Braintree"), t(lang, "Sync data, review settlement batches, understand gateway stats", "Sincronizar datos, revisar lotes de liquidación, entender estadísticas de pasarela")],
+                    [t(lang, "Invoice Orders (AR)", "Pedidos de Factura (CC)"), t(lang, "Invoice Orders page", "Página de Pedidos de Factura"), t(lang, "AR summary cards, Bank Match tool, invoice table with inline editing", "Tarjetas resumen CC, herramienta Bank Match, tabla de facturas con edición inline")],
+                ]}
+            />
+
+            <h4 className="font-semibold mt-4 mb-2">{t(lang, "First-Visit Banner", "Banner de Primera Visita")}</h4>
+            <p className="text-sm">{t(lang,
+                "When you visit the platform for the first time, a welcome banner appears at the bottom of the screen offering to start the Welcome Tour. You can start it immediately or dismiss it — the compass icon in the header is always available to launch tours later.",
+                "Cuando visitas la plataforma por primera vez, un banner de bienvenida aparece en la parte inferior de la pantalla ofreciendo iniciar el Tour de Bienvenida. Puedes iniciarlo inmediatamente o descartarlo — el icono de brújula en la cabecera siempre está disponible para lanzar tours después."
+            )}</p>
+        </>
+    );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Main Page                                                          */
 /* ------------------------------------------------------------------ */
@@ -1004,6 +1040,7 @@ export default function ManualPage() {
         { id: "masterdata", title: t(lang, "6. Master Data Management", "6. Gestión de Datos Maestros"), icon: <Database size={18} />, content: <MasterDataSection lang={lang} /> },
         { id: "settings", title: t(lang, "9. Settings & Administration", "9. Configuración y Administración"), icon: <Settings size={18} />, content: <SettingsAdmin lang={lang} /> },
         { id: "tech", title: t(lang, "10. Technical Specifications", "10. Especificaciones Técnicas"), icon: <Server size={18} />, content: <TechSpecs lang={lang} /> },
+        { id: "tours", title: t(lang, "11. Guided Tours", "11. Tours Guiados"), icon: <Compass size={18} />, content: <GuidedToursSection lang={lang} /> },
         { id: "quickref", title: t(lang, "Quick Reference — What to Prepare", "Referencia Rápida — Qué Preparar"), icon: <CheckCircle2 size={18} />, content: <QuickReference lang={lang} /> },
     ];
 
