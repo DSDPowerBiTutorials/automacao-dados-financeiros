@@ -26,6 +26,11 @@ import {
     Clock,
     Upload,
     Globe,
+    Play,
+    ArrowDown,
+    MousePointerClick,
+    Eye,
+    Link2,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -558,38 +563,231 @@ function ReportsSection({ lang }: { lang: Lang }) {
     );
 }
 
-function ReconciliationEngine({ lang }: { lang: Lang }) {
+/* ------------------------------------------------------------------ */
+/*  Flow Diagram Components                                            */
+/* ------------------------------------------------------------------ */
+
+function FlowStep({ icon, title, subtitle, color = "orange" }: { icon: React.ReactNode; title: string; subtitle?: string; color?: string }) {
+    const colors: Record<string, string> = {
+        orange: "border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30",
+        blue: "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30",
+        green: "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30",
+        purple: "border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-950/30",
+    };
+    return (
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${colors[color] || colors.orange}`}>
+            <span className="text-gray-500 dark:text-gray-400">{icon}</span>
+            <div>
+                <p className="font-medium text-sm text-gray-900 dark:text-white">{title}</p>
+                {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>}
+            </div>
+        </div>
+    );
+}
+
+function FlowArrow() {
+    return (
+        <div className="flex justify-center py-1">
+            <ArrowDown size={18} className="text-gray-400" />
+        </div>
+    );
+}
+
+function FlowDiagram({ title, children }: { title?: string; children: React.ReactNode }) {
+    return (
+        <div className="my-4 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
+            {title && <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">{title}</p>}
+            <div className="space-y-1">{children}</div>
+        </div>
+    );
+}
+
+function VideoPlaceholder({ titleEN, titleES, lang }: { titleEN: string; titleES: string; lang: Lang }) {
+    return (
+        <div className="my-4 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50 p-6 flex flex-col items-center gap-2">
+            <Play size={32} className="text-gray-400" />
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                {t(lang, titleEN, titleES)}
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+                {t(lang, "Video coming soon", "Vídeo en breve")}
+            </p>
+        </div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  5.1 AR Reconciliation                                              */
+/* ------------------------------------------------------------------ */
+
+function ARReconciliation({ lang }: { lang: Lang }) {
     return (
         <>
-            <h4 className="font-semibold mb-2">{t(lang, "Matching Rules", "Reglas de Emparejamiento")}</h4>
+            <p>{t(lang,
+                "Accounts Receivable reconciliation ensures every payment received in the bank is matched to the correct customer invoice. The system provides three manual workflows plus an automatic background process.",
+                "La conciliación de Cuentas por Cobrar asegura que cada pago recibido en el banco se empareja con la factura correcta del cliente. El sistema ofrece tres flujos manuales más un proceso automático en segundo plano."
+            )}</p>
+
+            {/* Flow 1: Bank Match */}
+            <h4 className="font-semibold mt-5 mb-2">
+                <Badge color="blue">{t(lang, "Flow 1: Bank Match (Invoice Orders)", "Flujo 1: Bank Match (Pedidos de Factura)")}</Badge>
+            </h4>
+            <p className="text-sm mb-2">{t(lang,
+                'Navigate to AR → Invoice Orders, select a bank account and date range, then click the "Bank Match" button. The system runs a dry-run preview before applying any changes.',
+                'Navegue a CC → Pedidos de Factura, seleccione una cuenta bancaria y rango de fechas, luego haga clic en el botón "Bank Match". El sistema ejecuta una vista previa antes de aplicar cambios.'
+            )}</p>
+            <FlowDiagram title={t(lang, "Bank Match Flow", "Flujo Bank Match")}>
+                <FlowStep icon={<Building2 size={16} />} title={t(lang, "1. Select bank account + date range", "1. Seleccionar cuenta bancaria + rango de fechas")} subtitle={t(lang, "Filter unreconciled credits from bank statement", "Filtrar créditos no conciliados del extracto bancario")} color="blue" />
+                <FlowArrow />
+                <FlowStep icon={<MousePointerClick size={16} />} title={t(lang, '2. Click "Bank Match" button', '2. Clic en botón "Bank Match"')} subtitle={t(lang, "System runs dry-run preview — no changes yet", "El sistema ejecuta vista previa — sin cambios aún")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<Eye size={16} />} title={t(lang, "3. Review match proposals", "3. Revisar propuestas de emparejamiento")} subtitle={t(lang, "Each proposal shows: bank amount, invoice amount, date distance, confidence score", "Cada propuesta muestra: importe banco, importe factura, distancia de fechas, puntuación de confianza")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<CheckCircle2 size={16} />} title={t(lang, '4. Confirm matches → status updates to "Reconciled"', '4. Confirmar coincidencias → estado se actualiza a "Conciliado"')} subtitle={t(lang, "Both bank row and AR invoice are linked with matched_with ID", "Tanto la fila del banco como la factura CC se vinculan con ID matched_with")} color="green" />
+            </FlowDiagram>
+            <VideoPlaceholder titleEN="Bank Match walkthrough" titleES="Recorrido por Bank Match" lang={lang} />
+
+            {/* Flow 2: Settlement Batch */}
+            <h4 className="font-semibold mt-5 mb-2">
+                <Badge color="blue">{t(lang, "Flow 2: Settlement Batch Matching", "Flujo 2: Emparejamiento por Lote de Liquidación")}</Badge>
+            </h4>
+            <p className="text-sm mb-2">{t(lang,
+                "Payment gateways (Braintree, Stripe, GoCardless) deposit funds as settlement batches. A single bank credit may contain dozens of transactions. This flow reveals the individual payments inside each batch.",
+                "Las pasarelas de pago (Braintree, Stripe, GoCardless) depositan fondos como lotes de liquidación. Un único crédito bancario puede contener decenas de transacciones. Este flujo revela los pagos individuales dentro de cada lote."
+            )}</p>
+            <FlowDiagram title={t(lang, "Settlement Batch Flow", "Flujo Lote de Liquidación")}>
+                <FlowStep icon={<Building2 size={16} />} title={t(lang, "1. Open bank statement → identify gateway deposit (color badge)", "1. Abrir extracto bancario → identificar depósito de pasarela (badge de color)")} subtitle={t(lang, "Braintree = purple, Stripe = blue, GoCardless = teal", "Braintree = morado, Stripe = azul, GoCardless = verde azulado")} color="blue" />
+                <FlowArrow />
+                <FlowStep icon={<Link2 size={16} />} title={t(lang, "2. Click badge → expand settlement batch details", "2. Clic en badge → expandir detalles del lote de liquidación")} subtitle={t(lang, "Shows all individual transactions in the batch with amounts and statuses", "Muestra todas las transacciones individuales del lote con importes y estados")} color="purple" />
+                <FlowArrow />
+                <FlowStep icon={<Eye size={16} />} title={t(lang, "3. Review each transaction → verify amounts and dates", "3. Revisar cada transacción → verificar importes y fechas")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<CheckCircle2 size={16} />} title={t(lang, "4. Toggle reconciled per transaction or mark batch as reconciled", "4. Activar conciliación por transacción o marcar lote como conciliado")} color="green" />
+            </FlowDiagram>
+
+            {/* Flow 3: Smart Disbursement Chain */}
+            <h4 className="font-semibold mt-5 mb-2">
+                <Badge color="blue">{t(lang, "Flow 3: Smart Disbursement Chain", "Flujo 3: Cadena Inteligente de Desembolsos")}</Badge>
+            </h4>
+            <p className="text-sm mb-2">{t(lang,
+                "The most powerful AR flow. When a bank credit is identified as a gateway deposit, the system traces the full chain via the gateway API: bank → settlement batch → individual transactions → linked AR invoices. Provides end-to-end visibility from bank statement to customer invoice.",
+                "El flujo CC más potente. Cuando un crédito bancario se identifica como depósito de pasarela, el sistema rastrea la cadena completa vía API de la pasarela: banco → lote de liquidación → transacciones individuales → facturas CC vinculadas. Proporciona visibilidad extremo a extremo."
+            )}</p>
+            <FlowDiagram title={t(lang, "Smart Disbursement Chain", "Cadena Inteligente de Desembolsos")}>
+                <FlowStep icon={<Building2 size={16} />} title={t(lang, "1. Bank credit with gateway badge detected", "1. Crédito bancario con badge de pasarela detectado")} color="blue" />
+                <FlowArrow />
+                <FlowStep icon={<Zap size={16} />} title={t(lang, "2. System calls gateway API (e.g., Braintree settlementBatchSummary)", "2. Sistema llama API de la pasarela (ej: Braintree settlementBatchSummary)")} subtitle={t(lang, "Fetches batch details + individual disbursement transactions", "Obtiene detalles del lote + transacciones de desembolso individuales")} color="purple" />
+                <FlowArrow />
+                <FlowStep icon={<Link2 size={16} />} title={t(lang, "3. Each transaction linked to AR invoice via Order ID", "3. Cada transacción vinculada a factura CC vía Order ID")} subtitle={t(lang, "Automatically creates matched_with references in both directions", "Crea automáticamente referencias matched_with en ambas direcciones")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<CheckCircle2 size={16} />} title={t(lang, "4. Full chain reconciled: Bank ↔ Batch ↔ Transactions ↔ AR Invoices", "4. Cadena completa conciliada: Banco ↔ Lote ↔ Transacciones ↔ Facturas CC")} color="green" />
+            </FlowDiagram>
+            <VideoPlaceholder titleEN="Smart Disbursement Chain demo" titleES="Demo de Cadena Inteligente de Desembolsos" lang={lang} />
+
+            {/* Auto-reconciliation (brief) */}
+            <h4 className="font-semibold mt-5 mb-2">
+                <Badge color="green">{t(lang, "Auto-Reconciliation (Background)", "Auto-Conciliación (Segundo Plano)")}</Badge>
+            </h4>
+            <p className="text-sm mb-2">{t(lang,
+                "The system also runs automatic matching in the background using a 3-level hierarchy. This complements the manual flows above — it handles high-confidence matches so you can focus on exceptions.",
+                "El sistema también ejecuta emparejamiento automático en segundo plano usando una jerarquía de 3 niveles. Complementa los flujos manuales — gestiona coincidencias de alta confianza para que puedas enfocarte en excepciones."
+            )}</p>
             <InfoTable
-                headers={[t(lang, "Rule", "Regla"), t(lang, "Threshold", "Umbral"), t(lang, "Description", "Descripción")]}
+                headers={[t(lang, "Level", "Nivel"), t(lang, "Criteria", "Criterios"), t(lang, "Confidence", "Confianza")]}
                 rows={[
-                    [t(lang, "Date Proximity", "Proximidad de Fecha"), t(lang, "±3 calendar days", "±3 días naturales"), t(lang, "Transactions must fall within a 3-day window", "Las transacciones deben estar dentro de una ventana de 3 días")],
-                    [t(lang, "Amount Matching", "Emparejamiento de Importe"), "±€0.01", t(lang, "Amounts must be within 1 cent", "Los importes deben estar dentro de 1 céntimo")],
-                    [t(lang, "Cross-Source", "Cruce entre Fuentes"), t(lang, "Automatic", "Automático"), t(lang, "Bank ↔ Gateway ↔ Invoice ↔ CRM Deal", "Banco ↔ Pasarela ↔ Factura ↔ Deal CRM")],
+                    [t(lang, "1 — Order ID", "1 — Order ID"), t(lang, "Exact Order ID match between bank and invoice", "Coincidencia exacta de Order ID entre banco y factura"), "100%"],
+                    [t(lang, "2 — Email + Amount", "2 — Email + Importe"), t(lang, "Same email + amount ±€1 + date ±30 days", "Mismo email + importe ±€1 + fecha ±30 días"), "85%"],
+                    [t(lang, "3 — Domain + Amount", "3 — Dominio + Importe"), t(lang, "Same email domain + amount ±€1 + date ±3 days", "Mismo dominio de email + importe ±€1 + fecha ±3 días"), "70%"],
                 ]}
             />
 
-            <h4 className="font-semibold mt-4 mb-2">{t(lang, "Reconciliation Fields (per row)", "Campos de Conciliación (por fila)")}</h4>
+            {/* Reconciliation fields */}
+            <h4 className="font-semibold mt-5 mb-2">{t(lang, "Reconciliation Fields (per row)", "Campos de Conciliación (por fila)")}</h4>
             <InfoTable
                 headers={[t(lang, "Field", "Campo"), t(lang, "Type", "Tipo"), t(lang, "Description", "Descripción")]}
                 rows={[
-                    ["reconciled", "Boolean", t(lang, "Whether matched", "Si está emparejado")],
-                    ["matched_with", "String", t(lang, "ID of matched row", "ID de la fila emparejada")],
-                    ["matched_source", "String", t(lang, "Source of matched row", "Fuente de la fila emparejada")],
-                    ["match_confidence", "Number", t(lang, "Score 0-1", "Puntuación 0-1")],
-                    ["match_details", "JSON", t(lang, "Match criteria breakdown", "Desglose de criterios de emparejamiento")],
+                    ["reconciled", "Boolean", t(lang, "Whether matched successfully", "Si se emparejó correctamente")],
+                    ["matched_with", "String", t(lang, "ID of the matched row", "ID de la fila emparejada")],
+                    ["matched_source", "String", t(lang, "Source of matched row (e.g., braintree-eur)", "Fuente de la fila emparejada (ej: braintree-eur)")],
+                    ["match_confidence", "Number", t(lang, "Score 0–1 (1 = certain)", "Puntuación 0–1 (1 = seguro)")],
+                    ["match_details", "JSON", t(lang, "Breakdown of match criteria used", "Desglose de los criterios de emparejamiento usados")],
+                ]}
+            />
+        </>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/*  5.2 AP Reconciliation                                              */
+/* ------------------------------------------------------------------ */
+
+function APReconciliation({ lang }: { lang: Lang }) {
+    return (
+        <>
+            <p>{t(lang,
+                "Accounts Payable reconciliation matches bank debits (outgoing payments) to supplier invoices and revenue-related orders. The system supports two main manual flows.",
+                "La conciliación de Cuentas por Pagar empareja débitos bancarios (pagos salientes) con facturas de proveedores y pedidos de ingresos. El sistema soporta dos flujos manuales principales."
+            )}</p>
+
+            {/* Flow 1: Expense → AP Invoice */}
+            <h4 className="font-semibold mt-5 mb-2">
+                <Badge color="blue">{t(lang, "Flow 1: Expense → AP Invoice Matching", "Flujo 1: Gasto → Emparejamiento con Factura CP")}</Badge>
+            </h4>
+            <p className="text-sm mb-2">{t(lang,
+                "For outgoing payments (bank debits), the system suggests matching AP invoices using fuzzy text matching on descriptions. The algorithm uses Sørensen-Dice similarity with a threshold of ≥60%.",
+                "Para pagos salientes (débitos bancarios), el sistema sugiere facturas CP coincidentes usando coincidencia difusa de texto en las descripciones. El algoritmo usa similitud Sørensen-Dice con un umbral de ≥60%."
+            )}</p>
+            <FlowDiagram title={t(lang, "Expense → AP Invoice Flow", "Flujo Gasto → Factura CP")}>
+                <FlowStep icon={<Building2 size={16} />} title={t(lang, "1. Open bank statement → select a debit (outgoing payment)", "1. Abrir extracto bancario → seleccionar un débito (pago saliente)")} color="blue" />
+                <FlowArrow />
+                <FlowStep icon={<Receipt size={16} />} title={t(lang, '2. Click "Reconcile" → system searches AP invoices', '2. Clic en "Conciliar" → sistema busca facturas CP')} subtitle={t(lang, "Fuzzy matching: Sørensen-Dice ≥60% on provider name + description", "Coincidencia difusa: Sørensen-Dice ≥60% en nombre proveedor + descripción")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<Eye size={16} />} title={t(lang, "3. Review suggestions ranked by similarity score", "3. Revisar sugerencias ordenadas por puntuación de similitud")} subtitle={t(lang, "Each shows: provider, amount, date, similarity %, invoice number", "Cada una muestra: proveedor, importe, fecha, % similitud, número de factura")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<CheckCircle2 size={16} />} title={t(lang, "4. Select correct match → link bank debit to AP invoice", "4. Seleccionar coincidencia correcta → vincular débito bancario a factura CP")} color="green" />
+            </FlowDiagram>
+            <VideoPlaceholder titleEN="Expense to AP Invoice matching" titleES="Emparejamiento de Gasto con Factura CP" lang={lang} />
+
+            {/* Flow 2: Revenue Order Matching */}
+            <h4 className="font-semibold mt-5 mb-2">
+                <Badge color="blue">{t(lang, "Flow 2: Revenue → Web Orders (P&L + Installments)", "Flujo 2: Ingreso → Pedidos Web (P&L + Cuotas)")}</Badge>
+            </h4>
+            <p className="text-sm mb-2">{t(lang,
+                "For bank credits identified as revenue, this flow opens a P&L classification popup where you assign the payment to an income account, handle installment plans, and optionally create a fee invoice for gateway commissions.",
+                "Para créditos bancarios identificados como ingresos, este flujo abre un popup de clasificación P&L donde asigna el pago a una cuenta de ingresos, gestiona planes de cuotas, y opcionalmente crea una factura de comisión por la pasarela."
+            )}</p>
+            <FlowDiagram title={t(lang, "Revenue → Web Order Flow", "Flujo Ingreso → Pedido Web")}>
+                <FlowStep icon={<Building2 size={16} />} title={t(lang, "1. Bank credit identified as revenue (not a gateway batch)", "1. Crédito bancario identificado como ingreso (no lote de pasarela)")} color="blue" />
+                <FlowArrow />
+                <FlowStep icon={<MousePointerClick size={16} />} title={t(lang, '2. Click "Revenue Match" → P&L Classification Popup opens', '2. Clic en "Revenue Match" → se abre Popup de Clasificación P&L')} subtitle={t(lang, "Select Financial Account (income code), description, notes", "Seleccionar Cuenta Financiera (código de ingresos), descripción, notas")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<CreditCard size={16} />} title={t(lang, "3. Installment handling (if applicable)", "3. Gestión de cuotas (si aplica)")} subtitle={t(lang, "Split payment across multiple months: define # installments, start date", "Dividir pago en varios meses: definir nº cuotas, fecha inicio")} color="purple" />
+                <FlowArrow />
+                <FlowStep icon={<Receipt size={16} />} title={t(lang, "4. Fee invoice creation (optional)", "4. Creación de factura de comisión (opcional)")} subtitle={t(lang, "Auto-generate AP invoice for gateway fees (Braintree ~2.4%, Stripe ~1.4%)", "Auto-generar factura CP para comisiones de pasarela (Braintree ~2.4%, Stripe ~1.4%)")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<CheckCircle2 size={16} />} title={t(lang, "5. Confirm → bank credit reconciled + AR invoice created/linked", "5. Confirmar → crédito bancario conciliado + factura CC creada/vinculada")} color="green" />
+            </FlowDiagram>
+            <VideoPlaceholder titleEN="Revenue reconciliation with P&L popup" titleES="Conciliación de ingresos con popup P&L" lang={lang} />
+
+            {/* Matching thresholds */}
+            <h4 className="font-semibold mt-5 mb-2">{t(lang, "AP Matching Thresholds", "Umbrales de Emparejamiento CP")}</h4>
+            <InfoTable
+                headers={[t(lang, "Parameter", "Parámetro"), t(lang, "Value", "Valor"), t(lang, "Notes", "Notas")]}
+                rows={[
+                    [t(lang, "Text Similarity", "Similitud Texto"), "≥ 60% (Sørensen-Dice)", t(lang, "Provider name + description vs bank description", "Nombre proveedor + descripción vs descripción banco")],
+                    [t(lang, "Amount Tolerance", "Tolerancia Importe"), "±€0.01", t(lang, "Exact match after rounding", "Coincidencia exacta tras redondeo")],
+                    [t(lang, "Date Window", "Ventana Fechas"), t(lang, "±3 calendar days", "±3 días naturales"), t(lang, "Extended to ±5 days for cross-border transfers", "Se extiende a ±5 días para transferencias internacionales")],
                 ]}
             />
 
-            <h4 className="font-semibold mt-4 mb-2">{t(lang, "Data Freshness Monitoring", "Monitorización de Frescura de Datos")}</h4>
+            {/* Data freshness */}
+            <h4 className="font-semibold mt-5 mb-2">{t(lang, "Data Freshness Monitoring", "Monitorización de Frescura de Datos")}</h4>
             <div className="flex flex-wrap gap-3 my-2">
                 {[
-                    { color: "bg-green-500", label: t(lang, "≤ 2 days — Fresh", "≤ 2 días — Fresco"), icon: <CheckCircle2 size={14} /> },
-                    { color: "bg-yellow-500", label: t(lang, "≤ 4 days — Slightly Stale", "≤ 4 días — Ligeramente Antiguo"), icon: <AlertTriangle size={14} /> },
-                    { color: "bg-orange-500", label: t(lang, "≤ 7 days — Attention", "≤ 7 días — Atención"), icon: <AlertTriangle size={14} /> },
-                    { color: "bg-red-500", label: t(lang, "> 7 days — Action Required", "> 7 días — Acción Requerida"), icon: <Clock size={14} /> },
+                    { color: "bg-green-500", label: t(lang, "≤ 2 days — Fresh", "≤ 2 días — Fresco") },
+                    { color: "bg-yellow-500", label: t(lang, "≤ 4 days — Slightly Stale", "≤ 4 días — Ligeramente Antiguo") },
+                    { color: "bg-orange-500", label: t(lang, "≤ 7 days — Attention", "≤ 7 días — Atención") },
+                    { color: "bg-red-500", label: t(lang, "> 7 days — Action Required", "> 7 días — Acción Requerida") },
                 ].map((b) => (
                     <div key={b.label} className="flex items-center gap-2 text-xs">
                         <span className={`w-3 h-3 rounded-full ${b.color}`} />
@@ -597,17 +795,51 @@ function ReconciliationEngine({ lang }: { lang: Lang }) {
                     </div>
                 ))}
             </div>
+        </>
+    );
+}
 
-            <h4 className="font-semibold mt-4 mb-1">
-                <Badge color="green">{t(lang, "🔄 Workflow", "🔄 Flujo de Trabajo")}</Badge>
+/* ------------------------------------------------------------------ */
+/*  5.3 Intercompany Reconciliation                                    */
+/* ------------------------------------------------------------------ */
+
+function IntercompanyReconciliation({ lang }: { lang: Lang }) {
+    return (
+        <>
+            <p>{t(lang,
+                "Intercompany reconciliation matches transactions between different bank accounts of the same organization (e.g., EUR account → USD account transfers). Critical for multi-entity businesses with cross-currency flows.",
+                "La conciliación intercompañía empareja transacciones entre diferentes cuentas bancarias de la misma organización (ej: transferencias cuenta EUR → cuenta USD). Crucial para empresas multi-entidad con flujos multi-divisa."
+            )}</p>
+
+            <h4 className="font-semibold mt-5 mb-2">
+                <Badge color="blue">{t(lang, "Manual Intercompany Flow", "Flujo Intercompañía Manual")}</Badge>
             </h4>
-            <ol className="list-decimal pl-5 space-y-1">
-                <li>{t(lang, "Import bank statement", "Importar extracto bancario")}</li>
-                <li>{t(lang, "Import/sync corresponding payment gateway", "Importar/sincronizar la pasarela de pago correspondiente")}</li>
-                <li>{t(lang, "Open bank report → system auto-detects gateway deposits with color badges", "Abrir informe bancario → el sistema auto-detecta depósitos de pasarelas con badges de color")}</li>
-                <li>{t(lang, 'Click badge to expand matches → verify → toggle "Reconciled"', 'Clic en el badge para expandir coincidencias → verificar → activar "Conciliado"')}</li>
-                <li>{t(lang, "Check Reconciliation Center for overall health", "Verificar el Centro de Conciliación para el estado general")}</li>
-            </ol>
+            <FlowDiagram title={t(lang, "Intercompany Matching Flow", "Flujo de Emparejamiento Intercompañía")}>
+                <FlowStep icon={<Building2 size={16} />} title={t(lang, "1. Open bank statement → identify intercompany transfer (debit)", "1. Abrir extracto bancario → identificar transferencia intercompañía (débito)")} color="blue" />
+                <FlowArrow />
+                <FlowStep icon={<ArrowLeftRight size={16} />} title={t(lang, '2. Click "Intercompany" → system searches other bank accounts', '2. Clic en "Intercompañía" → sistema busca en otras cuentas bancarias')} subtitle={t(lang, "Looks for matching credit in target bank account within date tolerance", "Busca crédito coincidente en cuenta bancaria destino dentro de la tolerancia de fechas")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<Eye size={16} />} title={t(lang, "3. Review proposed match: source debit ↔ target credit", "3. Revisar coincidencia propuesta: débito origen ↔ crédito destino")} subtitle={t(lang, "Verify: amount (after FX if applicable), dates, description", "Verificar: importe (tras cambio divisa si aplica), fechas, descripción")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<CheckCircle2 size={16} />} title={t(lang, "4. Confirm → both rows marked reconciled with cross-reference IDs", "4. Confirmar → ambas filas marcadas conciliadas con IDs de referencia cruzada")} color="green" />
+            </FlowDiagram>
+            <VideoPlaceholder titleEN="Intercompany reconciliation demo" titleES="Demo de conciliación intercompañía" lang={lang} />
+
+            <h4 className="font-semibold mt-5 mb-2">{t(lang, "Date Tolerance Rules", "Reglas de Tolerancia de Fechas")}</h4>
+            <InfoTable
+                headers={[t(lang, "Scenario", "Escenario"), t(lang, "Tolerance", "Tolerancia"), t(lang, "Reason", "Razón")]}
+                rows={[
+                    [t(lang, "Same-bank transfer", "Transferencia mismo banco"), t(lang, "±1 calendar day", "±1 día natural"), t(lang, "Intraday or next-day settlement", "Liquidación intradía o al día siguiente")],
+                    [t(lang, "Cross-bank (weekday)", "Inter-banco (día laboral)"), t(lang, "±3 calendar days", "±3 días naturales"), t(lang, "Standard SEPA/SWIFT processing", "Procesamiento estándar SEPA/SWIFT")],
+                    [t(lang, "Cross-bank (weekend/holiday)", "Inter-banco (fin de semana/festivo)"), t(lang, "±5 calendar days", "±5 días naturales"), t(lang, "Weekend/holiday buffer added", "Buffer de fin de semana/festivo añadido")],
+                ]}
+            />
+
+            <h4 className="font-semibold mt-5 mb-2">{t(lang, "Multi-Currency Handling", "Gestión Multi-Divisa")}</h4>
+            <p className="text-sm">{t(lang,
+                "When matching across currencies (e.g., EUR debit ↔ USD credit), the system uses the ECB reference rate for the transaction date ±2%. This accounts for bank exchange rate spreads. The FX rate used is logged in the match_details JSON field for audit purposes.",
+                "Al emparejar entre divisas (ej: débito EUR ↔ crédito USD), el sistema usa el tipo de referencia BCE para la fecha de transacción ±2%. Esto tiene en cuenta los spreads de tipo de cambio bancario. El tipo FX usado se registra en el campo JSON match_details para auditoría."
+            )}</p>
         </>
     );
 }
@@ -766,7 +998,9 @@ export default function ManualPage() {
         { id: "ap", title: t(lang, "3.5 Accounts Payable", "3.5 Cuentas por Pagar"), icon: <Receipt size={18} />, content: <AccountsPayable lang={lang} /> },
         { id: "api", title: t(lang, "3.6 API Integrations", "3.6 Integraciones API"), icon: <Zap size={18} />, content: <APIIntegrations lang={lang} /> },
         { id: "reports", title: t(lang, "4. Reports & Dashboards", "4. Informes y Cuadros de Mando"), icon: <BarChart3 size={18} />, content: <ReportsSection lang={lang} /> },
-        { id: "reconciliation", title: t(lang, "5. Reconciliation Engine", "5. Motor de Conciliación"), icon: <GitMerge size={18} />, content: <ReconciliationEngine lang={lang} /> },
+        { id: "ar-recon", title: t(lang, "5.1 AR Reconciliation", "5.1 Conciliación de CC"), icon: <GitMerge size={18} />, content: <ARReconciliation lang={lang} /> },
+        { id: "ap-recon", title: t(lang, "5.2 AP Reconciliation", "5.2 Conciliación de CP"), icon: <ArrowLeftRight size={18} />, content: <APReconciliation lang={lang} /> },
+        { id: "ic-recon", title: t(lang, "5.3 Intercompany Reconciliation", "5.3 Conciliación Intercompañía"), icon: <Building2 size={18} />, content: <IntercompanyReconciliation lang={lang} /> },
         { id: "masterdata", title: t(lang, "6. Master Data Management", "6. Gestión de Datos Maestros"), icon: <Database size={18} />, content: <MasterDataSection lang={lang} /> },
         { id: "settings", title: t(lang, "9. Settings & Administration", "9. Configuración y Administración"), icon: <Settings size={18} />, content: <SettingsAdmin lang={lang} /> },
         { id: "tech", title: t(lang, "10. Technical Specifications", "10. Especificaciones Técnicas"), icon: <Server size={18} />, content: <TechSpecs lang={lang} /> },
