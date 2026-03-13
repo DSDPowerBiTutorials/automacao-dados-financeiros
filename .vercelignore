@@ -24,7 +24,7 @@ public/Layout References/
 
 # Backups and temp data
 backups/
-data/
+/data/
 *.tsbuildinfo
 
 # Root-level data/script files
