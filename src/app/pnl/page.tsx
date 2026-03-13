@@ -1740,7 +1740,7 @@ export default function PnLReport() {
             {/* Header */}
             <PageHeader title="P&L Statement" subtitle={`Income Statement • ${selectedYear} • ${selectedScope === "GLOBAL" ? "All Regions" : selectedScope}`}>
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 bg-gray-200 dark:bg-black/60 rounded-lg p-1 border border-gray-300 dark:border-gray-700">
+                    <div data-tour="pnl-year-selector" className="flex items-center gap-2 bg-gray-200 dark:bg-black/60 rounded-lg p-1 border border-gray-300 dark:border-gray-700">
                         {[2024, 2025, 2026].map((year) => (
                             <button
                                 key={year}
@@ -1765,7 +1765,7 @@ export default function PnLReport() {
 
             <div className="p-6 space-y-6">
                 {/* Executive Summary KPIs */}
-                <div className="grid grid-cols-6 gap-4">
+                <div data-tour="pnl-kpi-cards" className="grid grid-cols-6 gap-4">
                     {/* Revenue Card */}
                     <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/50 dark:to-emerald-950/80 border-emerald-200 dark:border-emerald-700/50 col-span-1">
                         <CardContent className="pt-5 pb-4">
@@ -1934,7 +1934,7 @@ export default function PnLReport() {
                     </div>
 
                     {/* Revenue Section */}
-                    <div className="bg-gradient-to-r from-emerald-100 to-emerald-50 dark:from-emerald-900/40 dark:to-emerald-900/20 border-b border-emerald-200 dark:border-emerald-800/50 py-2 px-3">
+                    <div data-tour="pnl-revenue-section" className="bg-gradient-to-r from-emerald-100 to-emerald-50 dark:from-emerald-900/40 dark:to-emerald-900/20 border-b border-emerald-200 dark:border-emerald-800/50 py-2 px-3">
                         <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-2">
                             <TrendingUp className="h-3 w-3" />
                             Revenue
@@ -1946,7 +1946,7 @@ export default function PnLReport() {
                     {renderMonthlySubtotal("TOTAL REVENUE", monthlyTotals.months, "revenue", monthlyTotals.ytd.revenue, monthlyTotals.annual.revenue)}
 
                     {/* Expenses Section */}
-                    <div className="bg-gradient-to-r from-red-100 to-red-50 dark:from-red-900/40 dark:to-red-900/20 border-b border-red-200 dark:border-red-800/50 py-2 px-3 mt-1">
+                    <div data-tour="pnl-expense-section" className="bg-gradient-to-r from-red-100 to-red-50 dark:from-red-900/40 dark:to-red-900/20 border-b border-red-200 dark:border-red-800/50 py-2 px-3 mt-1">
                         <span className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wider flex items-center gap-2">
                             <TrendingDown className="h-3 w-3" />
                             Expenses
@@ -1989,7 +1989,7 @@ export default function PnLReport() {
                 </Card>
 
                 {/* Budget vs Actual Comparison */}
-                <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-800">
+                <Card data-tour="pnl-budget-variance" className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-800">
                     <CardHeader className="border-b border-gray-200 dark:border-gray-800 py-4">
                         <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2 text-base">
                             <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />

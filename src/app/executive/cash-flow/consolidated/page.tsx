@@ -315,7 +315,7 @@ export default function RevenueCashflowPage() {
             },
         ];
         return (
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-4" data-tour="ccf-kpi-cards">
                 {cards.map(c => (
                     <Card key={c.label} className={`bg-gradient-to-br from-${c.color}-900/50 to-${c.color}-950/80 border-${c.color}-700/50`}>
                         <CardContent className="pt-5 pb-4">
@@ -355,7 +355,7 @@ export default function RevenueCashflowPage() {
             {/* Header */}
             <PageHeader title="Revenue Cashflow" subtitle={`Bank Inflows × Gateways × Financial Accounts • All Banks • ${selectedYear}`}>
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 bg-gray-100 dark:bg-black/60 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
+                    <div data-tour="ccf-year-selector" className="flex items-center gap-2 bg-gray-100 dark:bg-black/60 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
                         {[2024, 2025, 2026].map(y => (
                             <button key={y} onClick={() => setSelectedYear(y)}
                                 className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === y ? "bg-emerald-600 text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}>
@@ -367,7 +367,7 @@ export default function RevenueCashflowPage() {
                         onClick={() => { setLoading(true); setTimeout(() => setSelectedYear(selectedYear), 0); }}>
                         <RefreshCw className="h-4 w-4 mr-2" />Refresh
                     </Button>
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={exportCSV}>
+                    <Button data-tour="ccf-export" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={exportCSV}>
                         <Download className="h-4 w-4 mr-2" />Export
                     </Button>
                 </div>
@@ -379,7 +379,7 @@ export default function RevenueCashflowPage() {
                 {/* ═══════════════════════════════════════════════════════════════
                     UNIFIED GRID: Bank Inflows → Gateways → Revenue → Outflows
                    ═══════════════════════════════════════════════════════════════ */}
-                <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-800 overflow-hidden">
+                <Card data-tour="ccf-grid" className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-800 overflow-hidden">
                     <CardHeader className="border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-gray-900 to-gray-800/80 py-4">
                         <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2 text-base">
                             <Landmark className="h-5 w-5 text-emerald-400" />

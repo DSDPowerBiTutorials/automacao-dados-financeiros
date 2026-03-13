@@ -50,7 +50,7 @@ export default function PerformanceAnalyticsPage() {
       <PageHeader title="Performance Analytics" subtitle="Real-time performance metrics and business intelligence" />
 
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div data-tour="perf-metrics" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {metrics.map((metric) => {
           const Icon = metric.icon;
           const TrendIcon = metric.trend === "up" ? TrendingUp : TrendingDown;
@@ -81,7 +81,7 @@ export default function PerformanceAnalyticsPage() {
       </div>
 
       {/* Performance Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div data-tour="perf-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Revenue Performance</CardTitle>
@@ -129,7 +129,7 @@ export default function PerformanceAnalyticsPage() {
       </div>
 
       {/* Detailed Performance Table */}
-      <Card>
+      <Card data-tour="perf-dept-table">
         <CardHeader>
           <CardTitle>Department Performance</CardTitle>
           <CardDescription>Comparative performance across business units</CardDescription>

@@ -303,4 +303,293 @@ export const TOURS: TourDefinition[] = [
             },
         ],
     },
+
+    /* ------------------------------------------------------------------ */
+    /*  5. P&L Statement Tour                                              */
+    /* ------------------------------------------------------------------ */
+    {
+        id: "pnl-statement",
+        titleEN: "P&L Statement",
+        titleES: "Estado de Resultados (P&L)",
+        descriptionEN: "Navigate the Profit & Loss statement with drill-down analysis",
+        descriptionES: "Navega el Estado de Resultados con análisis detallado",
+        pagePath: "/pnl",
+        steps: [
+            {
+                element: '[data-tour="pnl-year-selector"]',
+                titleEN: "1. Year Selector",
+                titleES: "1. Selector de Año",
+                descriptionEN: "Choose the fiscal year to display. The P&L loads data from AR Invoice Orders — all figures come from real invoices, not estimates.",
+                descriptionES: "Elige el año fiscal a mostrar. El P&L carga datos de los Pedidos de Factura — todas las cifras provienen de facturas reales, no estimaciones.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="pnl-kpi-cards"]',
+                titleEN: "2. Executive KPIs",
+                titleES: "2. KPIs Ejecutivos",
+                descriptionEN: "Six summary cards showing: <b>Revenue YTD</b> (vs budget %), <b>Gross Profit</b> (margin %), <b>EBITDA</b> (margin %), <b>Expenses</b> (under/over budget), and <b>Net Income</b> (vs budget + full-year estimate + variance %).",
+                descriptionES: "Seis tarjetas resumen: <b>Ingresos YTD</b> (vs presupuesto %), <b>Beneficio Bruto</b> (margen %), <b>EBITDA</b> (margen %), <b>Gastos</b> (bajo/sobre presupuesto), e <b>Ingreso Neto</b> (vs presupuesto + estimación anual + varianza %).",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="pnl-revenue-section"]',
+                titleEN: "3. Revenue Section",
+                titleES: "3. Sección de Ingresos",
+                descriptionEN: "Monthly revenue breakdown by Financial Account code (FA 101–107). Each row shows the 12-month grid plus an annual total. Rows are expandable if they have sub-accounts (e.g., clinic variations 102.x–104.x).",
+                descriptionES: "Desglose mensual de ingresos por código de Cuenta Financiera (FA 101–107). Cada fila muestra la cuadrícula de 12 meses más un total anual. Las filas son expandibles si tienen subcuentas (ej., variaciones clínicas 102.x–104.x).",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="pnl-expense-section"]',
+                titleEN: "4. Expense Section",
+                titleES: "4. Sección de Gastos",
+                descriptionEN: "Same grid layout for expenses. Click any <b>cell with a value</b> to drill down — a popup will show all the invoices for that FA code + month, grouped by provider.",
+                descriptionES: "Mismo formato de cuadrícula para gastos. Haz clic en cualquier <b>celda con valor</b> para hacer drill-down — un popup mostrará todas las facturas de esa cuenta + mes, agrupadas por proveedor.",
+                side: "top",
+            },
+            {
+                titleEN: "5. Drill-Down: Transaction List",
+                titleES: "5. Drill-Down: Lista de Transacciones",
+                descriptionEN: "When you click a cell, the drill-down popup shows individual transactions grouped by provider/customer. Each line has: date, description, amount, and invoice number. Click any invoice to open the full detail panel.",
+                descriptionES: "Al hacer clic en una celda, el popup de drill-down muestra transacciones individuales agrupadas por proveedor/cliente. Cada línea tiene: fecha, descripción, importe y número de factura. Haz clic en cualquier factura para abrir el panel de detalle completo.",
+                side: "bottom",
+            },
+            {
+                titleEN: "6. Invoice Detail Panel",
+                titleES: "6. Panel de Detalle de Factura",
+                descriptionEN: "The invoice detail shows all metadata: invoice number, dates (invoice/benefit/input/due/payment), amounts, currency, provider/customer codes, bank account, payment method, cost center, and cost type. Use the <b>Edit</b> button to modify fields, and <b>History</b> to see all invoices from the same provider.",
+                descriptionES: "El detalle de factura muestra toda la metadata: número de factura, fechas (factura/beneficio/entrada/vencimiento/pago), importes, moneda, códigos de proveedor/cliente, cuenta bancaria, método de pago, centro de coste y tipo de coste. Usa el botón <b>Edit</b> para modificar campos, e <b>History</b> para ver todas las facturas del mismo proveedor.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="pnl-budget-variance"]',
+                titleEN: "7. Budget vs Actual",
+                titleES: "7. Presupuesto vs Real",
+                descriptionEN: "Five variance cards comparing YTD actual vs budget for Revenue, Gross Profit, EBITDA, Expenses, and Net Income. Green = favorable variance, red = unfavorable. Each card shows the absolute difference and percentage.",
+                descriptionES: "Cinco tarjetas de varianza comparando YTD real vs presupuesto para Ingresos, Beneficio Bruto, EBITDA, Gastos e Ingreso Neto. Verde = varianza favorable, rojo = desfavorable. Cada tarjeta muestra la diferencia absoluta y el porcentaje.",
+                side: "top",
+            },
+        ],
+    },
+
+    /* ------------------------------------------------------------------ */
+    /*  6. Bank Cashflow Tour                                              */
+    /* ------------------------------------------------------------------ */
+    {
+        id: "bank-cashflow",
+        titleEN: "Bank Cashflow",
+        titleES: "Cashflow Bancario",
+        descriptionEN: "Explore your bank cash position, inflow analytics, and transaction details",
+        descriptionES: "Explora tu posición de caja bancaria, análisis de entradas y detalles de transacciones",
+        pagePath: "/executive/cash-flow/bank",
+        steps: [
+            {
+                element: '[data-tour="cf-bank-selector"]',
+                titleEN: "1. Bank Account Tabs",
+                titleES: "1. Pestañas de Cuenta Bancaria",
+                descriptionEN: "Click to toggle bank accounts on/off. <b>Double-click</b> to isolate a single bank. Each tab shows the account name, transaction count, last upload date, and last data date. Click <b>All</b> to select every account.",
+                descriptionES: "Haz clic para activar/desactivar cuentas bancarias. <b>Doble clic</b> para aislar un solo banco. Cada pestaña muestra nombre de cuenta, recuento de transacciones, última carga y fecha del último dato. Haz clic en <b>All</b> para seleccionar todas.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="cf-cash-position"]',
+                titleEN: "2. Cash Position Section",
+                titleES: "2. Sección Posición de Caja",
+                descriptionEN: "Expandable accordion showing your <b>daily cash position</b>: an area chart with evolution over time (click any data point to inspect that day), plus a detailed table with per-bank balances. Use the range selector (7d / 30d / 90d / custom) to adjust the period.",
+                descriptionES: "Acordeón expandible mostrando tu <b>posición de caja diaria</b>: un gráfico de área con evolución temporal (haz clic en cualquier punto para inspeccionar ese día), más una tabla detallada con saldos por banco. Usa el selector de rango (7d / 30d / 90d / custom) para ajustar el período.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="cf-inflow-analytics"]',
+                titleEN: "3. Inflow Analytics",
+                titleES: "3. Análisis de Entradas",
+                descriptionEN: "Expandable charts section with donut charts showing inflow distribution by bank and by gateway (Braintree, Stripe, GoCardless, PayPal). Gives a visual overview of where your money comes from.",
+                descriptionES: "Sección de gráficos expandible con donut charts mostrando distribución de entradas por banco y por pasarela (Braintree, Stripe, GoCardless, PayPal). Da una visión general de dónde viene tu dinero.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="cf-kpi-cards"]',
+                titleEN: "4. KPI Summary Cards",
+                titleES: "4. Tarjetas Resumen KPI",
+                descriptionEN: "Quick stats for the selected period: <b>Inflows</b> (total credits), <b>Outflows</b> (total debits), <b>Reconciled %</b>, and <b>Avg Monthly</b> cash flow. Updates dynamically based on selected banks and date range.",
+                descriptionES: "Estadísticas rápidas del período seleccionado: <b>Entradas</b> (total créditos), <b>Salidas</b> (total débitos), <b>% Conciliado</b>, y <b>Promedio Mensual</b> de flujo de caja. Se actualiza dinámicamente según bancos y rango de fechas.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="cf-filters"]',
+                titleEN: "5. Transaction Filters",
+                titleES: "5. Filtros de Transacciones",
+                descriptionEN: "Filter transactions by: <b>Gateway</b> (Braintree/Stripe/GoCardless/PayPal), <b>Flow</b> (Inflows/Outflows), <b>Reconciliation</b> (Reconciled/Pending), <b>GW Type</b> (Auto/Manual/Intercompany), <b>Order Match</b> (Matched/Not Matched), and a <b>search box</b> for description/customer.",
+                descriptionES: "Filtra transacciones por: <b>Pasarela</b> (Braintree/Stripe/GoCardless/PayPal), <b>Flujo</b> (Entradas/Salidas), <b>Conciliación</b> (Conciliado/Pendiente), <b>Tipo GW</b> (Auto/Manual/Intercompañía), <b>Emparejamiento</b> (Con/Sin pedido), y una <b>caja de búsqueda</b> para descripción/cliente.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="cf-txn-table"]',
+                titleEN: "6. Transaction Table",
+                titleES: "6. Tabla de Transacciones",
+                descriptionEN: "Transactions grouped by <b>Month → Day</b>. Each row shows: date, bank description, debit (red) / credit (green), gateway badge, GW status icon (✓ auto / ◉ manual / 🔗 link), and order match status. Click any row to open the detail panel on the right.",
+                descriptionES: "Transacciones agrupadas por <b>Mes → Día</b>. Cada fila muestra: fecha, descripción bancaria, débito (rojo) / crédito (verde), badge de pasarela, icono de estado GW (✓ auto / ◉ manual / 🔗 enlace), y estado de emparejamiento de pedido. Haz clic en cualquier fila para abrir el panel de detalle a la derecha.",
+                side: "top",
+            },
+        ],
+    },
+
+    /* ------------------------------------------------------------------ */
+    /*  7. Consolidated Revenue Cashflow Tour                              */
+    /* ------------------------------------------------------------------ */
+    {
+        id: "consolidated-cashflow",
+        titleEN: "Revenue Cashflow (Consolidated)",
+        titleES: "Cashflow de Ingresos (Consolidado)",
+        descriptionEN: "Understand the consolidated revenue cashflow report",
+        descriptionES: "Entiende el informe consolidado de cashflow de ingresos",
+        pagePath: "/executive/cash-flow/consolidated",
+        steps: [
+            {
+                element: '[data-tour="ccf-year-selector"]',
+                titleEN: "1. Year Selector",
+                titleES: "1. Selector de Año",
+                descriptionEN: "Switch between fiscal years. The report loads data from all bank accounts and cross-references with invoice orders and gateway reconciliation data.",
+                descriptionES: "Cambia entre años fiscales. El informe carga datos de todas las cuentas bancarias y cruza con pedidos de factura y datos de conciliación de pasarela.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="ccf-kpi-cards"]',
+                titleEN: "2. Summary KPIs",
+                titleES: "2. KPIs Resumen",
+                descriptionEN: "Four cards: <b>Bank Inflows</b> (total credits with gateway count), <b>Reconciled</b> (amount + % of inflows), <b>Revenue Invoiced</b> (from invoice orders), and <b>Net Bank Flow</b> (inflows − outflows).",
+                descriptionES: "Cuatro tarjetas: <b>Entradas Bancarias</b> (total créditos con recuento de pasarelas), <b>Conciliado</b> (importe + % de entradas), <b>Ingresos Facturados</b> (de pedidos de factura), y <b>Flujo Neto Bancario</b> (entradas − salidas).",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="ccf-grid"]',
+                titleEN: "3. Unified 14-Column Grid",
+                titleES: "3. Cuadrícula Unificada de 14 Columnas",
+                descriptionEN: "The main grid shows 12 months + total. Sections include:<br/>• <b>Bank Inflows</b> — total + by-bank breakdown + by-gateway breakdown<br/>• <b>Reconciliation %</b> — color-coded (green ≥80%, amber ≥50%, red &lt;50%)<br/>• <b>Revenue Attribution</b> — by FA code with expandable sub-groups<br/>• <b>Outflows & Net Flow</b><br/>• <b>Gap Analysis</b> — difference between bank inflows and invoiced revenue",
+                descriptionES: "La cuadrícula principal muestra 12 meses + total. Secciones incluyen:<br/>• <b>Entradas Bancarias</b> — total + desglose por banco + por pasarela<br/>• <b>% Conciliación</b> — código de colores (verde ≥80%, ámbar ≥50%, rojo &lt;50%)<br/>• <b>Atribución de Ingresos</b> — por código FA con subgrupos expandibles<br/>• <b>Salidas y Flujo Neto</b><br/>• <b>Análisis de Gap</b> — diferencia entre entradas bancarias e ingresos facturados",
+                side: "top",
+            },
+            {
+                titleEN: "4. Expand/Collapse Sections",
+                titleES: "4. Expandir/Colapsar Secciones",
+                descriptionEN: "Click any row with a <b>chevron arrow</b> (▶/▼) to expand or collapse its children. For example, expand 'Reconciled Inflows' to see per-gateway amounts (Braintree, Stripe, GoCardless), or expand Revenue groups to see sub-FA codes.",
+                descriptionES: "Haz clic en cualquier fila con <b>flecha chevron</b> (▶/▼) para expandir o colapsar sus hijos. Por ejemplo, expande 'Reconciled Inflows' para ver importes por pasarela (Braintree, Stripe, GoCardless), o expande grupos de Revenue para ver sub-códigos FA.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="ccf-export"]',
+                titleEN: "5. CSV Export",
+                titleES: "5. Exportar CSV",
+                descriptionEN: "Download the full cashflow report as a structured CSV file for use in Excel or Google Sheets. Includes all sections: bank inflows, gateways, revenue by FA, outflows, and net flow.",
+                descriptionES: "Descarga el informe completo de cashflow como CSV estructurado para usar en Excel o Google Sheets. Incluye todas las secciones: entradas bancarias, pasarelas, ingresos por FA, salidas y flujo neto.",
+                side: "bottom",
+            },
+        ],
+    },
+
+    /* ------------------------------------------------------------------ */
+    /*  8. KPIs & Financial Ratios Tour                                    */
+    /* ------------------------------------------------------------------ */
+    {
+        id: "kpis-ratios",
+        titleEN: "KPIs & Financial Ratios",
+        titleES: "KPIs y Ratios Financieros",
+        descriptionEN: "Overview of key financial health metrics",
+        descriptionES: "Resumen de métricas clave de salud financiera",
+        pagePath: "/executive/kpis",
+        steps: [
+            {
+                element: '[data-tour="kpis-summary"]',
+                titleEN: "1. Executive Summary",
+                titleES: "1. Resumen Ejecutivo",
+                descriptionEN: "Four cards: <b>Overall Score</b> (out of 10), <b>Metrics on Target</b> (count + %), <b>Needs Attention</b> (metrics below target), and <b>Trend</b> direction (improving/declining).",
+                descriptionES: "Cuatro tarjetas: <b>Puntuación Global</b> (de 10), <b>Métricas en Objetivo</b> (recuento + %), <b>Requieren Atención</b> (métricas bajo objetivo), y dirección de <b>Tendencia</b> (mejorando/declinando).",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="kpis-categories"]',
+                titleEN: "2. KPI Categories",
+                titleES: "2. Categorías de KPI",
+                descriptionEN: "Four ratio groups: <b>Profitability</b> (margins, ROA), <b>Liquidity</b> (current/quick/cash ratios), <b>Efficiency</b> (turnover, DSO, DPO), and <b>Leverage</b> (debt ratios, interest coverage). Each table shows Current value, Target, Change, and a Status badge (green = On Target, orange = Warning, red = Critical).",
+                descriptionES: "Cuatro grupos de ratios: <b>Rentabilidad</b> (márgenes, ROA), <b>Liquidez</b> (ratios corriente/rápida/caja), <b>Eficiencia</b> (rotación, DSO, DPO), y <b>Apalancamiento</b> (ratios de deuda, cobertura de intereses). Cada tabla muestra valor Actual, Objetivo, Cambio, y badge de Estado (verde = En Objetivo, naranja = Atención, rojo = Crítico).",
+                side: "top",
+            },
+        ],
+    },
+
+    /* ------------------------------------------------------------------ */
+    /*  9. Performance Analytics Tour                                      */
+    /* ------------------------------------------------------------------ */
+    {
+        id: "performance-analytics",
+        titleEN: "Performance Analytics",
+        titleES: "Análisis de Rendimiento",
+        descriptionEN: "Business intelligence metrics and regional performance",
+        descriptionES: "Métricas de inteligencia de negocio y rendimiento regional",
+        pagePath: "/executive/performance",
+        steps: [
+            {
+                element: '[data-tour="perf-metrics"]',
+                titleEN: "1. Key Metrics",
+                titleES: "1. Métricas Clave",
+                descriptionEN: "Four cards: <b>Revenue Growth</b>, <b>Operating Margin</b>, <b>Customer Acquisition</b>, and <b>Average Deal Size</b>. Each shows current value, period-over-period change (↑ green / ↓ red), and trend direction.",
+                descriptionES: "Cuatro tarjetas: <b>Crecimiento de Ingresos</b>, <b>Margen Operativo</b>, <b>Adquisición de Clientes</b>, y <b>Tamaño Medio de Operación</b>. Cada una muestra valor actual, cambio período-a-período (↑ verde / ↓ rojo), y dirección de tendencia.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="perf-charts"]',
+                titleEN: "2. Charts & Regional Distribution",
+                titleES: "2. Gráficos y Distribución Regional",
+                descriptionEN: "Revenue trend chart (12-month) and regional distribution bars showing ES vs US market split with percentage breakdown.",
+                descriptionES: "Gráfico de tendencia de ingresos (12 meses) y barras de distribución regional mostrando split de mercado ES vs US con desglose porcentual.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="perf-dept-table"]',
+                titleEN: "3. Department Performance",
+                titleES: "3. Rendimiento por Departamento",
+                descriptionEN: "Comparative table across business units (Sales, Marketing, Operations): Revenue, Growth %, Margin %, and status badge (Excellent / Good / Needs Attention).",
+                descriptionES: "Tabla comparativa entre unidades de negocio (Ventas, Marketing, Operaciones): Ingresos, % Crecimiento, % Margen, y badge de estado (Excelente / Bueno / Requiere Atención).",
+                side: "top",
+            },
+        ],
+    },
+
+    /* ------------------------------------------------------------------ */
+    /*  10. Consolidated Reports Tour                                      */
+    /* ------------------------------------------------------------------ */
+    {
+        id: "consolidated-reports",
+        titleEN: "Consolidated Reports",
+        titleES: "Informes Consolidados",
+        descriptionEN: "Access and manage financial reports",
+        descriptionES: "Accede y gestiona informes financieros",
+        pagePath: "/executive/reports",
+        steps: [
+            {
+                element: '[data-tour="reports-stats"]',
+                titleEN: "1. Report Statistics",
+                titleES: "1. Estadísticas de Informes",
+                descriptionEN: "Quick stats: <b>Total Reports</b> this year, <b>Available Now</b> (ready to download), <b>In Progress</b> (currently generating), and <b>Scheduled</b> (upcoming).",
+                descriptionES: "Estadísticas rápidas: <b>Total Informes</b> este año, <b>Disponibles Ahora</b> (listos para descargar), <b>En Progreso</b> (generándose), y <b>Programados</b> (próximos).",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="reports-list"]',
+                titleEN: "2. Reports List",
+                titleES: "2. Lista de Informes",
+                descriptionEN: "Each report card shows: title, description, date, type (Monthly/Quarterly/Annual/Custom), and status badge. Available reports have a <b>Download</b> button. Types include P&L, Balance Sheet, Cash Flow, and Tax Compliance.",
+                descriptionES: "Cada tarjeta de informe muestra: título, descripción, fecha, tipo (Mensual/Trimestral/Anual/Custom), y badge de estado. Los informes disponibles tienen un botón <b>Download</b>. Tipos incluyen P&L, Balance, Cash Flow y Tax Compliance.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="reports-builder"]',
+                titleEN: "3. Custom Report Builder",
+                titleES: "3. Constructor de Informes Custom",
+                descriptionEN: "Quick-launch templates for common reports: P&L Statement, Balance Sheet, Cash Flow, Budget vs Actual, Variance Analysis, and Custom Report.",
+                descriptionES: "Plantillas de lanzamiento rápido para informes comunes: Estado de Resultados, Balance, Cash Flow, Presupuesto vs Real, Análisis de Varianza e Informe Custom.",
+                side: "top",
+            },
+        ],
+    },
 ];

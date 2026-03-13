@@ -81,7 +81,7 @@ export default function ConsolidatedReportsPage() {
       </PageHeader>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div data-tour="reports-stats" className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
             <p className="text-sm font-medium text-gray-600">Total Reports</p>
@@ -113,7 +113,7 @@ export default function ConsolidatedReportsPage() {
       </div>
 
       {/* Reports List */}
-      <Card>
+      <Card data-tour="reports-list">
         <CardHeader>
           <CardTitle>Recent Reports</CardTitle>
           <CardDescription>Latest financial reports and documents</CardDescription>
@@ -157,7 +157,7 @@ export default function ConsolidatedReportsPage() {
       </Card>
 
       {/* Report Templates */}
-      <Card>
+      <Card data-tour="reports-builder">
         <CardHeader>
           <CardTitle>Custom Report Builder</CardTitle>
           <CardDescription>Create custom reports with specific data points</CardDescription>

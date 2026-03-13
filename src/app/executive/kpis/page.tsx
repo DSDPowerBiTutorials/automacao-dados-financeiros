@@ -76,7 +76,7 @@ export default function KPIsPage() {
       <PageHeader title="KPIs & Financial Ratios" subtitle="Key performance indicators and financial health metrics" />
 
       {/* Executive Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div data-tour="kpis-summary" className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -129,7 +129,7 @@ export default function KPIsPage() {
       </div>
 
       {/* KPI Categories */}
-      <div className="space-y-6">
+      <div data-tour="kpis-categories" className="space-y-6">
         {kpis.map((category) => (
           <Card key={category.category}>
             <CardHeader>

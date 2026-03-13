@@ -1612,7 +1612,7 @@ export default function BankCashFlowPage() {
                 </div>
 
                 {/* ─── Bank Account Tabs ─── */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
+                <div data-tour="cf-bank-selector" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
                     <div className="flex items-center gap-3 flex-wrap">
                         <span className="text-xs text-gray-500 uppercase tracking-wider mr-1">Accounts:</span>
                         {BANK_ACCOUNTS.map(bank => {
@@ -1652,7 +1652,7 @@ export default function BankCashFlowPage() {
                 <Accordion type="multiple" defaultValue={["cash-position", "charts"]} className="flex-1 flex flex-col overflow-hidden">
 
                     {/* ─── Section 1: Cash Position ─── */}
-                    <AccordionItem value="cash-position" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
+                    <AccordionItem value="cash-position" data-tour="cf-cash-position" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
                         <AccordionTrigger className="px-6 py-3 hover:no-underline hover:bg-gray-50 dark:hover:bg-[#0a0a0a]">
                             <div className="flex items-center gap-2">
                                 <Wallet className="h-4 w-4 text-emerald-500" />
@@ -1894,7 +1894,7 @@ export default function BankCashFlowPage() {
                     </AccordionItem>
 
                     {/* ─── Section 2: Inflow Analytics ─── */}
-                    <AccordionItem value="charts" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
+                    <AccordionItem value="charts" data-tour="cf-inflow-analytics" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
                         <AccordionTrigger className="px-6 py-3 hover:no-underline hover:bg-gray-50 dark:hover:bg-[#0a0a0a]">
                             <div className="flex items-center gap-2">
                                 <BarChart3 className="h-4 w-4 text-blue-500" />
@@ -2107,7 +2107,7 @@ export default function BankCashFlowPage() {
 
                                     {/* ─── Inflows Breakdown Cards (Bank Account / Gateway / P&L Line) ─── */}
                                     {(Object.keys(revenueByBank).length > 0 || Object.keys(analyticsByGateway.byGateway).length > 0 || Object.keys(pnlLineRevenue.byLine).length > 0) && (
-                                        <div className="mt-5">
+                                        <div data-tour="cf-kpi-cards" className="mt-5">
                                             {/* Bank Account view */}
                                             {revenueViewMode === "bank" && (
                                                 <div className="flex gap-2 overflow-x-auto pb-2">
@@ -2326,7 +2326,7 @@ export default function BankCashFlowPage() {
                     </AccordionItem>
 
                     {/* ─── Section 3: Bank Statements ─── */}
-                    <AccordionItem value="statements" className="flex-1 flex flex-col overflow-hidden border-b-0">
+                    <AccordionItem data-tour="cf-txn-table" value="statements" className="flex-1 flex flex-col overflow-hidden border-b-0">
                         <AccordionTrigger className="px-6 py-3 hover:no-underline hover:bg-gray-50 dark:hover:bg-[#0a0a0a] flex-shrink-0">
                             <div className="flex items-center gap-2">
                                 <FileText className="h-4 w-4 text-violet-500" />
@@ -2337,7 +2337,7 @@ export default function BankCashFlowPage() {
                         <AccordionContent className="flex-1 flex flex-col overflow-hidden">
 
                             {/* ─── Filters ─── */}
-                            <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-2 bg-gray-100 dark:bg-[#0a0a0a]">
+                            <div data-tour="cf-filters" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-2 bg-gray-100 dark:bg-[#0a0a0a]">
                                 <div className="flex items-center gap-3 flex-wrap">
                                     <Filter className="h-3.5 w-3.5 text-gray-500" />
                                     <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(p => ({ ...p, start: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
