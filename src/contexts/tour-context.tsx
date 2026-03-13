@@ -111,9 +111,9 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
             doneBtnText: lang === "en" ? "Done ✓" : "Listo ✓",
             progressText: lang === "en" ? "{{current}} of {{total}}" : "{{current}} de {{total}}",
             steps: tour.steps
-                .filter((step) => document.querySelector(step.element))
+                .filter((step) => !step.element || document.querySelector(step.element))
                 .map((step) => ({
-                    element: step.element,
+                    ...(step.element ? { element: step.element } : {}),
                     popover: {
                         title: lang === "en" ? step.titleEN : step.titleES,
                         description: lang === "en" ? step.descriptionEN : step.descriptionES,

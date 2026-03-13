@@ -3421,7 +3421,7 @@ export default function BankStatementsPage() {
                 </div>
 
                 {/* ─── Reconciliation Status Bar ─── */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black" data-tour="kpi-cards">
                     {kpiFilters.size > 0 && (
                         <div className="flex items-center gap-2 mb-2">
                             <span className="text-xs text-gray-500 dark:text-gray-400">Active filters: {[...kpiFilters].map(f => <span key={f} className="ml-1 inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded px-1.5 py-0.5 text-[10px] font-medium text-gray-700 dark:text-gray-300">{f === "pending-inflows" ? "Pending Inflows" : f === "pending-outflows" ? "Pending Outflows" : f === "all-pending" ? "All Pending" : "Reconciled"}<button onClick={(e) => { e.stopPropagation(); toggleKpiFilter(f); }} className="ml-0.5 text-gray-400 hover:text-red-400">✕</button></span>)}</span>
@@ -3535,7 +3535,7 @@ export default function BankStatementsPage() {
                 </div>
 
                 {/* ─── Table Header ─── */}
-                <div className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+                <div className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 overflow-x-auto" data-tour="txn-table">
                     <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase min-w-[900px]">
                         <div className="w-[60px] flex-shrink-0">Date</div>
                         {showBankColumn && <div className="w-[90px] flex-shrink-0">Bank</div>}
