@@ -187,26 +187,42 @@ export const TOURS: TourDefinition[] = [
             },
             /* Step 7 — Detail Panel (centered popover, element may not exist) */
             {
-                titleEN: "7. Transaction Detail Panel",
-                titleES: "7. Panel de Detalle de Transacción",
-                descriptionEN: "Click any transaction row to open the detail panel on the right side. It shows: full transaction info (date, amount, description, bank, custom fields), gateway reconciliation status with payment source details, revenue breakdown with individual customer transactions, linked orders with invoice numbers, and for expenses — matched AP invoices.",
-                descriptionES: "Haz clic en cualquier fila de transacción para abrir el panel de detalle a la derecha. Muestra: información completa (fecha, importe, descripción, banco, campos personalizados), estado de conciliación de pasarela con detalles de fuente de pago, desglose de ingresos con transacciones individuales de clientes, pedidos vinculados con números de factura, y para gastos — facturas CP emparejadas.",
+                titleEN: "7. Transaction Detail & Order Reconciliation",
+                titleES: "7. Detalle y Conciliación de Pedidos",
+                descriptionEN: "Click any row to open the detail panel on the right. For reconciled revenues you'll see:<br/><br/>• <b>Order Reconciliation</b> — status badge (Full Match / Partial / Not Matched)<br/>• <b>Matched Orders</b> — each customer name, order ID, amount, and links to backend & AR<br/>• <b>Orders Total</b> — sum of all matched orders in green<br/>• <b>Gateway Fee</b> — the processing fee with amount and linked AP Invoice number<br/>• <b>Revert</b> button — undo reconciliation if needed<br/><br/>For expenses: matched AP invoices with provider codes and amounts.",
+                descriptionES: "Haz clic en cualquier fila para abrir el panel de detalle a la derecha. Para ingresos conciliados verás:<br/><br/>• <b>Conciliación de Pedidos</b> — badge de estado (Full Match / Partial / Not Matched)<br/>• <b>Pedidos Emparejados</b> — nombre de cliente, ID de pedido, importe, y enlaces al backend y CC<br/>• <b>Total Pedidos</b> — suma de todos los pedidos emparejados en verde<br/>• <b>Comisión Gateway</b> — la comisión de procesamiento con importe y factura CP vinculada<br/>• Botón <b>Revert</b> — deshacer conciliación si es necesario<br/><br/>Para gastos: facturas CP emparejadas con códigos de proveedor e importes.",
                 side: "bottom",
             },
-            /* Step 8 — Manual Reconcile (centered popover) */
+            /* Step 8 — Opening Reconciliation Dialog (centered popover) */
             {
-                titleEN: "8. Manual Reconciliation",
-                titleES: "8. Conciliación Manual",
-                descriptionEN: "From the detail panel, click 'Manual Reconcile' to open the Smart Matching dialog. For expenses, the system suggests AP invoices matched by provider name and amount. For revenues, it shows disbursement chains, payment source matches, and order matches. Select one or more suggestions and confirm.",
-                descriptionES: "Desde el panel de detalle, haz clic en 'Manual Reconcile' para abrir el diálogo de Emparejamiento Inteligente. Para gastos, el sistema sugiere facturas CP por nombre de proveedor e importe. Para ingresos, muestra cadenas de desembolsos, coincidencias de fuente de pago y coincidencias de pedidos. Selecciona una o más sugerencias y confirma.",
+                titleEN: "8. Opening the Reconciliation Dialog",
+                titleES: "8. Abrir el Diálogo de Conciliación",
+                descriptionEN: "To reconcile a pending transaction, look for the <b>🔗 chain icon</b> in the <b>GW column</b> of the transaction table. Click it to open the Smart Matching dialog directly.<br/><br/>Alternatively, click any unreconciled row to open the detail panel, then click the <b>'Manual Reconcile'</b> button (🔗 icon) at the bottom.<br/><br/>The dialog opens with the transaction context (date, amount, bank, description) and starts searching for matching items automatically.",
+                descriptionES: "Para conciliar una transacción pendiente, busca el <b>icono de cadena 🔗</b> en la <b>columna GW</b> de la tabla de transacciones. Haz clic para abrir el diálogo de Emparejamiento Inteligente directamente.<br/><br/>Alternativamente, haz clic en cualquier fila no conciliada para abrir el panel de detalle, y luego haz clic en el botón <b>'Manual Reconcile'</b> (icono 🔗) en la parte inferior.<br/><br/>El diálogo se abre con el contexto de la transacción (fecha, importe, banco, descripción) y comienza a buscar coincidencias automáticamente.",
                 side: "bottom",
             },
-            /* Step 9 — Reconciliation Dialog tabs (centered popover) */
+            /* Step 9 — Suggestions tab */
             {
-                titleEN: "9. Matching Dialog Tabs",
-                titleES: "9. Pestañas del Diálogo de Emparejamiento",
-                descriptionEN: "The reconciliation dialog has four tabs: (1) Suggestions — AI-powered matches ranked by confidence score, (2) All Invoices/Orders — browse every unreconciled item with search, (3) Manual — enter a custom match by searching provider or invoice number, (4) Intercompany — match transfers between DSD Spain and DSD USA. Each match shows a confidence percentage badge.",
-                descriptionES: "El diálogo de conciliación tiene cuatro pestañas: (1) Sugerencias — coincidencias con IA ordenadas por puntuación de confianza, (2) Todas las Facturas/Pedidos — navega cada item no conciliado con búsqueda, (3) Manual — introduce un emparejamiento custom buscando proveedor o número de factura, (4) Intercompañía — empareja transferencias entre DSD Spain y DSD USA. Cada coincidencia muestra un badge de porcentaje de confianza.",
+                titleEN: "9. Suggestions Tab",
+                titleES: "9. Pestaña Sugerencias",
+                descriptionEN: "The <b>Suggestions</b> tab shows AI-powered matches ranked by confidence score. For revenues, you'll see:<br/><br/>• <b>Disbursement Suggestions</b> — gateway settlement batches (e.g., 'Braintree EUR — 2026-01-28') with transaction count, resolved orders, and total amount. Click to expand and see individual orders & gateway transactions inside.<br/>• <b>Payment Source Matches</b> — direct gateway matches<br/>• <b>Revenue Order Matches</b> — individual order matches<br/><br/>Each match shows a <b>confidence % badge</b> (green = high, yellow = medium).",
+                descriptionES: "La pestaña <b>Sugerencias</b> muestra coincidencias con IA ordenadas por puntuación de confianza. Para ingresos, verás:<br/><br/>• <b>Sugerencias de Desembolso</b> — lotes de liquidación de pasarela (ej. 'Braintree EUR — 2026-01-28') con recuento de transacciones, pedidos resueltos e importe total. Haz clic para expandir y ver pedidos individuales y transacciones de pasarela.<br/>• <b>Coincidencias de Fuente de Pago</b> — coincidencias directas de pasarela<br/>• <b>Coincidencias de Pedidos</b> — coincidencias individuales de pedidos<br/><br/>Cada coincidencia muestra un <b>badge de confianza %</b> (verde = alta, amarillo = media).",
+                side: "bottom",
+            },
+            /* Step 10 — Manual tab */
+            {
+                titleEN: "10. Manual Search Tab",
+                titleES: "10. Pestaña Búsqueda Manual",
+                descriptionEN: "The <b>Manual</b> tab lets you search and reconcile freely:<br/><br/>• <b>For expenses</b> — search AP invoices by supplier name or invoice number<br/>• <b>For revenues</b> — search Web Orders by customer name, Order ID, or invoice number. Select one or more orders using checkboxes. A progress bar shows how much of the bank amount is covered.<br/>• <b>Gateway Transactions</b> — link specific Braintree/Stripe/GoCardless transactions<br/>• <b>Payment Source</b> dropdown — reconcile without an invoice by selecting the gateway<br/><br/>Click <b>Reconcile</b> when ready to confirm.",
+                descriptionES: "La pestaña <b>Manual</b> permite buscar y conciliar libremente:<br/><br/>• <b>Para gastos</b> — busca facturas CP por nombre de proveedor o número de factura<br/>• <b>Para ingresos</b> — busca Pedidos Web por nombre de cliente, ID de pedido o número de factura. Selecciona uno o más pedidos con los checkboxes. Una barra de progreso muestra cuánto del importe bancario está cubierto.<br/>• <b>Transacciones de Pasarela</b> — vincula transacciones específicas de Braintree/Stripe/GoCardless<br/>• Dropdown de <b>Fuente de Pago</b> — concilia sin factura seleccionando la pasarela<br/><br/>Haz clic en <b>Reconcile</b> cuando estés listo para confirmar.",
+                side: "bottom",
+            },
+            /* Step 11 — Intercompany tab */
+            {
+                titleEN: "11. Intercompany Tab",
+                titleES: "11. Pestaña Intercompañía",
+                descriptionEN: "The <b>Intercompany</b> tab finds matching transfers between bank accounts (e.g., DSD Spain → DSD USA). It searches same day ±1 (Fri→Mon) with opposite amounts.<br/><br/>• Use the <b>bank filter dropdown</b> to narrow results to a specific origin/destination bank<br/>• Cross-currency EUR↔USD matches use a 20% tolerance for exchange rates<br/>• Same-currency matches use tight 0.5% tolerance<br/>• Each match shows bank name, description, currency, date, amount, and confidence %<br/><br/>Select a match and click Reconcile — both sides are marked as reconciled.",
+                descriptionES: "La pestaña <b>Intercompañía</b> busca transferencias coincidentes entre cuentas bancarias (ej., DSD Spain → DSD USA). Busca en el mismo día ±1 (Vie→Lun) con importes opuestos.<br/><br/>• Usa el <b>dropdown de filtro de banco</b> para limitar resultados a un banco de origen/destino específico<br/>• Coincidencias cross-currency EUR↔USD usan tolerancia del 20% para tipos de cambio<br/>• Coincidencias misma moneda usan tolerancia estricta del 0.5%<br/>• Cada coincidencia muestra banco, descripción, moneda, fecha, importe y % de confianza<br/><br/>Selecciona una coincidencia y haz clic en Reconcile — ambos lados se marcan como conciliados.",
                 side: "bottom",
             },
         ],
