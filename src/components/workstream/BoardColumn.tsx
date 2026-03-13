@@ -90,7 +90,7 @@ export function BoardColumn({
                     {...listeners}
                     className="cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-white/10"
                 >
-                    <GripVertical className="h-3.5 w-3.5 text-gray-600" />
+                    <GripVertical className="h-3.5 w-3.5 text-gray-600 dark:text-gray-400" />
                 </div>
 
                 {/* Title */}

@@ -7,7 +7,7 @@ export function CompanyViewSelector() {
   const { companyView, setCompanyView } = useCompanyView();
 
   return (
-    <div className="px-3 py-2 border-t border-b border-gray-200 bg-white">
+    <div className="px-3 py-2 border-t border-b border-gray-200 bg-white dark:bg-black">
       <label className="block text-[11px] text-gray-500 mb-1">Company View</label>
       <Select value={companyView} onValueChange={(val) => setCompanyView(val as CompanyViewType)}>
         <SelectTrigger className="w-full text-sm">

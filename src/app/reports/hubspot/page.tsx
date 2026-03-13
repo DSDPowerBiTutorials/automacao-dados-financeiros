@@ -1132,7 +1132,7 @@ ${result.recommendations.join('\n')}
                                             {isExpanded && (
                                                 <tr key={`${row.id}-expanded`} className="bg-gray-50">
                                                     <td colSpan={11} className="px-4 py-4">
-                                                        <div className="ml-8 p-4 bg-white rounded border border-gray-200">
+                                                        <div className="ml-8 p-4 bg-white dark:bg-black rounded border border-gray-200">
                                                             <h4 className="font-semibold text-sm mb-3 text-gray-700">
                                                                 Order Details
                                                             </h4>
@@ -1423,7 +1423,7 @@ ${result.recommendations.join('\n')}
 
             {/* Order Details Dialog */}
             <Dialog open={!!orderDetailsDialog} onOpenChange={(open) => !open && setOrderDetailsDialog(null)}>
-                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto !bg-white dark:!bg-black">
+                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto !bg-white dark:bg-black dark:!bg-black">
                     <DialogHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 p-4 rounded-t-lg -mt-6 -mx-6 mb-4">
                         <DialogTitle className="text-xl font-bold text-blue-900 dark:text-blue-100">
                             Order Details

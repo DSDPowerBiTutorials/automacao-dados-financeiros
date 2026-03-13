@@ -1876,7 +1876,7 @@ export default function InvoicesPage() {
           </div>
         </PageHeader>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white p-8" style={{ width: '80vw' }}>
+          <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white dark:bg-black p-8" style={{ width: '80vw' }}>
             <DialogHeader className="pb-4 border-b">
               <DialogTitle className="text-2xl">{editingInvoice ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
               <DialogDescription className="text-base mt-2">
@@ -1980,10 +1980,10 @@ export default function InvoicesPage() {
                     onValueChange={(val) => setFormData({ ...formData, scope: val as ScopeType, country_code: val })}
                     required
                   >
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue placeholder="Select country" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white dark:bg-black">
                       <SelectItem value="ES">
                         <span className="flex items-center gap-2">
                           <span>🇪🇸</span>
@@ -2026,10 +2026,10 @@ export default function InvoicesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="provider_code">Provider *</Label>
                   <Select value={formData.provider_code} onValueChange={(val) => setFormData({ ...formData, provider_code: val })} required>
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue placeholder="Select provider" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white max-h-[300px]">
+                    <SelectContent className="bg-white dark:bg-black max-h-[300px]">
                       {providers.map((provider) => (
                         <SelectItem key={provider.code} value={provider.code}>{provider.name}</SelectItem>
                       ))}
@@ -2039,14 +2039,14 @@ export default function InvoicesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="financial_account_code">Financial Account *</Label>
                   <Select value={formData.financial_account_code} onValueChange={(val) => setFormData({ ...formData, financial_account_code: val })} required>
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue placeholder="Select account" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white max-h-[300px]">
+                    <SelectContent className="bg-white dark:bg-black max-h-[300px]">
                       {financialAccounts
                         .filter(acc => acc.level >= 2)
                         .map((account) => (
-                          <SelectItem key={account.code} value={account.code} className="cursor-pointer hover:bg-gray-100">{account.name}</SelectItem>
+                          <SelectItem key={account.code} value={account.code} className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800">{account.name}</SelectItem>
                         ))}
                     </SelectContent>
                   </Select>
@@ -2069,10 +2069,10 @@ export default function InvoicesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="currency">Currency *</Label>
                   <Select value={formData.currency} onValueChange={(val) => setFormData({ ...formData, currency: val })}>
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white dark:bg-black">
                       <SelectItem value="EUR">EUR - Euro</SelectItem>
                       <SelectItem value="USD">USD - US Dollar</SelectItem>
                       <SelectItem value="GBP">GBP - British Pound</SelectItem>
@@ -2111,10 +2111,10 @@ export default function InvoicesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="paid_currency">Paid Currency</Label>
                   <Select value={formData.paid_currency} onValueChange={(val) => setFormData({ ...formData, paid_currency: val })}>
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white dark:bg-black">
                       <SelectItem value="EUR">EUR - Euro</SelectItem>
                       <SelectItem value="USD">USD - US Dollar</SelectItem>
                       <SelectItem value="GBP">GBP - British Pound</SelectItem>
@@ -2138,10 +2138,10 @@ export default function InvoicesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="cost_type_code">Cost Type *</Label>
                   <Select value={formData.cost_type_code} onValueChange={(val) => setFormData({ ...formData, cost_type_code: val })} required>
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue placeholder="Select cost type" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white dark:bg-black">
                       {costTypes.map((type) => (
                         <SelectItem key={type.code} value={type.code}>{type.name}</SelectItem>
                       ))}
@@ -2151,10 +2151,10 @@ export default function InvoicesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="dep_cost_type_code">Dep Cost Type *</Label>
                   <Select value={formData.dep_cost_type_code} onValueChange={(val) => setFormData({ ...formData, dep_cost_type_code: val })} required>
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue placeholder="Select dep cost type" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white dark:bg-black">
                       {depCostTypes.map((type) => (
                         <SelectItem key={type.code} value={type.code}>{type.name}</SelectItem>
                       ))}
@@ -2164,10 +2164,10 @@ export default function InvoicesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="cost_center_code">Department *</Label>
                   <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val, sub_department_code: "" })} required>
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white dark:bg-black">
                       {costCenters.map((center) => (
                         <SelectItem key={center.code} value={center.code}>
                           {center.code} - {center.name}
@@ -2183,10 +2183,10 @@ export default function InvoicesPage() {
                     onValueChange={(val) => setFormData({ ...formData, sub_department_code: val })}
                     disabled={!formData.cost_center_code}
                   >
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue placeholder="Select sub-department" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white dark:bg-black">
                       {subDepartments
                         .filter(sd => sd.parent_department_code === formData.cost_center_code)
                         .map((sd) => (
@@ -2204,10 +2204,10 @@ export default function InvoicesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="bank_account_code">Bank Account</Label>
                   <Select value={formData.bank_account_code} onValueChange={(val) => setFormData({ ...formData, bank_account_code: val })}>
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue placeholder="Select bank account" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white dark:bg-black">
                       {bankAccounts.map((account) => (
                         <SelectItem key={account.code} value={account.code}>{account.name}</SelectItem>
                       ))}
@@ -2217,10 +2217,10 @@ export default function InvoicesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="payment_method_code">Payment Method</Label>
                   <Select value={formData.payment_method_code} onValueChange={(val) => setFormData({ ...formData, payment_method_code: val })}>
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue placeholder="Select method" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white dark:bg-black">
                       {paymentMethods.map((method) => (
                         <SelectItem key={method.code} value={method.code}>{method.name}</SelectItem>
                       ))}
@@ -2230,10 +2230,10 @@ export default function InvoicesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="course_code">Course</Label>
                   <Select value={formData.course_code} onValueChange={(val) => setFormData({ ...formData, course_code: val })}>
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue placeholder="Select course" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white max-h-[300px]">
+                    <SelectContent className="bg-white dark:bg-black max-h-[300px]">
                       {courses.map((course) => (
                         <SelectItem key={course.code} value={course.code}>{course.name}</SelectItem>
                       ))}
@@ -2316,7 +2316,7 @@ export default function InvoicesPage() {
 
         {/* Provider Creation Dialog */}
         <Dialog open={providerDialogOpen} onOpenChange={setProviderDialogOpen}>
-          <DialogContent className="max-w-none max-h-[90vh] bg-white" style={{ width: '80vw' }}>
+          <DialogContent className="max-w-none max-h-[90vh] bg-white dark:bg-black" style={{ width: '80vw' }}>
             <DialogHeader>
               <DialogTitle>Create New Provider</DialogTitle>
               <DialogDescription>Add a new provider to the system</DialogDescription>
@@ -2352,10 +2352,10 @@ export default function InvoicesPage() {
                     value={newProviderData.country}
                     onValueChange={(val) => setNewProviderData({ ...newProviderData, country: val })}
                   >
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white dark:bg-black">
                       <SelectItem value="ES">Spain</SelectItem>
                       <SelectItem value="US">United States</SelectItem>
                       <SelectItem value="BR">Brazil</SelectItem>
@@ -2369,10 +2369,10 @@ export default function InvoicesPage() {
                     value={newProviderData.currency}
                     onValueChange={(val) => setNewProviderData({ ...newProviderData, currency: val })}
                   >
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white dark:bg-black">
                       <SelectItem value="EUR">EUR - Euro</SelectItem>
                       <SelectItem value="USD">USD - US Dollar</SelectItem>
                       <SelectItem value="GBP">GBP - British Pound</SelectItem>
@@ -2418,7 +2418,7 @@ export default function InvoicesPage() {
 
         {/* Financial Account Creation Dialog */}
         <Dialog open={financialAccountDialogOpen} onOpenChange={setFinancialAccountDialogOpen}>
-          <DialogContent className="max-w-none max-h-[90vh] bg-white" style={{ width: '80vw' }}>
+          <DialogContent className="max-w-none max-h-[90vh] bg-white dark:bg-black" style={{ width: '80vw' }}>
             <DialogHeader>
               <DialogTitle>Create New Financial Account</DialogTitle>
               <DialogDescription>Add a new account to the chart of accounts</DialogDescription>
@@ -2454,10 +2454,10 @@ export default function InvoicesPage() {
                     value={newAccountData.type}
                     onValueChange={(val) => setNewAccountData({ ...newAccountData, type: val })}
                   >
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white dark:bg-black">
                       <SelectItem value="Expense">Expense</SelectItem>
                       <SelectItem value="Revenue">Revenue</SelectItem>
                       <SelectItem value="Asset">Asset</SelectItem>
@@ -2511,7 +2511,7 @@ export default function InvoicesPage() {
 
         {/* Split Invoice Configuration Dialog */}
         <Dialog open={splitDialogOpen} onOpenChange={setSplitDialogOpen}>
-          <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white" style={{ width: '80vw' }}>
+          <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white dark:bg-black" style={{ width: '80vw' }}>
             <DialogHeader>
               <DialogTitle>Split Invoice</DialogTitle>
               <DialogDescription>
@@ -2607,10 +2607,10 @@ export default function InvoicesPage() {
                       value={splitConfig.installments.toString()}
                       onValueChange={(value) => setSplitConfig({ ...splitConfig, installments: parseInt(value) })}
                     >
-                      <SelectTrigger className="bg-white">
+                      <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                         <SelectValue placeholder="Select..." />
                       </SelectTrigger>
-                      <SelectContent className="bg-white">
+                      <SelectContent className="bg-white dark:bg-black">
                         {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
                           <SelectItem key={num} value={num.toString()}>
                             {num} {num === 1 ? 'installment' : 'installments'}
@@ -2700,10 +2700,10 @@ export default function InvoicesPage() {
                                 setSplitConfig({ ...splitConfig, splits: newSplits });
                               }}
                             >
-                              <SelectTrigger className="bg-white">
+                              <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                                 <SelectValue placeholder="Select Financial Account..." />
                               </SelectTrigger>
-                              <SelectContent className="bg-white max-h-[300px]">
+                              <SelectContent className="bg-white dark:bg-black max-h-[300px]">
                                 {financialAccounts.filter(acc => acc.level >= 2).map(acc => (
                                   <SelectItem key={acc.code} value={acc.code}>{acc.name}</SelectItem>
                                 ))}
@@ -2720,10 +2720,10 @@ export default function InvoicesPage() {
                                 setSplitConfig({ ...splitConfig, splits: newSplits });
                               }}
                             >
-                              <SelectTrigger className="bg-white">
+                              <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                                 <SelectValue placeholder="Select Department..." />
                               </SelectTrigger>
-                              <SelectContent className="bg-white max-h-[300px]">
+                              <SelectContent className="bg-white dark:bg-black max-h-[300px]">
                                 {costCenters.map(cc => (
                                   <SelectItem key={cc.code} value={cc.code}>{cc.name}</SelectItem>
                                 ))}
@@ -2740,10 +2740,10 @@ export default function InvoicesPage() {
                                 setSplitConfig({ ...splitConfig, splits: newSplits });
                               }}
                             >
-                              <SelectTrigger className="bg-white">
+                              <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                                 <SelectValue placeholder="Select Cost Type..." />
                               </SelectTrigger>
-                              <SelectContent className="bg-white max-h-[300px]">
+                              <SelectContent className="bg-white dark:bg-black max-h-[300px]">
                                 {costTypes.map(ct => (
                                   <SelectItem key={ct.code} value={ct.code}>{ct.name}</SelectItem>
                                 ))}
@@ -2760,10 +2760,10 @@ export default function InvoicesPage() {
                                 setSplitConfig({ ...splitConfig, splits: newSplits });
                               }}
                             >
-                              <SelectTrigger className="bg-white">
+                              <SelectTrigger className="bg-white dark:bg-black dark:border-gray-700 dark:text-white">
                                 <SelectValue placeholder="Select Department Cost Type..." />
                               </SelectTrigger>
-                              <SelectContent className="bg-white max-h-[300px]">
+                              <SelectContent className="bg-white dark:bg-black max-h-[300px]">
                                 {depCostTypes.map(dct => (
                                   <SelectItem key={dct.code} value={dct.code}>{dct.name}</SelectItem>
                                 ))}
@@ -2843,7 +2843,7 @@ export default function InvoicesPage() {
 
         {/* View Splits Dialog */}
         <Dialog open={viewSplitsDialogOpen} onOpenChange={setViewSplitsDialogOpen}>
-          <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white" style={{ width: '80vw' }}>
+          <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white dark:bg-black" style={{ width: '80vw' }}>
             <DialogHeader>
               <DialogTitle>Split Invoice Details</DialogTitle>
               <DialogDescription>
@@ -3598,7 +3598,7 @@ export default function InvoicesPage() {
                           const isBotInvoice = isAutomaticInvoice(invoice);
 
                           return (
-                            <tr key={invoice.id} className="hover:bg-gray-100 dark:bg-black/50 group">
+                            <tr key={invoice.id} className="hover:bg-gray-100 dark:hover:bg-gray-800 dark:bg-black/50 group">
                               {/* Actions */}
                               {visibleColumns.has('actions') && (
                                 <td className="px-2 py-1 text-center">
@@ -3729,8 +3729,8 @@ export default function InvoicesPage() {
                                         <SelectTrigger className="h-6 text-[10px] bg-gray-50 dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                           <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-white max-h-[300px]">
-                                          <div className="p-2 space-y-2 sticky top-0 bg-white border-b z-10">
+                                        <SelectContent className="bg-white dark:bg-black max-h-[300px]">
+                                          <div className="p-2 space-y-2 sticky top-0 bg-white dark:bg-black border-b dark:border-gray-700 z-10">
                                             <Input
                                               placeholder="Search providers..."
                                               value={selectSearchTerm}
@@ -3756,7 +3756,7 @@ export default function InvoicesPage() {
                                                 p.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
                                               )
                                               .map(p => (
-                                                <SelectItem key={p.code} value={p.code} className="cursor-pointer hover:bg-gray-100">{p.name}</SelectItem>
+                                                <SelectItem key={p.code} value={p.code} className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800">{p.name}</SelectItem>
                                               ))}
                                           </div>
                                         </SelectContent>
@@ -3966,8 +3966,8 @@ export default function InvoicesPage() {
                                         <SelectTrigger className="h-6 text-[10px] bg-gray-50 dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                           <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-white max-h-[300px]">
-                                          <div className="p-2 space-y-2 sticky top-0 bg-white border-b z-10">
+                                        <SelectContent className="bg-white dark:bg-black max-h-[300px]">
+                                          <div className="p-2 space-y-2 sticky top-0 bg-white dark:bg-black border-b dark:border-gray-700 z-10">
                                             <Input
                                               placeholder="Search accounts..."
                                               value={selectSearchTerm}
@@ -4051,8 +4051,8 @@ export default function InvoicesPage() {
                                         <SelectTrigger className="h-6 text-[10px] bg-gray-50 dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                           <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-white max-h-[300px]">
-                                          <div className="p-2 sticky top-0 bg-white border-b z-10">
+                                        <SelectContent className="bg-white dark:bg-black max-h-[300px]">
+                                          <div className="p-2 sticky top-0 bg-white dark:bg-black border-b dark:border-gray-700 z-10">
                                             <Input
                                               placeholder="Search departments..."
                                               value={selectSearchTerm}
@@ -4142,8 +4142,8 @@ export default function InvoicesPage() {
                                         <SelectTrigger className="h-6 text-[10px] bg-gray-50 dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                           <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-white max-h-[300px]">
-                                          <div className="p-2 sticky top-0 bg-white border-b z-10">
+                                        <SelectContent className="bg-white dark:bg-black max-h-[300px]">
+                                          <div className="p-2 sticky top-0 bg-white dark:bg-black border-b dark:border-gray-700 z-10">
                                             <Input
                                               placeholder="Search cost types..."
                                               value={selectSearchTerm}
@@ -4220,8 +4220,8 @@ export default function InvoicesPage() {
                                         <SelectTrigger className="h-6 text-[10px] bg-gray-50 dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                           <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-white max-h-[300px]">
-                                          <div className="p-2 sticky top-0 bg-white border-b z-10">
+                                        <SelectContent className="bg-white dark:bg-black max-h-[300px]">
+                                          <div className="p-2 sticky top-0 bg-white dark:bg-black border-b dark:border-gray-700 z-10">
                                             <Input
                                               placeholder="Search dep cost types..."
                                               value={selectSearchTerm}
@@ -4358,7 +4358,7 @@ export default function InvoicesPage() {
                       const isBotInvoice = invoice.invoice_number?.startsWith('BOT-');
 
                       return (
-                        <tr key={invoice.id} className="hover:bg-gray-100 dark:bg-black/50 group">
+                        <tr key={invoice.id} className="hover:bg-gray-100 dark:hover:bg-gray-800 dark:bg-black/50 group">
 
                           {visibleColumns.has('actions') && (
                             <td className="px-2 py-1 text-center">
@@ -4794,7 +4794,7 @@ export default function InvoicesPage() {
                         {createdOptions.map(opt => (
                           <div
                             key={opt.value}
-                            className={`flex items-center justify-between p-2 rounded cursor-pointer hover:bg-gray-100 ${createdFilter === opt.value ? 'bg-blue-50 border border-blue-200' : ''
+                            className={`flex items-center justify-between p-2 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${createdFilter === opt.value ? 'bg-blue-50 border border-blue-200' : ''
                               }`}
                             onClick={() => {
                               setCreatedFilter(opt.value as 'all' | 'bot' | 'manual');
@@ -4839,7 +4839,7 @@ export default function InvoicesPage() {
                             .map(num => (
                               <div
                                 key={num}
-                                className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
+                                className="flex items-center justify-between p-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
                                 onClick={() => toggleFilterOption(num)}
                               >
                                 <span className="text-sm">{num}</span>
@@ -4882,7 +4882,7 @@ export default function InvoicesPage() {
                         {filtered.map(opt => (
                           <div
                             key={opt.value}
-                            className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
+                            className="flex items-center justify-between p-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
                             onClick={() => toggleFilterOption(opt.value)}
                           >
                             <span className="text-sm">{opt.label}</span>

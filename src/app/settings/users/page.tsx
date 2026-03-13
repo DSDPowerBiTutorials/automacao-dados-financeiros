@@ -318,7 +318,7 @@ export default function UsersPage() {
                             filteredUsers.map(user => (
                                 <div
                                     key={user.id}
-                                    className={`flex items-center justify-between p-4 border rounded-lg ${!user.is_active ? 'opacity-50 bg-gray-50' : 'bg-white'
+                                    className={`flex items-center justify-between p-4 border rounded-lg ${!user.is_active ? 'opacity-50 bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-black'
                                         }`}
                                 >
                                     <div className="flex items-center gap-4">

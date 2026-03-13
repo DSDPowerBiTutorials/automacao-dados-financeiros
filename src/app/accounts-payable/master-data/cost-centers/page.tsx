@@ -274,7 +274,7 @@ export default function CostCentersPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-black divide-y divide-gray-200">
               {loading ? (
                 <tr key="loading">
                   <td colSpan={7} className="px-4 py-8 text-center text-gray-500">Loading...</td>
@@ -331,7 +331,7 @@ export default function CostCentersPage() {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white" style={{ width: '80vw' }}>
+        <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white dark:bg-black" style={{ width: '80vw' }}>
           <DialogHeader className="border-b pb-4">
             <DialogTitle className="text-2xl font-semibold">
               {editingCostCenter ? "Edit Cost Center" : "New Cost Center"}

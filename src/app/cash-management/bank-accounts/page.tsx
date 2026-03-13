@@ -346,7 +346,7 @@ export default function BankAccountsPage() {
                                 <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white dark:bg-black divide-y divide-gray-200">
                             {loading ? (
                                 <tr key="loading">
                                     <td colSpan={7} className="px-4 py-8 text-center text-gray-500">Loading...</td>
@@ -400,7 +400,7 @@ export default function BankAccountsPage() {
             </Card>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white">
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white dark:bg-black">
                     <DialogHeader className="border-b pb-4">
                         <DialogTitle className="text-2xl font-semibold">
                             {editingAccount ? "Edit Bank Account" : "New Bank Account"}

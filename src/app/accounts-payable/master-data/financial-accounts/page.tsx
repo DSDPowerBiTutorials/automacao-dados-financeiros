@@ -349,7 +349,7 @@ export default function FinancialAccountsPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-black divide-y divide-gray-200">
               {loading ? (
                 <tr key="loading">
                   <td colSpan={8} className="px-3 py-6 text-center text-gray-500 text-sm">
@@ -410,7 +410,7 @@ export default function FinancialAccountsPage() {
 
       {/* Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto rounded-2xl bg-white" style={{ width: '80vw' }}>
+        <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-black" style={{ width: '80vw' }}>
           <DialogHeader className="border-b border-gray-200 pb-3">
             <DialogTitle className="text-xl font-semibold">
               {editingAccount ? "Edit Financial Account" : "New Financial Account"}

@@ -642,7 +642,7 @@ export default function StripeEURPage() {
             </div>
 
             {/* Filters */}
-            <div className="px-6 py-2 flex flex-wrap items-center gap-4 bg-white border-y border-gray-200">
+            <div className="px-6 py-2 flex flex-wrap items-center gap-4 bg-white dark:bg-black border-y border-gray-200">
                 <div className="flex items-center gap-2">
                     <Search className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                     <Input

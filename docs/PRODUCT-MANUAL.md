@@ -1139,6 +1139,133 @@ FinanceFlow includes a built-in project management module with Asana-level funct
 
 ---
 
+## 8.5 End-to-End Data Flows
+
+This section details the complete data journeys through the system — from raw uploads to final reports.
+
+### 8.5.1 Revenue → P&L Statement
+
+Revenue flows from payment gateways and invoice orders into the P&L report via financial account classification.
+
+```
+Upload gateway CSVs (Braintree, Stripe, GoCardless)
+    ↓
+Parsed into csv_rows (source='braintree-eur', 'stripe-eur', etc.)
+    ↓
+Invoice Orders link to financial_account_code (csv_rows source='invoice-orders')
+    ↓
+/api/pnl/revenue aggregates by FA hierarchy (1xx codes)
+    ↓
+P&L page displays Revenue − Expenses = Net Income
+```
+
+| Data Source | Table | Role |
+|---|---|---|
+| Gateway CSVs | `csv_rows` | Transaction-level revenue data |
+| Invoice Orders | `csv_rows` (source='invoice-orders') | Maps orders to financial accounts |
+| AP Invoices | `invoices` | Expense data with cost center allocation |
+| Financial Accounts | `financial_accounts` | Account hierarchy for P&L classification |
+
+### 8.5.2 Bank Statement → Cashflow
+
+Bank statements feed the three cashflow views: bank, real, and consolidated.
+
+```
+Upload bank CSV (Bankinter EUR/USD, Sabadell, Chase)
+    ↓
+Parsed into csv_rows (date=FECHA VALOR, amount=HABER−DEBE, source='bankinter-eur')
+    ↓
+Inflow/Outflow classification (amount > 0 = inflow, amount < 0 = outflow)
+    ↓
+API aggregation → daily/monthly cashflow (/api/executive/cashflow/*)
+    ↓
+Currency conversion → Consolidated view (EUR + USD unified)
+```
+
+### 8.5.3 Web Orders → AR Reconciliation
+
+Web orders from HubSpot are linked to Braintree transactions, then matched against bank deposits.
+
+```
+HubSpot deal created (order_id, customer, deal_amount, braintree_transaction_ids)
+    ↓
+HubSpot CSV uploaded → csv_rows (source='hubspot', ~50 fields in custom_data)
+    ↓
+Braintree transaction_ids link to gateway rows (csv_rows source='braintree-*')
+    ↓
+Settlement batches matched to bank deposits (±€0.01 within ±3 days)
+    ↓
+Full chain reconciled: Order → Payment → Bank (reconciled=true)
+```
+
+### 8.5.4 AP Invoice → Departmental P&L
+
+AP invoices are the sole source for expense tracking, linking through cost centers to departmental P&L.
+
+```
+Enter invoice in AP → Invoices (provider, amount, date + cost_center + financial_account)
+    ↓
+Stored in invoices table (links to: providers, cost_centers, sub_departments, financial_accounts)
+    ↓
+Grouped by cost_center → sub_department
+    ↓
+Departmental PnL: month-over-month, budget vs actual, drill-down by sub-department
+```
+
+| Master Data Table | Purpose |
+|---|---|
+| `providers` | Supplier registry (name, NIF, payment terms) |
+| `cost_centers` | Department-level cost groups |
+| `sub_departments` | Granular breakdown within cost centers |
+| `financial_accounts` | Account chart (4xx-6xx = expenses) |
+| `bank_accounts` | Payment bank details for scheduling |
+
+### 8.5.5 Gateway CSV → Revenue Tracking
+
+Each payment gateway has a dedicated upload flow that standardizes data into csv_rows.
+
+```
+Export settlement/payout report from gateway
+    ↓
+Upload via Reports → [Gateway] page (/api/csv/save validates + inserts)
+    ↓
+csv_rows created with source tag + custom_data (settlement_batch_id, order_id, ...)
+    ↓
+Available for reconciliation matching (Reconciliation Center)
+    ↓
+Revenue tracked in KPIs + Performance + P&L
+```
+
+| Gateway | Source Tags | Currencies |
+|---|---|---|
+| Braintree | braintree-eur, braintree-usd, braintree-gbp, braintree-aud, braintree-amex | EUR, USD, GBP, AUD |
+| Stripe | stripe-eur, stripe-usd | EUR, USD |
+| GoCardless | gocardless | EUR |
+| PayPal | paypal | EUR |
+| Pleo | pleo | EUR |
+
+### 8.5.6 Products → Sales Insights
+
+Invoice orders combined with product master data produce segmented sales insights.
+
+```
+Invoice orders uploaded (source='invoice-orders', financial_account_code in custom_data)
+    ↓
+Products linked via product_pnl_mappings (product → financial_account → segment)
+    ↓
+Segmentation by FA code range: 102.x = Clinics | 104.x = Lab | Other = Courses
+    ↓
+Sales Insights pages show revenue breakdown per segment
+```
+
+| Segment | FA Code Range | Page |
+|---|---|---|
+| Clinics | 102.x | `/sales-insights/clinics` |
+| Lab | 104.x | `/sales-insights/lab` |
+| Courses | Other codes | `/sales-insights/courses` |
+
+---
+
 ## 9. Settings & Administration
 
 | Page | URL | Purpose |

@@ -80,7 +80,7 @@ export default function IntegrationsPage() {
                         {integrations.map(integration => (
                             <div
                                 key={integration.name}
-                                className={`flex items-center justify-between p-4 border rounded-lg ${integration.status === 'active' ? 'bg-white' : 'bg-gray-50'
+                                className={`flex items-center justify-between p-4 border rounded-lg ${integration.status === 'active' ? 'bg-white dark:bg-black' : 'bg-gray-50 dark:bg-gray-900'
                                     }`}
                             >
                                 <div className="flex items-center gap-4">

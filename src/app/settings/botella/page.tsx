@@ -384,8 +384,8 @@ export default function BotellaSettingsPage() {
                                             <div
                                                 key={task.id}
                                                 className={`flex items-center justify-between p-4 border rounded-lg ${task.is_active
-                                                    ? 'bg-white border-green-200'
-                                                    : 'bg-gray-50 border-gray-200 opacity-60'
+                                                    ? 'bg-white dark:bg-black border-green-200 dark:border-green-800'
+                                                    : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 opacity-60'
                                                     }`}
                                             >
                                                 <div className="flex items-center gap-4">
@@ -478,7 +478,7 @@ export default function BotellaSettingsPage() {
                                     templates.map(template => (
                                         <div
                                             key={template.id}
-                                            className={`p-4 border rounded-lg ${template.is_active ? 'bg-white' : 'bg-gray-50 opacity-60'
+                                            className={`p-4 border rounded-lg ${template.is_active ? 'bg-white dark:bg-black' : 'bg-gray-50 dark:bg-gray-900 opacity-60'
                                                 }`}
                                         >
                                             <div className="flex items-center justify-between mb-2">

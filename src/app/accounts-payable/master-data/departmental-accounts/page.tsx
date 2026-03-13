@@ -501,7 +501,7 @@ export default function DepartmentalAccountsPage() {
 
             {/* Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-none max-h-[90vh] bg-white" style={{ width: '80vw' }}>
+                <DialogContent className="max-w-none max-h-[90vh] bg-white dark:bg-black" style={{ width: '80vw' }}>
                     <DialogHeader className="border-b pb-4">
                         <DialogTitle className="text-xl font-semibold">
                             {editingAccount ? "Edit Departmental Account" : "New Departmental Account"}

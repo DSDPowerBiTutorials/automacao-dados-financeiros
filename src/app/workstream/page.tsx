@@ -302,7 +302,7 @@ export default function WorkstreamHomePage() {
                                         <button
                                             key={project.id}
                                             onClick={() => router.push(`/workstream/${project.id}`)}
-                                            className="group text-left bg-gray-200 dark:bg-[#111111] hover:bg-gray-100 dark:hover:bg-[#3d3e40] border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 rounded-lg p-3 transition-all"
+                                            className="group text-left bg-gray-200 dark:bg-[#111111] hover:bg-gray-100 dark:hover:bg-[#3d3e40] border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 rounded-lg p-3 transition-all"
                                         >
                                             <div className="flex items-center gap-2.5 mb-2">
                                                 <div

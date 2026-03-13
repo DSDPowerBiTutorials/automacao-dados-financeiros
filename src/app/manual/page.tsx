@@ -1016,6 +1016,162 @@ function GuidedToursSection({ lang }: { lang: Lang }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  7. End-to-End Data Flows                                           */
+/* ------------------------------------------------------------------ */
+
+function DataFlows({ lang }: { lang: Lang }) {
+    return (
+        <>
+            <p>{t(lang,
+                "This section details the complete data journeys through the system — from raw uploads to final reports. Each flow shows exactly which tables, APIs, and transformations are involved.",
+                "Esta sección detalla los recorridos completos de datos a través del sistema — desde archivos crudos hasta informes finales. Cada flujo muestra exactamente qué tablas, APIs y transformaciones están involucradas."
+            )}</p>
+
+            {/* Flow 1: Revenue → P&L */}
+            <h4 className="font-semibold mt-6 mb-2">{t(lang, "7.1 Revenue → P&L Statement", "7.1 Ingresos → Estado de P&L")}</h4>
+            <p className="text-sm mb-2">{t(lang,
+                "Revenue flows from payment gateways and invoice orders into the P&L report via financial account classification.",
+                "Los ingresos fluyen desde pasarelas de pago y pedidos de facturación hacia el informe P&L a través de la clasificación por cuenta financiera."
+            )}</p>
+            <FlowDiagram title={t(lang, "Revenue → P&L Data Flow", "Flujo de Datos Ingresos → P&L")}>
+                <FlowStep icon={<Upload size={16} />} title={t(lang, "1. Upload gateway CSVs (Braintree, Stripe, GoCardless)", "1. Subir CSVs de pasarelas (Braintree, Stripe, GoCardless)")} subtitle={t(lang, "Each gateway file uploaded via Reports → [gateway] page", "Cada archivo de pasarela subido vía Reportes → página de [pasarela]")} color="blue" />
+                <FlowArrow />
+                <FlowStep icon={<Database size={16} />} title={t(lang, "2. Parsed into csv_rows (source='braintree-eur', etc.)", "2. Parseado a csv_rows (source='braintree-eur', etc.)")} subtitle={t(lang, "Column mapping: date, description, amount + custom_data (order_id, customer)", "Mapeo columnas: date, description, amount + custom_data (order_id, customer)")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<FileText size={16} />} title={t(lang, "3. Invoice Orders link to financial_account_code", "3. Invoice Orders vinculan a financial_account_code")} subtitle={t(lang, "csv_rows (source='invoice-orders') provide FA code per order", "csv_rows (source='invoice-orders') proveen código FA por pedido")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<Wallet size={16} />} title={t(lang, "4. /api/pnl/revenue aggregates by FA hierarchy", "4. /api/pnl/revenue agrega por jerarquía FA")} subtitle={t(lang, "Groups revenue by financial account tree (1xx codes)", "Agrupa ingresos por árbol de cuentas financieras (códigos 1xx)")} color="purple" />
+                <FlowArrow />
+                <FlowStep icon={<BarChart3 size={16} />} title={t(lang, "5. P&L page displays Revenue − Expenses = Net Income", "5. Página P&L muestra Ingresos − Gastos = Resultado Neto")} subtitle={t(lang, "Combined with /api/pnl/expenses (invoices table, codes 4xx-6xx)", "Combinado con /api/pnl/expenses (tabla invoices, códigos 4xx-6xx)")} color="green" />
+            </FlowDiagram>
+            <InfoTable
+                headers={[t(lang, "Data Source", "Fuente de Datos"), t(lang, "Table", "Tabla"), t(lang, "Role", "Rol")]}
+                rows={[
+                    [t(lang, "Gateway CSVs", "CSVs de Pasarelas"), "csv_rows", t(lang, "Transaction-level revenue data", "Datos de ingresos a nivel de transacción")],
+                    [t(lang, "Invoice Orders", "Pedidos Facturación"), "csv_rows (source='invoice-orders')", t(lang, "Maps orders to financial accounts", "Mapea pedidos a cuentas financieras")],
+                    [t(lang, "AP Invoices", "Facturas CP"), "invoices", t(lang, "Expense data with cost center allocation", "Datos de gastos con asignación de centro de coste")],
+                    [t(lang, "Financial Accounts", "Cuentas Financieras"), "financial_accounts", t(lang, "Account hierarchy for P&L classification", "Jerarquía de cuentas para clasificación P&L")],
+                ]}
+            />
+
+            {/* Flow 2: Bank Statement → Cashflow */}
+            <h4 className="font-semibold mt-6 mb-2">{t(lang, "7.2 Bank Statement → Cashflow", "7.2 Extracto Bancario → Flujo de Caja")}</h4>
+            <p className="text-sm mb-2">{t(lang,
+                "Bank statements feed the three cashflow views: bank, real, and consolidated.",
+                "Los extractos bancarios alimentan las tres vistas de flujo de caja: bancario, real y consolidado."
+            )}</p>
+            <FlowDiagram title={t(lang, "Bank → Cashflow Data Flow", "Flujo de Datos Banco → Cashflow")}>
+                <FlowStep icon={<Upload size={16} />} title={t(lang, "1. Upload bank CSV (Bankinter, Sabadell, Chase)", "1. Subir CSV bancario (Bankinter, Sabadell, Chase)")} subtitle={t(lang, "European number format for Spanish banks, US format for Chase", "Formato numérico europeo para bancos españoles, formato US para Chase")} color="blue" />
+                <FlowArrow />
+                <FlowStep icon={<Database size={16} />} title={t(lang, "2. Parsed into csv_rows with source tag", "2. Parseado a csv_rows con etiqueta de fuente")} subtitle={t(lang, "date=FECHA VALOR, amount=HABER−DEBE, source='bankinter-eur'", "date=FECHA VALOR, amount=HABER−DEBE, source='bankinter-eur'")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<ArrowLeftRight size={16} />} title={t(lang, "3. Inflow/Outflow classification", "3. Clasificación Ingreso/Egreso")} subtitle={t(lang, "amount > 0 = inflow (credit), amount < 0 = outflow (debit)", "amount > 0 = ingreso (haber), amount < 0 = egreso (debe)")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<BarChart3 size={16} />} title={t(lang, "4. API aggregation → daily/monthly cashflow", "4. Agregación API → flujo de caja diario/mensual")} subtitle={t(lang, "/api/executive/cashflow/* endpoints consolidate all bank sources", "/api/executive/cashflow/* endpoints consolidan todas las fuentes bancarias")} color="purple" />
+                <FlowArrow />
+                <FlowStep icon={<Globe size={16} />} title={t(lang, "5. Currency conversion → Consolidated view", "5. Conversión divisa → Vista Consolidada")} subtitle={t(lang, "EUR + USD accounts unified with exchange rate", "Cuentas EUR + USD unificadas con tipo de cambio")} color="green" />
+            </FlowDiagram>
+
+            {/* Flow 3: Web Orders → AR Reconciliation */}
+            <h4 className="font-semibold mt-6 mb-2">{t(lang, "7.3 Web Orders → AR Reconciliation", "7.3 Pedidos Web → Conciliación CC")}</h4>
+            <p className="text-sm mb-2">{t(lang,
+                "Web orders from HubSpot are linked to Braintree transactions, then matched against bank deposits for full reconciliation.",
+                "Los pedidos web de HubSpot se vinculan a transacciones Braintree, luego se emparejan contra depósitos bancarios para conciliación completa."
+            )}</p>
+            <FlowDiagram title={t(lang, "Web Order → Bank Reconciliation Chain", "Cadena Pedido Web → Conciliación Bancaria")}>
+                <FlowStep icon={<ShoppingCart size={16} />} title={t(lang, "1. HubSpot deal created (order placed online)", "1. Deal HubSpot creado (pedido online)")} subtitle={t(lang, "Contains order_id, customer, deal_amount, braintree_transaction_ids", "Contiene order_id, customer, deal_amount, braintree_transaction_ids")} color="blue" />
+                <FlowArrow />
+                <FlowStep icon={<Database size={16} />} title={t(lang, "2. HubSpot CSV uploaded → csv_rows (source='hubspot')", "2. CSV HubSpot subido → csv_rows (source='hubspot')")} subtitle={t(lang, "~50 fields stored in custom_data JSONB column", "~50 campos almacenados en columna JSONB custom_data")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<Link2 size={16} />} title={t(lang, "3. Braintree transaction_ids link to gateway uploads", "3. Los transaction_ids de Braintree vinculan a subidas de pasarelas")} subtitle={t(lang, "csv_rows (source='hubspot').custom_data.braintree_transaction_ids → csv_rows (source='braintree-*')", "csv_rows (source='hubspot').custom_data.braintree_transaction_ids → csv_rows (source='braintree-*')")} color="purple" />
+                <FlowArrow />
+                <FlowStep icon={<CreditCard size={16} />} title={t(lang, "4. Braintree settlement batches matched to bank deposits", "4. Lotes de liquidación Braintree emparejados con depósitos bancarios")} subtitle={t(lang, "Settlement amount ≈ bank credit (±€0.01) within ±3 days", "Monto liquidación ≈ crédito bancario (±€0.01) dentro de ±3 días")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<CheckCircle2 size={16} />} title={t(lang, "5. Full chain reconciled: Order → Payment → Bank", "5. Cadena completa conciliada: Pedido → Pago → Banco")} subtitle={t(lang, "reconciled=true, matched_with links both directions", "reconciled=true, matched_with vincula en ambas direcciones")} color="green" />
+            </FlowDiagram>
+
+            {/* Flow 4: AP Invoice → Departmental PnL */}
+            <h4 className="font-semibold mt-6 mb-2">{t(lang, "7.4 AP Invoice → Departmental P&L", "7.4 Factura CP → P&L Departamental")}</h4>
+            <p className="text-sm mb-2">{t(lang,
+                "AP invoices are the sole source for expense tracking, linking through cost centers to produce departmental profit and loss reports.",
+                "Las facturas CP son la única fuente de seguimiento de gastos, vinculándose a través de centros de coste para producir informes de P&L departamental."
+            )}</p>
+            <FlowDiagram title={t(lang, "AP → Dept P&L Data Flow", "Flujo AP → P&L Departamental")}>
+                <FlowStep icon={<Receipt size={16} />} title={t(lang, "1. Enter invoice in AP → Invoices", "1. Ingresar factura en CP → Facturas")} subtitle={t(lang, "Provider, amount, date + cost_center + financial_account", "Proveedor, monto, fecha + cost_center + financial_account")} color="blue" />
+                <FlowArrow />
+                <FlowStep icon={<Database size={16} />} title={t(lang, "2. Stored in invoices table", "2. Almacenado en tabla invoices")} subtitle={t(lang, "Links to: providers, cost_centers, sub_departments, financial_accounts, bank_accounts", "Vinculado a: providers, cost_centers, sub_departments, financial_accounts, bank_accounts")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<Users size={16} />} title={t(lang, "3. Grouped by cost_center → sub_department", "3. Agrupado por cost_center → sub_department")} subtitle={t(lang, "Each invoice contributes to its department's expense total", "Cada factura contribuye al total de gastos de su departamento")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<BarChart3 size={16} />} title={t(lang, "4. Departmental PnL calculates monthly comparison", "4. PnL Departamental calcula comparación mensual")} subtitle={t(lang, "Month-over-month, budget vs actual, drill-down by sub-department", "Mes a mes, presupuesto vs real, desglose por sub-departamento")} color="green" />
+            </FlowDiagram>
+            <InfoTable
+                headers={[t(lang, "Master Data Table", "Tabla Datos Maestros"), t(lang, "Purpose", "Propósito")]}
+                rows={[
+                    ["providers", t(lang, "Supplier registry (name, NIF, payment terms)", "Registro proveedores (nombre, NIF, condiciones de pago)")],
+                    ["cost_centers", t(lang, "Department-level cost groups", "Grupos de coste a nivel departamental")],
+                    ["sub_departments", t(lang, "Granular breakdown within cost centers", "Desglose granular dentro de centros de coste")],
+                    ["financial_accounts", t(lang, "Account chart (4xx-6xx = expenses)", "Plan contable (4xx-6xx = gastos)")],
+                    ["bank_accounts", t(lang, "Payment bank details for scheduling", "Datos bancarios de pago para programación")],
+                ]}
+            />
+
+            {/* Flow 5: Gateway CSV → Revenue Tracking */}
+            <h4 className="font-semibold mt-6 mb-2">{t(lang, "7.5 Gateway CSV → Revenue Tracking", "7.5 CSV Pasarela → Seguimiento de Ingresos")}</h4>
+            <p className="text-sm mb-2">{t(lang,
+                "Each payment gateway has a dedicated upload flow that standardizes data into csv_rows for tracking and reconciliation.",
+                "Cada pasarela de pago tiene un flujo de carga dedicado que estandariza datos en csv_rows para seguimiento y conciliación."
+            )}</p>
+            <FlowDiagram title={t(lang, "Gateway → Revenue Tracking", "Pasarela → Seguimiento de Ingresos")}>
+                <FlowStep icon={<CreditCard size={16} />} title={t(lang, "1. Export settlement/payout report from gateway", "1. Exportar informe de liquidación/pago de pasarela")} subtitle={t(lang, "Braintree: Settlement Batch report | Stripe: Payout report | GoCardless: Payment export", "Braintree: Informe lote liquidación | Stripe: Informe payout | GoCardless: Exportación pagos")} color="blue" />
+                <FlowArrow />
+                <FlowStep icon={<Upload size={16} />} title={t(lang, "2. Upload via Reports → [Gateway] page", "2. Subir vía Reportes → página [Pasarela]")} subtitle={t(lang, "API route /api/csv/save validates format + inserts", "Ruta API /api/csv/save valida formato + inserta")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<Database size={16} />} title={t(lang, "3. csv_rows created with source tag + custom_data", "3. csv_rows creados con etiqueta source + custom_data")} subtitle={t(lang, "custom_data: { settlement_batch_id, order_id, customer_name, ... }", "custom_data: { settlement_batch_id, order_id, customer_name, ... }")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<GitMerge size={16} />} title={t(lang, "4. Available for reconciliation matching", "4. Disponible para matching de conciliación")} subtitle={t(lang, "Reconciliation Center matches gateway rows ↔ bank rows", "Centro de Conciliación empareja filas pasarela ↔ filas banco")} color="purple" />
+                <FlowArrow />
+                <FlowStep icon={<BarChart3 size={16} />} title={t(lang, "5. Revenue tracked in KPIs + Performance + P&L", "5. Ingresos rastreados en KPIs + Rendimiento + P&L")} color="green" />
+            </FlowDiagram>
+            <InfoTable
+                headers={[t(lang, "Gateway", "Pasarela"), t(lang, "Source Tag", "Etiqueta Source"), t(lang, "Currencies", "Divisas")]}
+                rows={[
+                    ["Braintree", "braintree-eur, braintree-usd, braintree-gbp, braintree-aud, braintree-amex", "EUR, USD, GBP, AUD"],
+                    ["Stripe", "stripe-eur, stripe-usd", "EUR, USD"],
+                    ["GoCardless", "gocardless", "EUR"],
+                    ["PayPal", "paypal", "EUR"],
+                    ["Pleo", "pleo", "EUR"],
+                ]}
+            />
+
+            {/* Flow 6: Products → Sales Insights */}
+            <h4 className="font-semibold mt-6 mb-2">{t(lang, "7.6 Products → Sales Insights", "7.6 Productos → Insights de Ventas")}</h4>
+            <p className="text-sm mb-2">{t(lang,
+                "Invoice orders combined with product master data and PnL mappings produce segmented sales insights for clinics, lab, and courses.",
+                "Los pedidos de facturación combinados con datos maestros de productos y mapeos PnL producen insights de ventas segmentados para clínicas, laboratorio y cursos."
+            )}</p>
+            <FlowDiagram title={t(lang, "Products → Sales Insights", "Productos → Insights de Ventas")}>
+                <FlowStep icon={<FileText size={16} />} title={t(lang, "1. Invoice orders uploaded (source='invoice-orders')", "1. Pedidos facturación subidos (source='invoice-orders')")} subtitle={t(lang, "Each order has financial_account_code in custom_data", "Cada pedido tiene financial_account_code en custom_data")} color="blue" />
+                <FlowArrow />
+                <FlowStep icon={<Package size={16} />} title={t(lang, "2. Products linked via product_pnl_mappings", "2. Productos vinculados vía product_pnl_mappings")} subtitle={t(lang, "Maps product → financial_account → business segment", "Mapea producto → cuenta_financiera → segmento de negocio")} color="orange" />
+                <FlowArrow />
+                <FlowStep icon={<Building2 size={16} />} title={t(lang, "3. Segmentation by FA code range", "3. Segmentación por rango de código FA")} subtitle={t(lang, "102.x = Clinics | 104.x = Lab | Other = Courses/Training", "102.x = Clínicas | 104.x = Lab | Otro = Cursos/Formación")} color="purple" />
+                <FlowArrow />
+                <FlowStep icon={<BarChart3 size={16} />} title={t(lang, "4. Sales Insights pages show revenue breakdown", "4. Páginas Sales Insights muestran desglose de ingresos")} subtitle={t(lang, "Product-level, trend analysis, top performers per segment", "Por producto, análisis de tendencias, top performers por segmento")} color="green" />
+            </FlowDiagram>
+            <InfoTable
+                headers={[t(lang, "Segment", "Segmento"), t(lang, "FA Code Range", "Rango Código FA"), t(lang, "Page", "Página")]}
+                rows={[
+                    [t(lang, "Clinics", "Clínicas"), "102.x", "/sales-insights/clinics"],
+                    [t(lang, "Lab", "Laboratorio"), "104.x", "/sales-insights/lab"],
+                    [t(lang, "Courses", "Cursos"), t(lang, "Other codes", "Otros códigos"), "/sales-insights/courses"],
+                ]}
+            />
+        </>
+    );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main Page                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -1038,6 +1194,7 @@ export default function ManualPage() {
         { id: "ap-recon", title: t(lang, "5.2 AP Reconciliation", "5.2 Conciliación de CP"), icon: <ArrowLeftRight size={18} />, content: <APReconciliation lang={lang} /> },
         { id: "ic-recon", title: t(lang, "5.3 Intercompany Reconciliation", "5.3 Conciliación Intercompañía"), icon: <Building2 size={18} />, content: <IntercompanyReconciliation lang={lang} /> },
         { id: "masterdata", title: t(lang, "6. Master Data Management", "6. Gestión de Datos Maestros"), icon: <Database size={18} />, content: <MasterDataSection lang={lang} /> },
+        { id: "dataflows", title: t(lang, "7. End-to-End Data Flows", "7. Flujos de Datos End-to-End"), icon: <GitMerge size={18} />, content: <DataFlows lang={lang} /> },
         { id: "settings", title: t(lang, "9. Settings & Administration", "9. Configuración y Administración"), icon: <Settings size={18} />, content: <SettingsAdmin lang={lang} /> },
         { id: "tech", title: t(lang, "10. Technical Specifications", "10. Especificaciones Técnicas"), icon: <Server size={18} />, content: <TechSpecs lang={lang} /> },
         { id: "tours", title: t(lang, "11. Guided Tours", "11. Tours Guiados"), icon: <Compass size={18} />, content: <GuidedToursSection lang={lang} /> },

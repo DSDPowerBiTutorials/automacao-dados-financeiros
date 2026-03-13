@@ -576,7 +576,7 @@ export default function ProductsPage() {
                                 <Filter className="h-4 w-4 mr-1" />
                                 <SelectValue placeholder="Category" />
                             </SelectTrigger>
-                            <SelectContent className="z-[9999] bg-white border-gray-300 max-h-[350px]">
+                            <SelectContent className="z-[9999] bg-white dark:bg-black border-gray-300 max-h-[350px]">
                                 <SelectItem value="all" className="text-gray-900">All Categories</SelectItem>
                                 {CATEGORIES.map((cat) => (
                                     <SelectItem key={cat} value={cat} className="text-gray-900">
@@ -696,7 +696,7 @@ export default function ProductsPage() {
                                         <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
                                             <SelectValue placeholder="Select..." />
                                         </SelectTrigger>
-                                        <SelectContent className="z-[9999] bg-white border-gray-300 max-h-[300px]">
+                                        <SelectContent className="z-[9999] bg-white dark:bg-black border-gray-300 max-h-[300px]">
                                             <SelectItem value="none" className="text-gray-900">—</SelectItem>
                                             {CATEGORIES.map((cat) => (
                                                 <SelectItem key={cat} value={cat} className="text-gray-900">
@@ -716,7 +716,7 @@ export default function ProductsPage() {
                                         <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
                                             <SelectValue placeholder="Select..." />
                                         </SelectTrigger>
-                                        <SelectContent className="z-[9999] bg-white border-gray-300">
+                                        <SelectContent className="z-[9999] bg-white dark:bg-black border-gray-300">
                                             <SelectItem value="none" className="text-gray-900">—</SelectItem>
                                             {financialAccounts.map((fa) => (
                                                 <SelectItem key={fa.code} value={fa.code} className="text-gray-900">
@@ -736,7 +736,7 @@ export default function ProductsPage() {
                                         <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
                                             <SelectValue placeholder="Select..." />
                                         </SelectTrigger>
-                                        <SelectContent className="z-[9999] bg-white border-gray-300">
+                                        <SelectContent className="z-[9999] bg-white dark:bg-black border-gray-300">
                                             <SelectItem value="none" className="text-gray-900">—</SelectItem>
                                             {departmentalGroups.map((da) => (
                                                 <SelectItem key={da.id} value={da.id} className="text-gray-900">
@@ -757,7 +757,7 @@ export default function ProductsPage() {
                                         <SelectTrigger className={`h-7 text-[10px] bg-transparent border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111] ${!product.departmental_account_group_id ? "opacity-50" : ""}`}>
                                             <SelectValue placeholder={product.departmental_account_group_id ? "Select..." : "—"} />
                                         </SelectTrigger>
-                                        <SelectContent className="z-[9999] bg-white border-gray-300">
+                                        <SelectContent className="z-[9999] bg-white dark:bg-black border-gray-300">
                                             <SelectItem value="none" className="text-gray-900">—</SelectItem>
                                             {getSubgroupsForGroup(product.departmental_account_group_id).map((da) => (
                                                 <SelectItem key={da.id} value={da.id} className="text-gray-900">
