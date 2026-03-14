@@ -136,12 +136,15 @@ const DELIGHT_SUB_OPTIONS = [
     { code: "102.6", label: "102.6 — Marketing Coaching" },
 ] as const;
 
-// Delight → LAB/PC sub-account mapping
-const DELIGHT_TO_SUB: Record<string, { lab: string; pc: string }> = {
+// Client classification → LAB/PC sub-account mapping
+// Delight sub-codes + Level 1 + PC Membership determine LAB/PC sub-accounts
+const CLIENT_TO_LAB_PC: Record<string, { lab: string; pc: string }> = {
     "102.1": { lab: "104.1", pc: "103.1" },
     "102.2": { lab: "104.2", pc: "103.2" },
     "102.3": { lab: "104.3", pc: "103.3" },
     "102.4": { lab: "104.4", pc: "103.4" },
+    "101.4": { lab: "104.5", pc: "103.5" },  // PC Membership → Level 2
+    "105.1": { lab: "104.6", pc: "103.6" },  // Level 1 → Level 1
 };
 
 // Full FA name lookup
@@ -153,8 +156,10 @@ const FA_NAMES: Record<string, string> = {
     "102.5": "Consultancies", "102.6": "Marketing Coaching",
     "103.0": "Planning Center", "103.1": "Level 3 ROW", "103.2": "Level 3 AMEX",
     "103.3": "Level 3 New ROW", "103.4": "Level 3 New AMEX",
+    "103.5": "Level 2", "103.6": "Level 1",
     "104.0": "LAB", "104.1": "Level 3 ROW", "104.2": "Level 3 AMEX",
     "104.3": "Level 3 New ROW", "104.4": "Level 3 New AMEX",
+    "104.5": "Level 2", "104.6": "Level 1",
     "105.1": "Level 1", "105.2": "CORE Partnerships",
     "105.3": "Study Club", "105.4": "Other Marketing Revenues",
 };
@@ -393,8 +398,8 @@ export default function InvoiceOrdersPage() {
             setClassifyDialogOpen(false);
             setDelightDialogOpen(true);
         } else {
-            // No Delight rows → save directly
-            await saveClassifications();
+            // No Delight rows → apply LAB/PC auto-assignment from 105.1/101.4 and save
+            await saveWithAutoAssignment();
         }
     };
 
@@ -514,13 +519,30 @@ export default function InvoiceOrdersPage() {
             return;
         }
 
-        // Build client → delight map for LAB/PC auto-assignment
-        const clientDelightMap = new Map<string, string>(); // clientKey → delight sub-code
+        // Build client → classification map for LAB/PC auto-assignment
+        // Sources: Delight sub-codes (102.x), Level 1 (105.1), PC Membership (101.4)
+        const clientClassMap = new Map<string, string>(); // clientKey → classification code
+
+        // 1. Delight sub-codes (from Popup 2)
         for (const i of delightIndices) {
             const row = uploadedRows[i];
             const subCode = delightCodes[i];
-            if (row.customerEmail) clientDelightMap.set(row.customerEmail.toLowerCase(), subCode);
-            if (row.customerName) clientDelightMap.set(row.customerName.toLowerCase(), subCode);
+            if (row.customerEmail) clientClassMap.set(row.customerEmail.toLowerCase(), subCode);
+            if (row.customerName) clientClassMap.set(row.customerName.toLowerCase(), subCode);
+        }
+
+        // 2. Level 1 (105.1) and PC Membership (101.4) from Popup 1 — only if no Delight classification
+        for (let i = 0; i < uploadedRows.length; i++) {
+            const code = rowFACodes[i];
+            if (code === "105.1" || code === "101.4") {
+                const row = uploadedRows[i];
+                if (row.customerEmail && !clientClassMap.has(row.customerEmail.toLowerCase())) {
+                    clientClassMap.set(row.customerEmail.toLowerCase(), code);
+                }
+                if (row.customerName && !clientClassMap.has(row.customerName.toLowerCase())) {
+                    clientClassMap.set(row.customerName.toLowerCase(), code);
+                }
+            }
         }
 
         // Apply Delight sub-codes to 102.0 rows
@@ -536,11 +558,11 @@ export default function InvoiceOrdersPage() {
                 const row = uploadedRows[i];
                 const clientKey = row.customerEmail?.toLowerCase() || row.customerName?.toLowerCase();
                 if (clientKey) {
-                    const delightSub = clientDelightMap.get(clientKey);
-                    if (delightSub && DELIGHT_TO_SUB[delightSub]) {
+                    const clientClass = clientClassMap.get(clientKey);
+                    if (clientClass && CLIENT_TO_LAB_PC[clientClass]) {
                         updatedCodes[i] = currentCode === "104.0"
-                            ? DELIGHT_TO_SUB[delightSub].lab
-                            : DELIGHT_TO_SUB[delightSub].pc;
+                            ? CLIENT_TO_LAB_PC[clientClass].lab
+                            : CLIENT_TO_LAB_PC[clientClass].pc;
                     }
                 }
             }
@@ -548,6 +570,39 @@ export default function InvoiceOrdersPage() {
 
         setRowFACodes(updatedCodes);
         setDelightDialogOpen(false);
+        await saveClassifications(updatedCodes);
+    };
+
+    // ── Save with LAB/PC auto-assignment (no Delight rows, but may have 105.1/101.4) ──
+    const saveWithAutoAssignment = async () => {
+        const clientClassMap = new Map<string, string>();
+        for (let i = 0; i < uploadedRows.length; i++) {
+            const code = rowFACodes[i];
+            if (code === "105.1" || code === "101.4") {
+                const row = uploadedRows[i];
+                if (row.customerEmail) clientClassMap.set(row.customerEmail.toLowerCase(), code);
+                if (row.customerName) clientClassMap.set(row.customerName.toLowerCase(), code);
+            }
+        }
+
+        const updatedCodes = { ...rowFACodes };
+        for (let i = 0; i < uploadedRows.length; i++) {
+            const currentCode = updatedCodes[i];
+            if (currentCode === "103.0" || currentCode === "104.0") {
+                const row = uploadedRows[i];
+                const clientKey = row.customerEmail?.toLowerCase() || row.customerName?.toLowerCase();
+                if (clientKey) {
+                    const clientClass = clientClassMap.get(clientKey);
+                    if (clientClass && CLIENT_TO_LAB_PC[clientClass]) {
+                        updatedCodes[i] = currentCode === "104.0"
+                            ? CLIENT_TO_LAB_PC[clientClass].lab
+                            : CLIENT_TO_LAB_PC[clientClass].pc;
+                    }
+                }
+            }
+        }
+
+        setRowFACodes(updatedCodes);
         await saveClassifications(updatedCodes);
     };
 
@@ -1525,7 +1580,7 @@ export default function InvoiceOrdersPage() {
                             <div className="text-xs text-gray-500 dark:text-gray-400">
                                 {Object.keys(delightCodes).length}/{uploadedRows.filter((_, i) => rowFACodes[i] === "102.0").length} classificadas
                                 <span className="text-gray-400 ml-2">
-                                    LAB (104.x) e PC (103.x) serão auto-atribuídos
+                                    LAB (104.x) e PC (103.x) serão auto-atribuídos por cliente
                                 </span>
                             </div>
                             <div className="flex gap-2">

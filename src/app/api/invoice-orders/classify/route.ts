@@ -10,8 +10,10 @@ const FA_NAMES: Record<string, string> = {
     "102.5": "Consultancies", "102.6": "Marketing Coaching",
     "103.0": "Planning Center", "103.1": "Level 3 ROW", "103.2": "Level 3 AMEX",
     "103.3": "Level 3 New ROW", "103.4": "Level 3 New AMEX",
+    "103.5": "Level 2", "103.6": "Level 1",
     "104.0": "LAB", "104.1": "Level 3 ROW", "104.2": "Level 3 AMEX",
     "104.3": "Level 3 New ROW", "104.4": "Level 3 New AMEX",
+    "104.5": "Level 2", "104.6": "Level 1",
     "105.1": "Level 1", "105.2": "CORE Partnerships",
     "105.3": "Study Club", "105.4": "Other Marketing Revenues",
 };
