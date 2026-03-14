@@ -3,179 +3,109 @@ import * as XLSX from "xlsx";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // ============================================================
-// 💰 MAPEAMENTO PRODUTO → FINANCIAL ACCOUNT CODE
-// Baseado nas contas de receita designadas para cada produto
+// 💰 SUGESTÃO AUTOMÁTICA PRODUTO → FINANCIAL ACCOUNT CODE
+// Retorna uma sugestão baseada em keywords do nome do produto
+// O valor FINAL é definido pelo usuário no popup de classificação
 // ============================================================
-function getFinancialAccountCode(productName: string, description: string): { code: string | null; name: string | null } {
-    // Combinar todas as strings para busca
+function suggestFinancialAccountCode(productName: string, description: string): { code: string | null; name: string | null } {
     const searchText = `${productName} ${description}`.toLowerCase();
-
-    // ====== 101.0 - Growth (Education) ======
 
     // 101.1 - DSD Courses
     if (
-        searchText.includes('dsd provider') ||
-        searchText.includes('designing smiles') ||
-        searchText.includes('dsd course') ||
-        searchText.includes('increase case acceptance') ||
-        searchText.includes('case acceptance mastery') ||
-        searchText.includes('ios festival') ||
-        searchText.includes('intraoral scanner') ||
-        searchText.includes('kois & coachman') ||
-        searchText.includes('dsd aligners') ||
-        searchText.includes('dsd clinical') ||
-        searchText.includes('wtd meeting') ||
-        searchText.includes('smile to success') ||
-        searchText.includes('implement and learn') ||
-        searchText.includes('mastering dsd')
-    ) {
-        return { code: '101.1', name: 'DSD Courses' };
-    }
+        searchText.includes('dsd provider') || searchText.includes('designing smiles') ||
+        searchText.includes('dsd course') || searchText.includes('increase case acceptance') ||
+        searchText.includes('case acceptance mastery') || searchText.includes('ios festival') ||
+        searchText.includes('intraoral scanner') || searchText.includes('kois & coachman') ||
+        searchText.includes('dsd aligners') || searchText.includes('dsd clinical') ||
+        searchText.includes('wtd meeting') || searchText.includes('smile to success') ||
+        searchText.includes('implement and learn') || searchText.includes('mastering dsd')
+    ) return { code: '101.1', name: 'DSD Course' };
+
+    // 101.2 - Others Courses
+    if (searchText.includes('other course') || searchText.includes('workshop') || searchText.includes('webinar'))
+        return { code: '101.2', name: 'Others Courses' };
 
     // 101.3 - Mastership
-    if (
-        searchText.includes('mastership') ||
-        searchText.includes('master ship') ||
-        searchText.includes('residency')
-    ) {
+    if (searchText.includes('mastership') || searchText.includes('master ship') || searchText.includes('residency'))
         return { code: '101.3', name: 'Mastership' };
-    }
 
-    // 101.4 - PC Membership (Provider/Planning Center Membership)
+    // 101.4 - PC Membership
     if (
-        searchText.includes('provider annual membership') ||
-        searchText.includes('provider membership') ||
-        searchText.includes('pc membership') ||
-        searchText.includes('planning center membership')
-    ) {
-        return { code: '101.4', name: 'PC Membership' };
-    }
+        searchText.includes('provider annual membership') || searchText.includes('provider membership') ||
+        searchText.includes('pc membership') || searchText.includes('planning center membership')
+    ) return { code: '101.4', name: 'PC Membership' };
 
-    // 101.5 - Partnerships / Sponsorships
-    if (
-        searchText.includes('sponsorship') ||
-        searchText.includes('partnership') ||
-        searchText.includes('sponsor') ||
-        searchText.includes('exhibit space')
-    ) {
+    // 101.5 - Partnerships
+    if (searchText.includes('sponsorship') || searchText.includes('partnership') || searchText.includes('sponsor') || searchText.includes('exhibit space'))
         return { code: '101.5', name: 'Partnerships' };
-    }
 
-    // ====== 102.0 - Delight (Clinic Services) ======
-
-    // 102.5 - Consultancies
+    // 102.0 - Delight (parent — sub-account will be refined in Popup 2)
     if (
-        searchText.includes('dsd clinic transformation') ||
-        searchText.includes('clinic transformation') ||
-        searchText.includes('dsd clinic -') ||
-        searchText.includes('dsd clinic services') ||
-        searchText.includes('monthly fee') ||
-        searchText.includes('consultancy') ||
-        searchText.includes('consulting')
-    ) {
-        return { code: '102.5', name: 'Consultancies' };
-    }
+        searchText.includes('dsd clinic transformation') || searchText.includes('clinic transformation') ||
+        searchText.includes('dsd clinic -') || searchText.includes('dsd clinic services') ||
+        searchText.includes('monthly fee') || searchText.includes('consultancy') ||
+        searchText.includes('consulting') || searchText.includes('fractional cmo') ||
+        searchText.includes('marketing coaching') || searchText.includes('growth hub onboarding') ||
+        searchText.includes('patient attraction') || searchText.includes('dsd coaching') ||
+        searchText.includes('coaching') || searchText.includes('delight')
+    ) return { code: '102.0', name: 'Delight' };
 
-    // 102.6 - Marketing Coaching
+    // 104.0 - LAB (before 103 due to overlap)
     if (
-        searchText.includes('fractional cmo') ||
-        searchText.includes('marketing coaching') ||
-        searchText.includes('growth hub onboarding') ||
-        searchText.includes('patient attraction')
-    ) {
-        return { code: '102.6', name: 'Marketing Coaching' };
-    }
-
-    // ====== 104.0 - LAB (Manufacture) - CHECK BEFORE 103.0 ======
-    if (
-        searchText.includes('manufacture') ||
-        searchText.includes('natural restoration') ||
-        searchText.includes('lab ') ||
-        searchText.includes('prosthesis') ||
-        searchText.includes('crown') ||
-        searchText.includes('veneer') ||
-        searchText.includes('surgical guide') ||
-        searchText.includes('abutment') ||
-        searchText.includes('direct restoration') ||
-        searchText.includes('bridge manufacture') ||
+        searchText.includes('manufacture') || searchText.includes('natural restoration') ||
+        searchText.includes('lab ') || searchText.includes('prosthesis') ||
+        searchText.includes('crown') || searchText.includes('veneer') ||
+        searchText.includes('surgical guide') || searchText.includes('abutment') ||
+        searchText.includes('direct restoration') || searchText.includes('bridge manufacture') ||
         searchText.includes('mockup manufacture')
-    ) {
-        return { code: '104.0', name: 'LAB' };
-    }
+    ) return { code: '104.0', name: 'LAB' };
 
-    // ====== 103.0 - Planning Center (Design services) ======
+    // 103.0 - Planning Center
     if (
-        searchText.includes('planning center') ||
-        searchText.includes('prep guide') ||
-        searchText.includes('prep kit') ||
-        searchText.includes('smile design') ||
-        searchText.includes('planning service') ||
-        searchText.includes('dsd upper') ||
-        searchText.includes('dsd lower') ||
-        searchText.includes('dsd diagnostic') ||
-        searchText.includes('diagnostic design') ||
-        searchText.includes('ortho planning') ||
-        searchText.includes('ortho tps') ||
-        searchText.includes('ortho quality') ||
-        searchText.includes('mockup design') ||
-        searchText.includes('motivational mockup') ||
-        searchText.includes('clic guide') ||
-        searchText.includes('update upper') ||
-        searchText.includes('update lower') ||
-        searchText.includes('denture design') ||
-        searchText.includes('deprogrammer design') ||
-        searchText.includes('implant planning') ||
-        searchText.includes('guide design') ||
-        searchText.includes('tad guide') ||
-        searchText.includes('interdisciplinary') ||
-        searchText.includes('restorative planning') ||
-        searchText.includes('injected design') ||
-        searchText.includes('additional design') ||
-        searchText.includes('over prep') ||
-        searchText.includes('invisalign')
-    ) {
-        return { code: '103.0', name: 'Planning Center' };
-    }
+        searchText.includes('planning center') || searchText.includes('prep guide') ||
+        searchText.includes('prep kit') || searchText.includes('smile design') ||
+        searchText.includes('planning service') || searchText.includes('dsd upper') ||
+        searchText.includes('dsd lower') || searchText.includes('dsd diagnostic') ||
+        searchText.includes('diagnostic design') || searchText.includes('ortho planning') ||
+        searchText.includes('ortho tps') || searchText.includes('ortho quality') ||
+        searchText.includes('mockup design') || searchText.includes('motivational mockup') ||
+        searchText.includes('clic guide') || searchText.includes('update upper') ||
+        searchText.includes('update lower') || searchText.includes('denture design') ||
+        searchText.includes('deprogrammer design') || searchText.includes('implant planning') ||
+        searchText.includes('guide design') || searchText.includes('tad guide') ||
+        searchText.includes('interdisciplinary') || searchText.includes('restorative planning') ||
+        searchText.includes('injected design') || searchText.includes('additional design') ||
+        searchText.includes('over prep') || searchText.includes('invisalign')
+    ) return { code: '103.0', name: 'Planning Center' };
 
-    // ====== 105.0 - Other Income ======
-
-    // 105.1 - Level 1 Subscriptions (Growth Hub subscriptions)
+    // 105.1 - Level 1
     if (
-        searchText.includes('dsd growth hub') ||
-        searchText.includes('growth hub') ||
-        searchText.includes('monthly subscription') ||
-        searchText.includes('subscription') ||
-        searchText.includes('online access') ||
-        searchText.includes('dsd online') ||
-        searchText.includes('level 2 annual') ||
-        searchText.includes('annual plan')
-    ) {
-        return { code: '105.1', name: 'Level 1 Subscriptions' };
-    }
+        searchText.includes('dsd growth hub') || searchText.includes('growth hub') ||
+        searchText.includes('monthly subscription') || searchText.includes('subscription') ||
+        searchText.includes('online access') || searchText.includes('dsd online') ||
+        searchText.includes('level 2 annual') || searchText.includes('annual plan')
+    ) return { code: '105.1', name: 'Level 1' };
 
-    // DSD Coaching
-    if (searchText.includes('dsd coaching') || searchText.includes('coaching')) {
-        return { code: '102.6', name: 'Marketing Coaching' };
-    }
+    // 105.2 - CORE Partnerships
+    if (searchText.includes('core partnership') || searchText.includes('core member'))
+        return { code: '105.2', name: 'CORE Partnerships' };
+
+    // 105.3 - Study Club
+    if (searchText.includes('study club'))
+        return { code: '105.3', name: 'Study Club' };
 
     // 105.4 - Other Marketing Revenues
-    if (
-        searchText.includes('cancellation fee') ||
-        searchText.includes('reschedule fee') ||
-        searchText.includes('late fee')
-    ) {
+    if (searchText.includes('cancellation fee') || searchText.includes('reschedule fee') || searchText.includes('late fee'))
         return { code: '105.4', name: 'Other Marketing Revenues' };
-    }
 
-    // Fallback: sem mapeamento
     return { code: null, name: null };
 }
 
 /**
  * API para upload de Invoice Orders via CSV/XLSX
- * Aceita arquivos com colunas flexíveis, mapeando todas as colunas para custom_data
+ * Retorna dados parseados para classificação no popup do frontend
+ * Duplicados são detectados e sobrescritos (upsert)
  */
-
 export async function POST(request: NextRequest) {
     try {
         console.log("🚀 [Invoice Orders] Iniciando processamento...");
@@ -184,86 +114,40 @@ export async function POST(request: NextRequest) {
         const file = formData.get("file") as File;
 
         if (!file) {
-            console.error("❌ Nenhum arquivo enviado");
-            return NextResponse.json(
-                { success: false, error: "Nenhum arquivo foi enviado" },
-                { status: 400 }
-            );
+            return NextResponse.json({ success: false, error: "Nenhum arquivo foi enviado" }, { status: 400 });
         }
 
         const validExtensions = [".csv", ".xlsx", ".xls"];
-        const hasValidExtension = validExtensions.some((ext) =>
-            file.name.toLowerCase().endsWith(ext)
-        );
-
-        if (!hasValidExtension) {
-            console.error("❌ Formato inválido:", file.name);
-            return NextResponse.json(
-                { success: false, error: "Formato inválido. Envie arquivos CSV, XLSX ou XLS" },
-                { status: 400 }
-            );
+        if (!validExtensions.some((ext) => file.name.toLowerCase().endsWith(ext))) {
+            return NextResponse.json({ success: false, error: "Formato inválido. Envie arquivos CSV, XLSX ou XLS" }, { status: 400 });
         }
-
-        console.log("📁 Arquivo:", file.name, "| Tamanho:", file.size, "bytes");
 
         const arrayBuffer = await file.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: "array" });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
 
-        console.log("📊 Planilha:", sheetName, "| Range:", worksheet["!ref"]);
-
-        // Ler como array de objetos
-        const rawData = XLSX.utils.sheet_to_json(worksheet, {
-            header: 1,
-            raw: true,
-            defval: null
-        }) as unknown[][];
-
-        console.log("📋 Total de linhas:", rawData.length);
+        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true, defval: null }) as unknown[][];
 
         if (rawData.length < 2) {
-            return NextResponse.json(
-                { success: false, error: "Arquivo vazio ou sem dados" },
-                { status: 400 }
-            );
+            return NextResponse.json({ success: false, error: "Arquivo vazio ou sem dados" }, { status: 400 });
         }
 
-        // Primeira linha é o header
-        const headers = (rawData[0] as string[]).map((h) =>
-            String(h || "").trim()
-        );
-        console.log("🔑 Headers encontrados:", headers);
+        const headers = (rawData[0] as string[]).map((h) => String(h || "").trim());
 
-        // Identificar colunas importantes - ordem de prioridade específica
         const colIndex = {
             id: headers.findIndex((h) => h.toUpperCase() === "ID"),
             number: headers.findIndex((h) => h.toUpperCase() === "NUMBER"),
-            // Invoice Date tem prioridade sobre Order Date
             date: headers.findIndex((h) => h.toUpperCase() === "INVOICE DATE") !== -1
                 ? headers.findIndex((h) => h.toUpperCase() === "INVOICE DATE")
-                : headers.findIndex((h) =>
-                    h.toUpperCase().includes("DATE") || h.toUpperCase().includes("FECHA")
-                ),
-            // Total é a coluna principal de valor
+                : headers.findIndex((h) => h.toUpperCase().includes("DATE") || h.toUpperCase().includes("FECHA")),
             amount: headers.findIndex((h) => h.toUpperCase() === "TOTAL") !== -1
                 ? headers.findIndex((h) => h.toUpperCase() === "TOTAL")
-                : headers.findIndex((h) =>
-                    h.toUpperCase().includes("AMOUNT") ||
-                    h.toUpperCase().includes("TOTAL") ||
-                    h.toUpperCase().includes("VALOR")
-                ),
-            // Products como descrição principal
+                : headers.findIndex((h) => h.toUpperCase().includes("AMOUNT") || h.toUpperCase().includes("TOTAL") || h.toUpperCase().includes("VALOR")),
             description: headers.findIndex((h) => h.toUpperCase() === "PRODUCTS") !== -1
                 ? headers.findIndex((h) => h.toUpperCase() === "PRODUCTS")
-                : headers.findIndex((h) =>
-                    h.toUpperCase().includes("DESCRIPTION") ||
-                    h.toUpperCase().includes("DESCRIPCION") ||
-                    h.toUpperCase().includes("NAME")
-                ),
-            // Order é a coluna do order ID (não confundir com Order Date/Status)
+                : headers.findIndex((h) => h.toUpperCase().includes("DESCRIPTION") || h.toUpperCase().includes("DESCRIPCION") || h.toUpperCase().includes("NAME")),
             orderNumber: headers.findIndex((h) => h.toUpperCase() === "ORDER"),
-            // Colunas adicionais específicas do CSV de invoices
             currency: headers.findIndex((h) => h.toUpperCase() === "CURRENCY"),
             company: headers.findIndex((h) => h.toUpperCase() === "COMPANY"),
             client: headers.findIndex((h) => h.toUpperCase() === "CLIENT"),
@@ -274,256 +158,237 @@ export async function POST(request: NextRequest) {
             charged: headers.findIndex((h) => h.toUpperCase() === "CHARGED")
         };
 
-        console.log("🗺️ Mapeamento de colunas:");
-        console.log("  ID:", colIndex.id !== -1 ? `Coluna ${colIndex.id} (${headers[colIndex.id]})` : "❌");
-        console.log("  Number:", colIndex.number !== -1 ? `Coluna ${colIndex.number} (${headers[colIndex.number]})` : "❌");
-        console.log("  Date:", colIndex.date !== -1 ? `Coluna ${colIndex.date} (${headers[colIndex.date]})` : "❌");
-        console.log("  Amount/Total:", colIndex.amount !== -1 ? `Coluna ${colIndex.amount} (${headers[colIndex.amount]})` : "❌");
-        console.log("  Description/Products:", colIndex.description !== -1 ? `Coluna ${colIndex.description} (${headers[colIndex.description]})` : "⚠️");
-        console.log("  Order:", colIndex.orderNumber !== -1 ? `Coluna ${colIndex.orderNumber} (${headers[colIndex.orderNumber]})` : "⚠️");
-        console.log("  Currency:", colIndex.currency !== -1 ? `Coluna ${colIndex.currency}` : "⚠️");
-        console.log("  Payment Method:", colIndex.paymentMethod !== -1 ? `Coluna ${colIndex.paymentMethod}` : "⚠️");
+        // ── Buscar mapeamentos prévios de produto → FA do product_pnl_mappings ──
+        const { data: priorMappings } = await supabaseAdmin
+            .from("product_pnl_mappings")
+            .select("product_name, financial_account_code");
+        const productFAMap = new Map<string, string>();
+        if (priorMappings) {
+            for (const m of priorMappings) {
+                productFAMap.set(m.product_name.toLowerCase().trim(), m.financial_account_code);
+            }
+        }
 
-        // Processar linhas de dados
         const dataRows = rawData.slice(1);
-        let processedCount = 0;
         let skippedCount = 0;
 
-        // Log da primeira linha para debug
-        if (dataRows.length > 0) {
-            console.log("🔍 Primeira linha de dados:", JSON.stringify(dataRows[0]));
-        }
+        const parsedRows: Array<{
+            invoiceNumber: string;
+            invoiceId: string;
+            date: string;
+            amount: number;
+            description: string;
+            orderNumber: string | null;
+            currency: string;
+            customerName: string;
+            customerEmail: string;
+            suggestedFA: string | null;
+            suggestedFAName: string | null;
+            faSource: "prior_mapping" | "keyword" | "none";
+            customData: Record<string, unknown>;
+        }> = [];
 
-        const rows = dataRows
-            .map((row, index) => {
-                try {
-                    const rowArr = row as unknown[];
+        for (let index = 0; index < dataRows.length; index++) {
+            try {
+                const rowArr = dataRows[index] as unknown[];
 
-                    // Pegar ID ou Number para identificação
-                    const invoiceId =
-                        colIndex.id !== -1 ? String(rowArr[colIndex.id] || "") : "";
-                    const invoiceNumber =
-                        colIndex.number !== -1 ? String(rowArr[colIndex.number] || "") : invoiceId;
+                const invoiceId = colIndex.id !== -1 ? String(rowArr[colIndex.id] || "") : "";
+                const invoiceNumber = colIndex.number !== -1 ? String(rowArr[colIndex.number] || "") : invoiceId;
 
-                    // Pular linhas sem identificador
-                    if (!invoiceId && !invoiceNumber) {
-                        skippedCount++;
-                        return null;
+                if (!invoiceId && !invoiceNumber) { skippedCount++; continue; }
+
+                // Date parsing
+                let dateValue: string | null = null;
+                if (colIndex.date !== -1 && rowArr[colIndex.date]) {
+                    const rawDate = rowArr[colIndex.date];
+                    if (typeof rawDate === "number") {
+                        const parsed = XLSX.SSF.parse_date_code(rawDate);
+                        if (parsed) dateValue = `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(parsed.d).padStart(2, "0")}`;
+                    } else if (typeof rawDate === "string") {
+                        if (rawDate.match(/^\d{4}-\d{2}-\d{2}/)) dateValue = rawDate.substring(0, 10);
+                        else if (rawDate.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+                            const [day, month, year] = rawDate.split("/");
+                            dateValue = `${year}-${month}-${day}`;
+                        } else dateValue = rawDate;
                     }
-
-                    // Date - converter serial Excel se necessário
-                    let dateValue: string | null = null;
-                    if (colIndex.date !== -1 && rowArr[colIndex.date]) {
-                        const rawDate = rowArr[colIndex.date];
-                        if (typeof rawDate === "number") {
-                            // Serial Excel
-                            const parsed = XLSX.SSF.parse_date_code(rawDate);
-                            if (parsed) {
-                                dateValue = `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(
-                                    parsed.d
-                                ).padStart(2, "0")}`;
-                            }
-                        } else if (typeof rawDate === "string") {
-                            // Tentar parsear ISO ou dd/mm/yyyy
-                            if (rawDate.match(/^\d{4}-\d{2}-\d{2}/)) {
-                                dateValue = rawDate.substring(0, 10);
-                            } else if (rawDate.match(/^\d{2}\/\d{2}\/\d{4}/)) {
-                                const [day, month, year] = rawDate.split("/");
-                                dateValue = `${year}-${month}-${day}`;
-                            } else {
-                                dateValue = rawDate;
-                            }
-                        }
-                    }
-
-                    // Amount
-                    let amount = 0;
-                    if (colIndex.amount !== -1 && rowArr[colIndex.amount]) {
-                        const rawAmount = rowArr[colIndex.amount];
-                        if (typeof rawAmount === "number") {
-                            amount = rawAmount;
-                        } else if (typeof rawAmount === "string") {
-                            // Parse com vírgula como decimal
-                            amount = parseFloat(rawAmount.replace(",", ".").replace(/[^\d.-]/g, "")) || 0;
-                        }
-                    }
-
-                    // Description
-                    const description =
-                        colIndex.description !== -1
-                            ? String(rowArr[colIndex.description] || "")
-                            : invoiceNumber;
-
-                    // Order Number
-                    const orderNumber =
-                        colIndex.orderNumber !== -1
-                            ? String(rowArr[colIndex.orderNumber] || "")
-                            : null;
-
-                    // Currency
-                    const currency =
-                        colIndex.currency !== -1
-                            ? String(rowArr[colIndex.currency] || "EUR")
-                            : "EUR";
-
-                    // Mapear todas as colunas para custom_data
-                    const customData: Record<string, unknown> = {
-                        file_name: file.name,
-                        row_index: index + 2, // +2 para contar header e 0-index
-                        // Campos específicos normalizados
-                        ID: invoiceId,
-                        Number: invoiceNumber,
-                        order_id: orderNumber,
-                        order_number: orderNumber,
-                        currency: currency
-                    };
-
-                    headers.forEach((header, i) => {
-                        if (header && rowArr[i] !== null && rowArr[i] !== undefined) {
-                            // Normalizar nome da chave (snake_case)
-                            const key = header.replace(/\s+/g, "_").replace(/[^\w]/g, "");
-                            customData[key] = rowArr[i];
-                        }
-                    });
-
-                    // Normalize customer fields from any casing variant
-                    // This ensures homogenization API can always find customer_name and customer_email
-                    const custName = String(
-                        customData.Client || customData.CLIENT || customData.client ||
-                        customData.Company || customData.COMPANY || customData.company || ""
-                    ).trim();
-                    const custEmail = String(
-                        customData.Email || customData.EMAIL || customData.email || ""
-                    ).trim();
-                    if (custName) customData.customer_name = custName;
-                    if (custEmail) customData.customer_email = custEmail;
-                    if (customData.Company || customData.COMPANY || customData.company) {
-                        customData.company_name = String(
-                            customData.Company || customData.COMPANY || customData.company || ""
-                        ).trim();
-                    }
-
-                    // 💰 Financial Account: Mapear produto → conta de receita
-                    const financialAccount = getFinancialAccountCode(description, invoiceNumber);
-                    customData.financial_account_code = financialAccount.code;
-                    customData.financial_account_name = financialAccount.name;
-
-                    processedCount++;
-
-                    return {
-                        source: "invoice-orders",
-                        file_name: file.name,
-                        date: dateValue || new Date().toISOString().split("T")[0],
-                        description: description.substring(0, 500),
-                        amount: amount,
-                        reconciled: false,
-                        custom_data: customData
-                    };
-                } catch (err) {
-                    console.error(`❌ Erro na linha ${index + 2}:`, err);
-                    skippedCount++;
-                    return null;
                 }
-            })
-            .filter(Boolean);
 
-        console.log(`\n✅ Processadas: ${processedCount} | Ignoradas: ${skippedCount}`);
+                // Amount
+                let amount = 0;
+                if (colIndex.amount !== -1 && rowArr[colIndex.amount]) {
+                    const rawAmount = rowArr[colIndex.amount];
+                    if (typeof rawAmount === "number") amount = rawAmount;
+                    else if (typeof rawAmount === "string") amount = parseFloat(rawAmount.replace(",", ".").replace(/[^\d.-]/g, "")) || 0;
+                }
 
-        if (rows.length === 0) {
-            return NextResponse.json(
-                { success: false, error: "Nenhuma linha válida encontrada no arquivo" },
-                { status: 400 }
-            );
+                const description = colIndex.description !== -1 ? String(rowArr[colIndex.description] || "") : invoiceNumber;
+                const orderNumber = colIndex.orderNumber !== -1 ? String(rowArr[colIndex.orderNumber] || "") : null;
+                const currency = colIndex.currency !== -1 ? String(rowArr[colIndex.currency] || "EUR") : "EUR";
+
+                // Custom data
+                const customData: Record<string, unknown> = {
+                    file_name: file.name,
+                    row_index: index + 2,
+                    ID: invoiceId,
+                    Number: invoiceNumber,
+                    order_id: orderNumber,
+                    order_number: orderNumber,
+                    currency: currency
+                };
+
+                headers.forEach((header, i) => {
+                    if (header && rowArr[i] !== null && rowArr[i] !== undefined) {
+                        const key = header.replace(/\s+/g, "_").replace(/[^\w]/g, "");
+                        customData[key] = rowArr[i];
+                    }
+                });
+
+                const custName = String(customData.Client || customData.CLIENT || customData.client || customData.Company || customData.COMPANY || customData.company || "").trim();
+                const custEmail = String(customData.Email || customData.EMAIL || customData.email || "").trim();
+                if (custName) customData.customer_name = custName;
+                if (custEmail) customData.customer_email = custEmail;
+                if (customData.Company || customData.COMPANY || customData.company) {
+                    customData.company_name = String(customData.Company || customData.COMPANY || customData.company || "").trim();
+                }
+
+                // ── FA Suggestion: 1) prior mapping, 2) keyword, 3) none ──
+                let suggestedFA: string | null = null;
+                let suggestedFAName: string | null = null;
+                let faSource: "prior_mapping" | "keyword" | "none" = "none";
+
+                const productKey = description.toLowerCase().trim();
+                if (productFAMap.has(productKey)) {
+                    suggestedFA = productFAMap.get(productKey)!;
+                    faSource = "prior_mapping";
+                } else {
+                    const suggestion = suggestFinancialAccountCode(description, invoiceNumber);
+                    if (suggestion.code) {
+                        suggestedFA = suggestion.code;
+                        suggestedFAName = suggestion.name;
+                        faSource = "keyword";
+                    }
+                }
+
+                parsedRows.push({
+                    invoiceNumber,
+                    invoiceId,
+                    date: dateValue || new Date().toISOString().split("T")[0],
+                    amount,
+                    description: description.substring(0, 500),
+                    orderNumber,
+                    currency,
+                    customerName: custName,
+                    customerEmail: custEmail,
+                    suggestedFA,
+                    suggestedFAName,
+                    faSource,
+                    customData
+                });
+            } catch (err) {
+                console.error(`❌ Erro na linha ${index + 2}:`, err);
+                skippedCount++;
+            }
         }
 
-        // Inserir no Supabase
-        console.log("💾 Salvando no Supabase...");
-        console.log("📊 Primeiro registro para debug:", JSON.stringify(rows[0], null, 2));
+        if (parsedRows.length === 0) {
+            return NextResponse.json({ success: false, error: "Nenhuma linha válida encontrada" }, { status: 400 });
+        }
 
-        // ── Deduplicação: verificar invoice_numbers já existentes ──
-        const invoiceNumbers = rows
-            .map((r: any) => r.custom_data?.invoice_number || r.custom_data?.Number || "")
-            .filter(Boolean);
+        // ── Detecção de duplicados (invoice_number + date + amount + customer) ──
+        const invoiceNumbers = parsedRows.map((r) => r.invoiceNumber).filter(Boolean);
+        const existingRows = new Map<string, string>(); // key → existing row id
 
-        const existingInvoices = new Set<string>();
         if (invoiceNumbers.length > 0) {
-            // Buscar invoice_numbers existentes em batches
             const uniqueInvs = [...new Set(invoiceNumbers)];
             for (let i = 0; i < uniqueInvs.length; i += 200) {
                 const batch = uniqueInvs.slice(i, i + 200);
                 const { data: existing } = await supabaseAdmin
                     .from("csv_rows")
-                    .select("custom_data->>invoice_number")
+                    .select("id, date, amount, description, custom_data")
                     .eq("source", "invoice-orders")
-                    .in("custom_data->>invoice_number", batch);
+                    .in("custom_data->>Number", batch);
                 if (existing) {
                     for (const row of existing) {
-                        const inv = (row as any).invoice_number;
-                        if (inv) existingInvoices.add(inv);
+                        const invNum = (row.custom_data as Record<string, unknown>)?.Number as string;
+                        if (invNum) {
+                            // Build composite key for strong matching
+                            const key = `${invNum}|${row.date}|${Math.round(parseFloat(row.amount) * 100)}`;
+                            existingRows.set(key, row.id);
+                            // Also index by invoice number alone as fallback
+                            existingRows.set(`inv:${invNum}`, row.id);
+                        }
                     }
                 }
             }
         }
 
-        // Filtrar duplicados do próprio ficheiro (manter primeiro) e do DB
-        const seenInFile = new Set<string>();
-        const deduped = rows.filter((r: any) => {
-            const inv = r.custom_data?.invoice_number || r.custom_data?.Number || "";
-            if (!inv) return true; // Sem invoice_number, inserir (não duplicável)
-            if (existingInvoices.has(inv) || seenInFile.has(inv)) return false;
-            seenInFile.add(inv);
-            return true;
-        });
+        // Classify each parsed row as new, duplicate-overwrite, or in-file-duplicate
+        const seenInFile = new Map<string, number>(); // compositeKey → index in parsedRows
+        const newRows: typeof parsedRows = [];
+        const duplicateOverwriteRows: Array<{ parsed: typeof parsedRows[0]; existingId: string }> = [];
+        let inFileDuplicates = 0;
 
-        const skippedDuplicates = rows.length - deduped.length;
-        if (skippedDuplicates > 0) {
-            console.log(`⚠️ ${skippedDuplicates} registros duplicados ignorados (invoice_number já existe)`);
-        }
+        for (const row of parsedRows) {
+            const compositeKey = `${row.invoiceNumber}|${row.date}|${Math.round(row.amount * 100)}`;
+            const invKey = `inv:${row.invoiceNumber}`;
 
-        // Inserir em batches de 500
-        const batchSize = 500;
-        let insertedCount = 0;
-
-        for (let i = 0; i < deduped.length; i += batchSize) {
-            const batch = deduped.slice(i, i + batchSize);
-
-            const { error: insertError } = await supabaseAdmin.from("csv_rows").insert(batch);
-
-            if (insertError) {
-                console.error("❌ Erro ao inserir batch:", JSON.stringify(insertError, null, 2));
-                throw insertError;
+            // In-file duplicate? Keep last one
+            if (seenInFile.has(compositeKey)) {
+                inFileDuplicates++;
+                const prevIdx = seenInFile.get(compositeKey)!;
+                // Replace the previous occurrence
+                const prevNew = newRows.findIndex((r) =>
+                    `${r.invoiceNumber}|${r.date}|${Math.round(r.amount * 100)}` === compositeKey
+                );
+                if (prevNew >= 0) newRows[prevNew] = row;
+                continue;
             }
+            seenInFile.set(compositeKey, newRows.length);
 
-            insertedCount += batch.length;
-            console.log(`📦 Batch ${Math.floor(i / batchSize) + 1}: ${batch.length} registros`);
+            // DB duplicate? Mark for overwrite
+            const existingId = existingRows.get(compositeKey) || existingRows.get(invKey);
+            if (existingId) {
+                duplicateOverwriteRows.push({ parsed: row, existingId });
+            } else {
+                newRows.push(row);
+            }
         }
 
-        console.log(`🎉 Upload concluído! ${insertedCount} registros salvos (${skippedDuplicates} duplicados ignorados)`);
+        console.log(`✅ Parsed: ${parsedRows.length} | New: ${newRows.length} | Overwrites: ${duplicateOverwriteRows.length} | In-file dupes: ${inFileDuplicates} | Skipped: ${skippedCount}`);
 
         return NextResponse.json({
             success: true,
             data: {
                 fileName: file.name,
-                rowCount: insertedCount,
-                skipped: skippedCount,
-                skippedDuplicates,
-                headers: headers
+                headers,
+                parsedRows: parsedRows.map((r) => ({
+                    invoiceNumber: r.invoiceNumber,
+                    invoiceId: r.invoiceId,
+                    date: r.date,
+                    amount: r.amount,
+                    description: r.description,
+                    orderNumber: r.orderNumber,
+                    currency: r.currency,
+                    customerName: r.customerName,
+                    customerEmail: r.customerEmail,
+                    suggestedFA: r.suggestedFA,
+                    suggestedFAName: r.suggestedFAName,
+                    faSource: r.faSource,
+                    customData: r.customData
+                })),
+                duplicateCount: duplicateOverwriteRows.length,
+                duplicateOverwrites: duplicateOverwriteRows.map((d) => ({
+                    invoiceNumber: d.parsed.invoiceNumber,
+                    existingId: d.existingId
+                })),
+                inFileDuplicates,
+                skippedEmpty: skippedCount,
+                totalParsed: parsedRows.length
             }
         });
     } catch (error) {
         console.error("❌ Erro no upload:", error);
-        const errorMessage = error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error !== null
-                ? JSON.stringify(error)
-                : "Erro desconhecido";
-        console.error("❌ Detalhes do erro:", errorMessage);
-        return NextResponse.json(
-            {
-                success: false,
-                error: errorMessage
-            },
-            { status: 500 }
-        );
+        const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+        return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
     }
 }

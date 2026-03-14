@@ -22,7 +22,8 @@ import {
     Zap,
     Settings2,
     Columns,
-    Check
+    Check,
+    CalendarRange
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { Breadcrumbs } from "@/components/app/breadcrumbs";
 import { supabase } from "@/lib/supabase";
@@ -79,6 +88,76 @@ interface ColumnConfig {
     visible: boolean;
     width?: string;
 }
+
+// Row parsed from upload API (not yet saved)
+interface ParsedUploadRow {
+    invoiceNumber: string;
+    invoiceId: string;
+    date: string;
+    amount: number;
+    description: string;
+    orderNumber: string | null;
+    currency: string;
+    customerName: string;
+    customerEmail: string;
+    suggestedFA: string | null;
+    suggestedFAName: string | null;
+    faSource: "prior_mapping" | "keyword" | "none";
+    customData: Record<string, unknown>;
+}
+
+interface DuplicateOverwrite {
+    invoiceNumber: string;
+    existingId: string;
+}
+
+// ── FA Code Options ──
+const FA_OPTIONS_POPUP1 = [
+    { code: "101.1", label: "101.1 — DSD Course" },
+    { code: "101.2", label: "101.2 — Others Courses" },
+    { code: "101.3", label: "101.3 — Mastership" },
+    { code: "101.4", label: "101.4 — PC Membership" },
+    { code: "101.5", label: "101.5 — Partnerships" },
+    { code: "102.0", label: "102.0 — Delight" },
+    { code: "103.0", label: "103.0 — Planning Center" },
+    { code: "104.0", label: "104.0 — LAB" },
+    { code: "105.1", label: "105.1 — Level 1" },
+    { code: "105.2", label: "105.2 — CORE Partnerships" },
+    { code: "105.3", label: "105.3 — Study Club" },
+    { code: "105.4", label: "105.4 — Other Marketing Revenues" },
+] as const;
+
+const DELIGHT_SUB_OPTIONS = [
+    { code: "102.1", label: "102.1 — Contracted ROW" },
+    { code: "102.2", label: "102.2 — Contracted AMEX" },
+    { code: "102.3", label: "102.3 — Level 3 New ROW" },
+    { code: "102.4", label: "102.4 — Level 3 New AMEX" },
+    { code: "102.5", label: "102.5 — Consultancies" },
+    { code: "102.6", label: "102.6 — Marketing Coaching" },
+] as const;
+
+// Delight → LAB/PC sub-account mapping
+const DELIGHT_TO_SUB: Record<string, { lab: string; pc: string }> = {
+    "102.1": { lab: "104.1", pc: "103.1" },
+    "102.2": { lab: "104.2", pc: "103.2" },
+    "102.3": { lab: "104.3", pc: "103.3" },
+    "102.4": { lab: "104.4", pc: "103.4" },
+};
+
+// Full FA name lookup
+const FA_NAMES: Record<string, string> = {
+    "101.1": "DSD Course", "101.2": "Others Courses", "101.3": "Mastership",
+    "101.4": "PC Membership", "101.5": "Partnerships",
+    "102.0": "Delight", "102.1": "Contracted ROW", "102.2": "Contracted AMEX",
+    "102.3": "Level 3 New ROW", "102.4": "Level 3 New AMEX",
+    "102.5": "Consultancies", "102.6": "Marketing Coaching",
+    "103.0": "Planning Center", "103.1": "Level 3 ROW", "103.2": "Level 3 AMEX",
+    "103.3": "Level 3 New ROW", "103.4": "Level 3 New AMEX",
+    "104.0": "LAB", "104.1": "Level 3 ROW", "104.2": "Level 3 AMEX",
+    "104.3": "Level 3 New ROW", "104.4": "Level 3 New AMEX",
+    "105.1": "Level 1", "105.2": "CORE Partnerships",
+    "105.3": "Study Club", "105.4": "Other Marketing Revenues",
+};
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
     { key: "invoice_number", label: "Invoice #", visible: true, width: "100px" },
@@ -129,6 +208,17 @@ export default function InvoiceOrdersPage() {
     // Column visibility
     const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
     const [allCustomColumns, setAllCustomColumns] = useState<ColumnConfig[]>([]);
+
+    // ── Upload Classification Popups ──
+    const [uploadedRows, setUploadedRows] = useState<ParsedUploadRow[]>([]);
+    const [duplicateOverwrites, setDuplicateOverwrites] = useState<DuplicateOverwrite[]>([]);
+    const [classifyDialogOpen, setClassifyDialogOpen] = useState(false);
+    const [delightDialogOpen, setDelightDialogOpen] = useState(false);
+    const [rowFACodes, setRowFACodes] = useState<Record<number, string>>({}); // index → FA code
+    const [delightCodes, setDelightCodes] = useState<Record<number, string>>({}); // index → delight sub-code
+    const [clientHistory, setClientHistory] = useState<Record<string, string>>({}); // clientKey → prior 102.x code
+    const [classifying, setClassifying] = useState(false);
+    const [annualizeFlags, setAnnualizeFlags] = useState<Record<number, boolean>>({}); // index → annualize toggle
 
     // Load data
     const loadData = useCallback(async () => {
@@ -216,7 +306,7 @@ export default function InvoiceOrdersPage() {
         loadData();
     }, [page, selectedYear]);
 
-    // Handle file upload
+    // Handle file upload — now opens classification popup instead of directly inserting
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
@@ -242,12 +332,30 @@ export default function InvoiceOrdersPage() {
                 return;
             }
 
-            toast({
-                title: "Upload concluído",
-                description: `${result.data.rowCount} invoices importadas com sucesso!`
-            });
+            const data = result.data;
+            const parsed: ParsedUploadRow[] = data.parsedRows;
+            const dupes: DuplicateOverwrite[] = data.duplicateOverwrites || [];
 
-            loadData();
+            // Initialize FA codes from suggestions
+            const initialCodes: Record<number, string> = {};
+            for (let i = 0; i < parsed.length; i++) {
+                if (parsed[i].suggestedFA) {
+                    initialCodes[i] = parsed[i].suggestedFA!;
+                }
+            }
+
+            setUploadedRows(parsed);
+            setDuplicateOverwrites(dupes);
+            setRowFACodes(initialCodes);
+            setAnnualizeFlags({});
+            setClassifyDialogOpen(true);
+
+            if (data.duplicateCount > 0) {
+                toast({
+                    title: `${data.duplicateCount} duplicados detectados`,
+                    description: "Serão atualizados (sobrescritos) ao confirmar."
+                });
+            }
         } catch (err) {
             console.error("Upload error:", err);
             toast({
@@ -258,6 +366,280 @@ export default function InvoiceOrdersPage() {
         } finally {
             setUploading(false);
             event.target.value = "";
+        }
+    };
+
+    // ── Popup 1 → Next: check for Delight rows or save directly ──
+    const handleClassifyNext = async () => {
+        // Validate all rows have FA code
+        const unclassified = uploadedRows.filter((_, i) => !rowFACodes[i]);
+        if (unclassified.length > 0) {
+            toast({
+                title: "Classificação incompleta",
+                description: `${unclassified.length} linhas sem conta financeira atribuída.`,
+                variant: "destructive"
+            });
+            return;
+        }
+
+        // Check if any rows classified as 102.0 Delight
+        const delightIndices = uploadedRows
+            .map((_, i) => i)
+            .filter((i) => rowFACodes[i] === "102.0");
+
+        if (delightIndices.length > 0) {
+            // Fetch client history for Delight clients before opening Popup 2
+            await fetchClientHistory(delightIndices);
+            setClassifyDialogOpen(false);
+            setDelightDialogOpen(true);
+        } else {
+            // No Delight rows → save directly
+            await saveClassifications();
+        }
+    };
+
+    // ── Fetch client history for Delight suggestion ──
+    const fetchClientHistory = async (delightIndices: number[]) => {
+        const clientKeys = new Set<string>();
+        const clientEmails = new Set<string>();
+        const clientNames = new Set<string>();
+
+        for (const i of delightIndices) {
+            const row = uploadedRows[i];
+            if (row.customerEmail) clientEmails.add(row.customerEmail.toLowerCase());
+            if (row.customerName) clientNames.add(row.customerName.toLowerCase());
+        }
+
+        // Query prior year 102.x classifications
+        const currentYear = new Date().getFullYear();
+        const priorYearStart = `${currentYear - 1}-01-01`;
+        const priorYearEnd = `${currentYear - 1}-12-31`;
+
+        const history: Record<string, string> = {};
+
+        // Query by email first (more reliable)
+        if (clientEmails.size > 0) {
+            const emails = [...clientEmails];
+            for (let i = 0; i < emails.length; i += 50) {
+                const batch = emails.slice(i, i + 50);
+                const { data } = await supabase
+                    .from("csv_rows")
+                    .select("custom_data")
+                    .eq("source", "invoice-orders")
+                    .gte("date", priorYearStart)
+                    .lte("date", priorYearEnd)
+                    .in("custom_data->>customer_email", batch)
+                    .like("custom_data->>financial_account_code", "102.%");
+
+                if (data) {
+                    for (const row of data) {
+                        const cd = row.custom_data as Record<string, unknown>;
+                        const email = String(cd.customer_email || "").toLowerCase();
+                        const faCode = String(cd.financial_account_code || "");
+                        if (email && faCode.startsWith("102.") && faCode !== "102.0") {
+                            history[`email:${email}`] = faCode;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Also query by name for clients without email match
+        if (clientNames.size > 0) {
+            const names = [...clientNames];
+            for (let i = 0; i < names.length; i += 50) {
+                const batch = names.slice(i, i + 50);
+                const { data } = await supabase
+                    .from("csv_rows")
+                    .select("custom_data")
+                    .eq("source", "invoice-orders")
+                    .gte("date", priorYearStart)
+                    .lte("date", priorYearEnd)
+                    .in("custom_data->>customer_name", batch)
+                    .like("custom_data->>financial_account_code", "102.%");
+
+                if (data) {
+                    for (const row of data) {
+                        const cd = row.custom_data as Record<string, unknown>;
+                        const name = String(cd.customer_name || "").toLowerCase();
+                        const faCode = String(cd.financial_account_code || "");
+                        if (name && faCode.startsWith("102.") && faCode !== "102.0") {
+                            if (!history[`name:${name}`]) {
+                                history[`name:${name}`] = faCode;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Build suggestions for Delight rows
+        const newDelightCodes: Record<number, string> = {};
+        for (const i of delightIndices) {
+            const row = uploadedRows[i];
+            const emailKey = row.customerEmail ? `email:${row.customerEmail.toLowerCase()}` : "";
+            const nameKey = row.customerName ? `name:${row.customerName.toLowerCase()}` : "";
+
+            const priorCode = (emailKey && history[emailKey]) || (nameKey && history[nameKey]) || null;
+
+            if (priorCode) {
+                // Apply renewal rules
+                if (priorCode === "102.4") newDelightCodes[i] = "102.2"; // New AMEX → Contracted AMEX
+                else if (priorCode === "102.3") newDelightCodes[i] = "102.1"; // New ROW → Contracted ROW
+                else if (priorCode === "102.2") newDelightCodes[i] = "102.2"; // Keep Contracted AMEX
+                else if (priorCode === "102.1") newDelightCodes[i] = "102.1"; // Keep Contracted ROW
+                else newDelightCodes[i] = priorCode; // Other sub-codes: keep as-is
+            }
+            // No history → left blank for manual selection
+        }
+
+        setClientHistory(history);
+        setDelightCodes(newDelightCodes);
+    };
+
+    // ── Popup 2 → Confirm: apply LAB/PC auto-assignment, then save ──
+    const handleDelightConfirm = async () => {
+        // Validate all Delight rows have sub-code
+        const delightIndices = uploadedRows
+            .map((_, i) => i)
+            .filter((i) => rowFACodes[i] === "102.0");
+
+        const unclassified = delightIndices.filter((i) => !delightCodes[i]);
+        if (unclassified.length > 0) {
+            toast({
+                title: "Classificação Delight incompleta",
+                description: `${unclassified.length} linhas Delight sem sub-conta atribuída.`,
+                variant: "destructive"
+            });
+            return;
+        }
+
+        // Build client → delight map for LAB/PC auto-assignment
+        const clientDelightMap = new Map<string, string>(); // clientKey → delight sub-code
+        for (const i of delightIndices) {
+            const row = uploadedRows[i];
+            const subCode = delightCodes[i];
+            if (row.customerEmail) clientDelightMap.set(row.customerEmail.toLowerCase(), subCode);
+            if (row.customerName) clientDelightMap.set(row.customerName.toLowerCase(), subCode);
+        }
+
+        // Apply Delight sub-codes to 102.0 rows
+        const updatedCodes = { ...rowFACodes };
+        for (const i of delightIndices) {
+            updatedCodes[i] = delightCodes[i];
+        }
+
+        // Auto-assign LAB (104.0) and PC (103.0) sub-accounts
+        for (let i = 0; i < uploadedRows.length; i++) {
+            const currentCode = updatedCodes[i];
+            if (currentCode === "103.0" || currentCode === "104.0") {
+                const row = uploadedRows[i];
+                const clientKey = row.customerEmail?.toLowerCase() || row.customerName?.toLowerCase();
+                if (clientKey) {
+                    const delightSub = clientDelightMap.get(clientKey);
+                    if (delightSub && DELIGHT_TO_SUB[delightSub]) {
+                        updatedCodes[i] = currentCode === "104.0"
+                            ? DELIGHT_TO_SUB[delightSub].lab
+                            : DELIGHT_TO_SUB[delightSub].pc;
+                    }
+                }
+            }
+        }
+
+        setRowFACodes(updatedCodes);
+        setDelightDialogOpen(false);
+        await saveClassifications(updatedCodes);
+    };
+
+    // ── Save all classified rows to DB ──
+    const saveClassifications = async (overrideCodes?: Record<number, string>) => {
+        setClassifying(true);
+        const codes = overrideCodes || rowFACodes;
+
+        try {
+            // Build duplicate overwrite lookup: invoiceNumber → existingId
+            const dupeMap = new Map<string, string>();
+            for (const d of duplicateOverwrites) {
+                dupeMap.set(d.invoiceNumber, d.existingId);
+            }
+
+            const classifyRows = uploadedRows.map((row, i) => ({
+                source: "invoice-orders",
+                file_name: row.customData?.file_name || "upload",
+                date: row.date,
+                description: row.description,
+                amount: row.amount,
+                customData: row.customData,
+                financialAccountCode: codes[i] || "",
+                existingId: dupeMap.get(row.invoiceNumber) || undefined
+            }));
+
+            const response = await fetch("/api/invoice-orders/classify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ rows: classifyRows })
+            });
+
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error);
+
+            // Handle annualize for flagged rows
+            const annualizeCount = Object.entries(annualizeFlags).filter(([, v]) => v).length;
+            if (annualizeCount > 0) {
+                // We need to find the newly created row IDs to annualize.
+                // Reload data and match by invoice number + date
+                const { data: newData } = await supabase
+                    .from("csv_rows")
+                    .select("id, description, date, amount, custom_data")
+                    .eq("source", "invoice-orders")
+                    .order("created_at", { ascending: false })
+                    .limit(uploadedRows.length + 10);
+
+                if (newData) {
+                    for (const [idxStr, flag] of Object.entries(annualizeFlags)) {
+                        if (!flag) continue;
+                        const idx = parseInt(idxStr);
+                        const row = uploadedRows[idx];
+                        // Find matching row in DB
+                        const match = newData.find(
+                            (d) => d.description === row.description &&
+                                d.date === row.date &&
+                                Math.abs(parseFloat(d.amount) - row.amount) < 0.01
+                        );
+                        if (match) {
+                            await fetch("/api/invoice-orders/annualize", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ rowId: match.id })
+                            });
+                        }
+                    }
+                }
+            }
+
+            setClassifyDialogOpen(false);
+            setDelightDialogOpen(false);
+
+            const parts = [];
+            if (result.data.inserted) parts.push(`${result.data.inserted} inseridas`);
+            if (result.data.overwritten) parts.push(`${result.data.overwritten} atualizadas`);
+            if (annualizeCount > 0) parts.push(`${annualizeCount} anualizadas`);
+
+            toast({
+                title: "Classificação concluída",
+                description: parts.join(", ") + "."
+            });
+
+            loadData();
+        } catch (err) {
+            console.error("Classification error:", err);
+            toast({
+                title: "Erro na classificação",
+                description: String(err),
+                variant: "destructive"
+            });
+        } finally {
+            setClassifying(false);
         }
     };
 
@@ -928,6 +1310,242 @@ export default function InvoiceOrdersPage() {
                         <Button variant="outline" onClick={() => setDetailsDialogOpen(false)}>
                             Close
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ═══════════════════════════════════════════════════════════════
+                POPUP 1 — Financial Account Classification
+            ═══════════════════════════════════════════════════════════════ */}
+            <Dialog open={classifyDialogOpen} onOpenChange={(open) => { if (!classifying) setClassifyDialogOpen(open); }}>
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-6xl max-h-[90vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Settings2 className="h-5 w-5 text-blue-400" />
+                            Classificar Invoice Orders — Conta Financeira
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-500 dark:text-gray-400">
+                            {uploadedRows.length} linhas importadas.
+                            {duplicateOverwrites.length > 0 && (
+                                <span className="text-amber-500 ml-2">
+                                    {duplicateOverwrites.length} duplicados serão sobrescritos.
+                                </span>
+                            )}
+                            {" "}Atribua uma conta financeira a cada linha.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <ScrollArea className="flex-1 min-h-0 pr-2">
+                        <table className="w-full text-sm">
+                            <thead className="sticky top-0 z-10">
+                                <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[90px]">Data</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[140px]">Cliente</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Produto</th>
+                                    <th className="px-2 py-2 text-right text-xs text-gray-500 dark:text-gray-400 w-[90px]">Valor</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[250px]">Conta Financeira</th>
+                                    <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[70px]">12x</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {uploadedRows.map((row, i) => {
+                                    const isDuplicate = duplicateOverwrites.some((d) => d.invoiceNumber === row.invoiceNumber);
+                                    return (
+                                        <tr
+                                            key={i}
+                                            className={`border-b border-gray-100 dark:border-gray-800 ${isDuplicate ? "bg-amber-50 dark:bg-amber-900/10" : ""}`}
+                                        >
+                                            <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs">{formatDate(row.date)}</td>
+                                            <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[140px]" title={row.customerName}>
+                                                {row.customerName || "-"}
+                                            </td>
+                                            <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs">
+                                                <span className="truncate block max-w-[300px]" title={row.description}>
+                                                    {row.description}
+                                                </span>
+                                                {row.faSource !== "none" && (
+                                                    <Badge className={`text-[10px] mt-0.5 ${row.faSource === "prior_mapping" ? "bg-green-900/20 text-green-500 border-green-800" : "bg-blue-900/20 text-blue-400 border-blue-800"}`}>
+                                                        {row.faSource === "prior_mapping" ? "mapeado" : "sugerido"}
+                                                    </Badge>
+                                                )}
+                                            </td>
+                                            <td className="px-2 py-1.5 text-right text-xs font-mono">
+                                                <span className={row.amount >= 0 ? "text-green-500" : "text-red-400"}>
+                                                    {formatEuropeanNumber(row.amount)}
+                                                </span>
+                                            </td>
+                                            <td className="px-2 py-1.5">
+                                                <Select
+                                                    value={rowFACodes[i] || ""}
+                                                    onValueChange={(val) => setRowFACodes((prev) => ({ ...prev, [i]: val }))}
+                                                >
+                                                    <SelectTrigger className="h-7 text-xs bg-white dark:bg-black border-gray-300 dark:border-gray-600">
+                                                        <SelectValue placeholder="Selecionar..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
+                                                        {FA_OPTIONS_POPUP1.map((opt) => (
+                                                            <SelectItem key={opt.code} value={opt.code} className="text-xs">
+                                                                {opt.label}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </td>
+                                            <td className="px-2 py-1.5 text-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAnnualizeFlags((prev) => ({ ...prev, [i]: !prev[i] }))}
+                                                    className={`h-6 w-6 rounded border flex items-center justify-center transition-colors ${annualizeFlags[i]
+                                                        ? "bg-purple-600 border-purple-500 text-white"
+                                                        : "border-gray-300 dark:border-gray-600 text-gray-400 hover:border-purple-400"
+                                                        }`}
+                                                    title="Anualizar (12 parcelas mensais)"
+                                                >
+                                                    <CalendarRange className="h-3.5 w-3.5" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </ScrollArea>
+
+                    <DialogFooter className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-2 w-full justify-between">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {Object.keys(rowFACodes).length}/{uploadedRows.length} classificadas
+                                {Object.values(annualizeFlags).filter(Boolean).length > 0 && (
+                                    <span className="text-purple-400 ml-2">
+                                        {Object.values(annualizeFlags).filter(Boolean).length} para anualizar
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={() => setClassifyDialogOpen(false)} disabled={classifying}>
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    onClick={handleClassifyNext}
+                                    disabled={classifying}
+                                >
+                                    {classifying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                                    {uploadedRows.some((_, i) => rowFACodes[i] === "102.0") ? "Próximo →" : "Confirmar"}
+                                </Button>
+                            </div>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ═══════════════════════════════════════════════════════════════
+                POPUP 2 — Delight Sub-Classification
+            ═══════════════════════════════════════════════════════════════ */}
+            <Dialog open={delightDialogOpen} onOpenChange={(open) => { if (!classifying) setDelightDialogOpen(open); }}>
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-5xl max-h-[85vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Zap className="h-5 w-5 text-purple-400" />
+                            Classificação Delight — Sub-conta
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-500 dark:text-gray-400">
+                            Refinar as linhas Delight (102.0) com a sub-conta específica.
+                            Sugestões automáticas baseadas no histórico do cliente no ano anterior.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <ScrollArea className="flex-1 min-h-0 pr-2">
+                        <table className="w-full text-sm">
+                            <thead className="sticky top-0 z-10">
+                                <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[90px]">Data</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[160px]">Cliente</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Produto</th>
+                                    <th className="px-2 py-2 text-right text-xs text-gray-500 dark:text-gray-400 w-[90px]">Valor</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[260px]">Sub-conta Delight</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {uploadedRows.map((row, i) => {
+                                    if (rowFACodes[i] !== "102.0") return null;
+                                    const hasSuggestion = !!delightCodes[i];
+                                    return (
+                                        <tr key={i} className="border-b border-gray-100 dark:border-gray-800">
+                                            <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs">{formatDate(row.date)}</td>
+                                            <td className="px-2 py-1.5 text-xs">
+                                                <div className="text-gray-700 dark:text-gray-300 truncate max-w-[160px]" title={row.customerName}>
+                                                    {row.customerName || "-"}
+                                                </div>
+                                                {row.customerEmail && (
+                                                    <div className="text-gray-400 text-[10px] truncate" title={row.customerEmail}>
+                                                        {row.customerEmail}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[250px]" title={row.description}>
+                                                {row.description}
+                                            </td>
+                                            <td className="px-2 py-1.5 text-right text-xs font-mono text-green-500">
+                                                {formatEuropeanNumber(row.amount)}
+                                            </td>
+                                            <td className="px-2 py-1.5">
+                                                <div className="flex items-center gap-1">
+                                                    <Select
+                                                        value={delightCodes[i] || ""}
+                                                        onValueChange={(val) => setDelightCodes((prev) => ({ ...prev, [i]: val }))}
+                                                    >
+                                                        <SelectTrigger className={`h-7 text-xs border-gray-300 dark:border-gray-600 ${hasSuggestion ? "bg-green-50 dark:bg-green-900/10 border-green-400 dark:border-green-700" : "bg-white dark:bg-black"}`}>
+                                                            <SelectValue placeholder="Selecionar sub-conta..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
+                                                            {DELIGHT_SUB_OPTIONS.map((opt) => (
+                                                                <SelectItem key={opt.code} value={opt.code} className="text-xs">
+                                                                    {opt.label}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {hasSuggestion && (
+                                                        <Badge className="bg-green-900/20 text-green-500 border-green-800 text-[10px] whitespace-nowrap">
+                                                            auto
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </ScrollArea>
+
+                    <DialogFooter className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-2 w-full justify-between">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {Object.keys(delightCodes).length}/{uploadedRows.filter((_, i) => rowFACodes[i] === "102.0").length} classificadas
+                                <span className="text-gray-400 ml-2">
+                                    LAB (104.x) e PC (103.x) serão auto-atribuídos
+                                </span>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => { setDelightDialogOpen(false); setClassifyDialogOpen(true); }}
+                                    disabled={classifying}
+                                >
+                                    ← Voltar
+                                </Button>
+                                <Button
+                                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                                    onClick={handleDelightConfirm}
+                                    disabled={classifying}
+                                >
+                                    {classifying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                                    Confirmar e Salvar
+                                </Button>
+                            </div>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

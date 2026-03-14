@@ -20,12 +20,12 @@ const sheets: Record<string, DataSheetEntry> = {
     "pnl": {
         title: { en: "Profit & Loss Statement", es: "Estado de Pérdidas y Ganancias" },
         dataSources: [
-            { name: "Revenue (Gateways)", table: "csv_rows", description: { en: "Braintree, Stripe, GoCardless transactions grouped by financial account code", es: "Transacciones de Braintree, Stripe, GoCardless agrupadas por código de cuenta financiera" } },
+            { name: "Revenue (Invoice Orders)", table: "csv_rows", description: { en: "Invoice orders from AR classified by financial account code (101.x–105.x)", es: "Invoice orders de Cuentas a Receber classificadas por código de conta financeira (101.x–105.x)" } },
             { name: "Expenses (AP)", table: "invoices", description: { en: "Accounts Payable invoices with cost center allocation", es: "Facturas de Cuentas por Pagar con asignación de centro de coste" } },
             { name: "Financial Accounts", table: "financial_accounts", description: { en: "Account hierarchy (1xx Revenue, 4xx-6xx Expenses)", es: "Jerarquía de cuentas (1xx Ingresos, 4xx-6xx Gastos)" } },
         ],
-        feedInstructions: { en: "Revenue: Upload gateway CSVs via Reports pages. Expenses: Enter invoices in AP → Invoices.", es: "Ingresos: Subir CSVs de pasarelas en páginas de Reportes. Gastos: Ingresar facturas en CP → Facturas." },
-        enrichmentChain: { en: "Gateway CSV → csv_rows (source=gateway) → financial_account_code → P&L aggregation by account hierarchy", es: "CSV pasarela → csv_rows (source=gateway) → financial_account_code → Agregación P&L por jerarquía de cuentas" },
+        feedInstructions: { en: "Revenue: Upload Invoice Orders CSV in Accounts Receivable → Invoice Orders. Classify each product with a financial account code during upload. Expenses: Enter invoices in AP → Invoices.", es: "Ingresos: Subir CSV de Invoice Orders en Cuentas a Receber → Invoice Orders. Clasificar cada producto con un código de cuenta financiera durante la subida. Gastos: Ingresar facturas en CP → Facturas." },
+        enrichmentChain: { en: "Invoice Orders CSV → upload popup (FA classification) → csv_rows (source=invoice-orders) → financial_account_code → P&L aggregation by account hierarchy", es: "CSV Invoice Orders → popup de clasificación (conta financeira) → csv_rows (source=invoice-orders) → financial_account_code → Agregación P&L por jerarquía de cuentas" },
     },
 
     // ─── Executive Cashflow ────────────────────────────────
