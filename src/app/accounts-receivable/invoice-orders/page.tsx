@@ -111,6 +111,16 @@ interface DuplicateOverwrite {
     existingId: string;
 }
 
+interface ProductGroup {
+    description: string;
+    count: number;
+    totalAmount: number;
+    sampleDate: string;
+    suggestedFA: string | null;
+    faSource: "prior_mapping" | "keyword" | "none";
+    indices: number[];
+}
+
 // ── FA Code Options ──
 const FA_OPTIONS_POPUP1 = [
     { code: "101.1", label: "101.1 — DSD Course" },
@@ -224,6 +234,12 @@ export default function InvoiceOrdersPage() {
     const [clientHistory, setClientHistory] = useState<Record<string, string>>({}); // clientKey → prior 102.x code
     const [classifying, setClassifying] = useState(false);
     const [annualizeFlags, setAnnualizeFlags] = useState<Record<number, boolean>>({}); // index → annualize toggle
+    const [productGroups, setProductGroups] = useState<ProductGroup[]>([]);
+    const [productFACodes, setProductFACodes] = useState<Record<number, string>>({});
+    const [annualizeDialogOpen, setAnnualizeDialogOpen] = useState(false);
+    const [annualizeFilterFA, setAnnualizeFilterFA] = useState<string>("all");
+    const [annualizeFilterProduct, setAnnualizeFilterProduct] = useState<string>("all");
+    const [annualizedPreviews, setAnnualizedPreviews] = useState<Record<number, { date: string; installment: string }[]>>({});
 
     // Load data
     const loadData = useCallback(async () => {
@@ -341,18 +357,51 @@ export default function InvoiceOrdersPage() {
             const parsed: ParsedUploadRow[] = data.parsedRows;
             const dupes: DuplicateOverwrite[] = data.duplicateOverwrites || [];
 
-            // Initialize FA codes from suggestions
-            const initialCodes: Record<number, string> = {};
+            // Build product groups
+            const groupMap = new Map<string, ProductGroup>();
             for (let i = 0; i < parsed.length; i++) {
-                if (parsed[i].suggestedFA) {
-                    initialCodes[i] = parsed[i].suggestedFA!;
+                const desc = parsed[i].description;
+                if (groupMap.has(desc)) {
+                    const g = groupMap.get(desc)!;
+                    g.count++;
+                    g.totalAmount += parsed[i].amount;
+                    g.indices.push(i);
+                    if (parsed[i].faSource === "prior_mapping" && g.faSource !== "prior_mapping") {
+                        g.suggestedFA = parsed[i].suggestedFA;
+                        g.faSource = parsed[i].faSource;
+                    } else if (parsed[i].faSource === "keyword" && g.faSource === "none") {
+                        g.suggestedFA = parsed[i].suggestedFA;
+                        g.faSource = parsed[i].faSource;
+                    }
+                } else {
+                    groupMap.set(desc, {
+                        description: desc,
+                        count: 1,
+                        totalAmount: parsed[i].amount,
+                        sampleDate: parsed[i].date,
+                        suggestedFA: parsed[i].suggestedFA,
+                        faSource: parsed[i].faSource,
+                        indices: [i],
+                    });
+                }
+            }
+            const groups = [...groupMap.values()];
+
+            // Initialize product FA codes from suggestions
+            const initialProductCodes: Record<number, string> = {};
+            for (let g = 0; g < groups.length; g++) {
+                if (groups[g].suggestedFA) {
+                    initialProductCodes[g] = groups[g].suggestedFA!;
                 }
             }
 
+            setProductGroups(groups);
+            setProductFACodes(initialProductCodes);
             setUploadedRows(parsed);
             setDuplicateOverwrites(dupes);
-            setRowFACodes(initialCodes);
+            setRowFACodes({});
             setAnnualizeFlags({});
+            setAnnualizedPreviews({});
             setClassifyDialogOpen(true);
 
             if (data.duplicateCount > 0) {
@@ -374,32 +423,78 @@ export default function InvoiceOrdersPage() {
         }
     };
 
-    // ── Popup 1 → Next: check for Delight rows or save directly ──
-    const handleClassifyNext = async () => {
-        // Validate all rows have FA code
-        const unclassified = uploadedRows.filter((_, i) => !rowFACodes[i]);
+    // ── Popup 1 → Next: apply product classifications to all rows, open Popup 2 ──
+    const handleProductClassifyNext = () => {
+        const unclassified = productGroups.filter((_, g) => !productFACodes[g]);
         if (unclassified.length > 0) {
             toast({
                 title: "Classificação incompleta",
-                description: `${unclassified.length} linhas sem conta financeira atribuída.`,
+                description: `${unclassified.length} produtos sem conta financeira.`,
                 variant: "destructive"
             });
             return;
         }
 
-        // Check if any rows classified as 102.0 Delight
+        // Apply product FA codes to ALL individual rows
+        const newRowFACodes: Record<number, string> = {};
+        for (let g = 0; g < productGroups.length; g++) {
+            const faCode = productFACodes[g];
+            for (const rowIdx of productGroups[g].indices) {
+                newRowFACodes[rowIdx] = faCode;
+            }
+        }
+        setRowFACodes(newRowFACodes);
+        setAnnualizeFlags({});
+        setAnnualizedPreviews({});
+        setAnnualizeFilterFA("all");
+        setAnnualizeFilterProduct("all");
+        setClassifyDialogOpen(false);
+        setAnnualizeDialogOpen(true);
+    };
+
+    // ── Popup 2 → Next: check for Delight or save ──
+    const handleAnnualizeNext = async () => {
         const delightIndices = uploadedRows
             .map((_, i) => i)
             .filter((i) => rowFACodes[i] === "102.0");
 
         if (delightIndices.length > 0) {
-            // Fetch client history for Delight clients before opening Popup 2
             await fetchClientHistory(delightIndices);
-            setClassifyDialogOpen(false);
+            setAnnualizeDialogOpen(false);
             setDelightDialogOpen(true);
         } else {
-            // No Delight rows → apply LAB/PC auto-assignment from 105.1/101.4 and save
+            setAnnualizeDialogOpen(false);
             await saveWithAutoAssignment();
+        }
+    };
+
+    // ── Toggle annualize preview with 12 installments ──
+    const toggleAnnualizePreview = (rowIndex: number) => {
+        const isCurrentlyOn = !!annualizeFlags[rowIndex];
+        setAnnualizeFlags(prev => ({ ...prev, [rowIndex]: !isCurrentlyOn }));
+
+        if (!isCurrentlyOn) {
+            const row = uploadedRows[rowIndex];
+            const baseDate = new Date(row.date + "T00:00:00Z");
+            const baseMonth = baseDate.getUTCMonth();
+            const baseYear = baseDate.getUTCFullYear();
+            const baseDay = Math.min(baseDate.getUTCDate(), 28);
+
+            const installments: { date: string; installment: string }[] = [];
+            for (let m = 0; m < 12; m++) {
+                const instMonth = baseMonth + m;
+                const instYear = baseYear + Math.floor(instMonth / 12);
+                const actualMonth = instMonth % 12;
+                const instDate = `${instYear}-${String(actualMonth + 1).padStart(2, "0")}-${String(baseDay).padStart(2, "0")}`;
+                installments.push({ date: instDate, installment: `${m + 1}/12` });
+            }
+            setAnnualizedPreviews(prev => ({ ...prev, [rowIndex]: installments }));
+        } else {
+            setAnnualizedPreviews(prev => {
+                const next = { ...prev };
+                delete next[rowIndex];
+                return next;
+            });
         }
     };
 
@@ -502,7 +597,7 @@ export default function InvoiceOrdersPage() {
         setDelightCodes(newDelightCodes);
     };
 
-    // ── Popup 2 → Confirm: apply LAB/PC auto-assignment, then save ──
+    // ── Popup 3 → Confirm: apply LAB/PC auto-assignment, then save ──
     const handleDelightConfirm = async () => {
         // Validate all Delight rows have sub-code
         const delightIndices = uploadedRows
@@ -523,7 +618,7 @@ export default function InvoiceOrdersPage() {
         // Sources: Delight sub-codes (102.x), Level 1 (105.1), PC Membership (101.4)
         const clientClassMap = new Map<string, string>(); // clientKey → classification code
 
-        // 1. Delight sub-codes (from Popup 2)
+        // 1. Delight sub-codes (from Popup 3)
         for (const i of delightIndices) {
             const row = uploadedRows[i];
             const subCode = delightCodes[i];
@@ -531,7 +626,7 @@ export default function InvoiceOrdersPage() {
             if (row.customerName) clientClassMap.set(row.customerName.toLowerCase(), subCode);
         }
 
-        // 2. Level 1 (105.1) and PC Membership (101.4) from Popup 1 — only if no Delight classification
+        // 2. Level 1 (105.1) and PC Membership (101.4) — only if no Delight classification
         for (let i = 0; i < uploadedRows.length; i++) {
             const code = rowFACodes[i];
             if (code === "105.1" || code === "101.4") {
@@ -673,6 +768,7 @@ export default function InvoiceOrdersPage() {
             }
 
             setClassifyDialogOpen(false);
+            setAnnualizeDialogOpen(false);
             setDelightDialogOpen(false);
 
             const parts = [];
@@ -1370,25 +1466,151 @@ export default function InvoiceOrdersPage() {
             </Dialog>
 
             {/* ═══════════════════════════════════════════════════════════════
-                POPUP 1 — Financial Account Classification
+                POPUP 1 — Product Classification (grouped by unique product)
             ═══════════════════════════════════════════════════════════════ */}
             <Dialog open={classifyDialogOpen} onOpenChange={(open) => { if (!classifying) setClassifyDialogOpen(open); }}>
-                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-6xl max-h-[90vh] overflow-hidden flex-col" style={{ display: 'flex', flexDirection: 'column' }}>
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-4xl max-h-[90vh] overflow-hidden" style={{ display: 'flex', flexDirection: 'column' }}>
                     <DialogHeader className="shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                             <Settings2 className="h-5 w-5 text-blue-400" />
-                            Classificar Invoice Orders — Conta Financeira
+                            Classificar Produtos — Conta Financeira
                         </DialogTitle>
                         <DialogDescription className="text-gray-500 dark:text-gray-400">
-                            {uploadedRows.length} linhas importadas.
+                            {productGroups.length} produtos únicos ({uploadedRows.length} linhas).
                             {duplicateOverwrites.length > 0 && (
                                 <span className="text-amber-500 ml-2">
                                     {duplicateOverwrites.length} duplicados serão sobrescritos.
                                 </span>
                             )}
-                            {" "}Atribua uma conta financeira a cada linha.
+                            {" "}Atribua uma conta financeira a cada produto.
                         </DialogDescription>
                     </DialogHeader>
+
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                        <table className="w-full text-sm">
+                            <thead className="sticky top-0 z-10">
+                                <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
+                                    <th className="px-3 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Produto</th>
+                                    <th className="px-3 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[60px]">Qty</th>
+                                    <th className="px-3 py-2 text-right text-xs text-gray-500 dark:text-gray-400 w-[110px]">Total</th>
+                                    <th className="px-3 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[260px]">Conta Financeira</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {productGroups.map((group, g) => (
+                                    <tr key={g} className="border-b border-gray-100 dark:border-gray-800">
+                                        <td className="px-3 py-2 text-gray-700 dark:text-gray-300 text-xs">
+                                            <span className="block truncate max-w-[350px]" title={group.description}>
+                                                {group.description}
+                                            </span>
+                                            {group.faSource !== "none" && (
+                                                <Badge className={`text-[10px] mt-0.5 ${group.faSource === "prior_mapping" ? "bg-green-900/20 text-green-500 border-green-800" : "bg-blue-900/20 text-blue-400 border-blue-800"}`}>
+                                                    {group.faSource === "prior_mapping" ? "mapeado" : "sugerido"}
+                                                </Badge>
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-2 text-center text-xs text-gray-500 dark:text-gray-400 font-mono">
+                                            {group.count}
+                                        </td>
+                                        <td className="px-3 py-2 text-right text-xs font-mono">
+                                            <span className={group.totalAmount >= 0 ? "text-green-500" : "text-red-400"}>
+                                                {formatEuropeanNumber(group.totalAmount)}
+                                            </span>
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <Select
+                                                value={productFACodes[g] || ""}
+                                                onValueChange={(val) => setProductFACodes(prev => ({ ...prev, [g]: val }))}
+                                            >
+                                                <SelectTrigger className="h-7 text-xs bg-white dark:bg-black border-gray-300 dark:border-gray-600">
+                                                    <SelectValue placeholder="Selecionar..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
+                                                    {FA_OPTIONS_POPUP1.map((opt) => (
+                                                        <SelectItem key={opt.code} value={opt.code} className="text-xs">
+                                                            {opt.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="shrink-0 pt-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] relative z-20">
+                        <div className="flex items-center gap-2 w-full justify-between">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {Object.keys(productFACodes).length}/{productGroups.length} classificados
+                            </div>
+                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={() => setClassifyDialogOpen(false)} disabled={classifying}>
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    onClick={handleProductClassifyNext}
+                                    disabled={classifying}
+                                >
+                                    Próximo →
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ═══════════════════════════════════════════════════════════════
+                POPUP 2 — Annualize (individual rows with filters)
+            ═══════════════════════════════════════════════════════════════ */}
+            <Dialog open={annualizeDialogOpen} onOpenChange={(open) => { if (!classifying) setAnnualizeDialogOpen(open); }}>
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-6xl max-h-[90vh] overflow-hidden" style={{ display: 'flex', flexDirection: 'column' }}>
+                    <DialogHeader className="shrink-0">
+                        <DialogTitle className="flex items-center gap-2">
+                            <CalendarRange className="h-5 w-5 text-purple-400" />
+                            Anualizar Invoice Orders
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-500 dark:text-gray-400">
+                            {uploadedRows.length} linhas classificadas. Selecione as que deseja dividir em 12 parcelas mensais.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {/* Filters */}
+                    <div className="shrink-0 flex gap-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-2">
+                            <Filter className="h-3.5 w-3.5 text-gray-400" />
+                            <Select value={annualizeFilterFA} onValueChange={setAnnualizeFilterFA}>
+                                <SelectTrigger className="h-7 text-xs w-[220px] bg-white dark:bg-black border-gray-300 dark:border-gray-600">
+                                    <SelectValue placeholder="Conta Financeira" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
+                                    <SelectItem value="all" className="text-xs">Todas as contas</SelectItem>
+                                    {[...new Set(Object.values(rowFACodes))].sort().map(code => (
+                                        <SelectItem key={code} value={code} className="text-xs">
+                                            {code} — {FA_NAMES[code] || code}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Select value={annualizeFilterProduct} onValueChange={setAnnualizeFilterProduct}>
+                                <SelectTrigger className="h-7 text-xs w-[260px] bg-white dark:bg-black border-gray-300 dark:border-gray-600">
+                                    <SelectValue placeholder="Produto" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
+                                    <SelectItem value="all" className="text-xs">Todos os produtos</SelectItem>
+                                    {[...new Set(uploadedRows.map(r => r.description))].sort().map(desc => (
+                                        <SelectItem key={desc} value={desc} className="text-xs">
+                                            {desc.length > 50 ? desc.slice(0, 50) + "…" : desc}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
 
                     <div className="flex-1 min-h-0 overflow-y-auto pr-1">
                         <table className="w-full text-sm">
@@ -1398,68 +1620,73 @@ export default function InvoiceOrdersPage() {
                                     <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[140px]">Cliente</th>
                                     <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Produto</th>
                                     <th className="px-2 py-2 text-right text-xs text-gray-500 dark:text-gray-400 w-[90px]">Valor</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[250px]">Conta Financeira</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[160px]">Conta</th>
                                     <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[70px]">12x</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {uploadedRows.map((row, i) => {
-                                    const isDuplicate = duplicateOverwrites.some((d) => d.invoiceNumber === row.invoiceNumber);
+                                    const faCode = rowFACodes[i] || "";
+                                    if (annualizeFilterFA !== "all" && faCode !== annualizeFilterFA) return null;
+                                    if (annualizeFilterProduct !== "all" && row.description !== annualizeFilterProduct) return null;
+
+                                    const preview = annualizedPreviews[i];
                                     return (
-                                        <tr
-                                            key={i}
-                                            className={`border-b border-gray-100 dark:border-gray-800 ${isDuplicate ? "bg-amber-50 dark:bg-amber-900/10" : ""}`}
-                                        >
-                                            <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs">{formatDate(row.date)}</td>
-                                            <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[140px]" title={row.customerName}>
-                                                {row.customerName || "-"}
-                                            </td>
-                                            <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs">
-                                                <span className="truncate block max-w-[300px]" title={row.description}>
+                                        <React.Fragment key={i}>
+                                            <tr className="border-b border-gray-100 dark:border-gray-800">
+                                                <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs">{formatDate(row.date)}</td>
+                                                <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[140px]" title={row.customerName}>
+                                                    {row.customerName || "-"}
+                                                </td>
+                                                <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[250px]" title={row.description}>
                                                     {row.description}
-                                                </span>
-                                                {row.faSource !== "none" && (
-                                                    <Badge className={`text-[10px] mt-0.5 ${row.faSource === "prior_mapping" ? "bg-green-900/20 text-green-500 border-green-800" : "bg-blue-900/20 text-blue-400 border-blue-800"}`}>
-                                                        {row.faSource === "prior_mapping" ? "mapeado" : "sugerido"}
-                                                    </Badge>
-                                                )}
-                                            </td>
-                                            <td className="px-2 py-1.5 text-right text-xs font-mono">
-                                                <span className={row.amount >= 0 ? "text-green-500" : "text-red-400"}>
-                                                    {formatEuropeanNumber(row.amount)}
-                                                </span>
-                                            </td>
-                                            <td className="px-2 py-1.5">
-                                                <Select
-                                                    value={rowFACodes[i] || ""}
-                                                    onValueChange={(val) => setRowFACodes((prev) => ({ ...prev, [i]: val }))}
-                                                >
-                                                    <SelectTrigger className="h-7 text-xs bg-white dark:bg-black border-gray-300 dark:border-gray-600">
-                                                        <SelectValue placeholder="Selecionar..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
-                                                        {FA_OPTIONS_POPUP1.map((opt) => (
-                                                            <SelectItem key={opt.code} value={opt.code} className="text-xs">
-                                                                {opt.label}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </td>
-                                            <td className="px-2 py-1.5 text-center">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setAnnualizeFlags((prev) => ({ ...prev, [i]: !prev[i] }))}
-                                                    className={`h-6 w-6 rounded border flex items-center justify-center transition-colors ${annualizeFlags[i]
-                                                        ? "bg-purple-600 border-purple-500 text-white"
-                                                        : "border-gray-300 dark:border-gray-600 text-gray-400 hover:border-purple-400"
-                                                        }`}
-                                                    title="Anualizar (12 parcelas mensais)"
-                                                >
-                                                    <CalendarRange className="h-3.5 w-3.5" />
-                                                </button>
-                                            </td>
-                                        </tr>
+                                                </td>
+                                                <td className="px-2 py-1.5 text-right text-xs font-mono">
+                                                    <span className={row.amount >= 0 ? "text-green-500" : "text-red-400"}>
+                                                        {formatEuropeanNumber(row.amount)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-2 py-1.5 text-xs text-gray-600 dark:text-gray-400">
+                                                    {faCode} — {FA_NAMES[faCode] || ""}
+                                                </td>
+                                                <td className="px-2 py-1.5 text-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleAnnualizePreview(i)}
+                                                        className={`h-6 w-6 rounded border flex items-center justify-center transition-colors ${annualizeFlags[i]
+                                                            ? "bg-purple-600 border-purple-500 text-white"
+                                                            : "border-gray-300 dark:border-gray-600 text-gray-400 hover:border-purple-400"
+                                                            }`}
+                                                        title="Anualizar (12 parcelas mensais)"
+                                                    >
+                                                        <CalendarRange className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {annualizeFlags[i] && preview && preview.map((inst, j) => (
+                                                <tr key={`${i}-inst-${j}`} className="bg-purple-50 dark:bg-purple-900/10 border-b border-purple-100 dark:border-purple-900/20">
+                                                    <td className="px-2 py-1 text-purple-600 dark:text-purple-400 text-[11px] pl-6">
+                                                        {formatDate(inst.date)}
+                                                    </td>
+                                                    <td className="px-2 py-1 text-purple-500 dark:text-purple-400 text-[11px]">
+                                                        {row.customerName || "-"}
+                                                    </td>
+                                                    <td className="px-2 py-1 text-purple-500 dark:text-purple-400 text-[11px]">
+                                                        <span className="flex items-center gap-1">
+                                                            <Badge className="bg-purple-600 text-white text-[9px] px-1 py-0">{inst.installment}</Badge>
+                                                            {row.description}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-2 py-1 text-right text-[11px] font-mono text-purple-500 dark:text-purple-400">
+                                                        {formatEuropeanNumber(row.amount)}
+                                                    </td>
+                                                    <td className="px-2 py-1 text-[11px] text-purple-500 dark:text-purple-400">
+                                                        {faCode}
+                                                    </td>
+                                                    <td></td>
+                                                </tr>
+                                            ))}
+                                        </React.Fragment>
                                     );
                                 })}
                             </tbody>
@@ -1469,20 +1696,25 @@ export default function InvoiceOrdersPage() {
                     <div className="shrink-0 pt-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] relative z-20">
                         <div className="flex items-center gap-2 w-full justify-between">
                             <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {Object.keys(rowFACodes).length}/{uploadedRows.length} classificadas
-                                {Object.values(annualizeFlags).filter(Boolean).length > 0 && (
-                                    <span className="text-purple-400 ml-2">
-                                        {Object.values(annualizeFlags).filter(Boolean).length} para anualizar
+                                {Object.values(annualizeFlags).filter(Boolean).length > 0 ? (
+                                    <span className="text-purple-500">
+                                        {Object.values(annualizeFlags).filter(Boolean).length} para anualizar (12x)
                                     </span>
+                                ) : (
+                                    <span>Nenhuma linha selecionada para anualizar</span>
                                 )}
                             </div>
                             <div className="flex gap-2">
-                                <Button variant="outline" onClick={() => setClassifyDialogOpen(false)} disabled={classifying}>
-                                    Cancelar
+                                <Button
+                                    variant="outline"
+                                    onClick={() => { setAnnualizeDialogOpen(false); setClassifyDialogOpen(true); }}
+                                    disabled={classifying}
+                                >
+                                    ← Voltar
                                 </Button>
                                 <Button
                                     className="bg-blue-600 hover:bg-blue-700 text-white"
-                                    onClick={handleClassifyNext}
+                                    onClick={handleAnnualizeNext}
                                     disabled={classifying}
                                 >
                                     {classifying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
@@ -1495,10 +1727,10 @@ export default function InvoiceOrdersPage() {
             </Dialog>
 
             {/* ═══════════════════════════════════════════════════════════════
-                POPUP 2 — Delight Sub-Classification
+                POPUP 3 — Delight Sub-Classification
             ═══════════════════════════════════════════════════════════════ */}
             <Dialog open={delightDialogOpen} onOpenChange={(open) => { if (!classifying) setDelightDialogOpen(open); }}>
-                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-5xl max-h-[85vh] overflow-hidden flex-col" style={{ display: 'flex', flexDirection: 'column' }}>
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-5xl max-h-[85vh] overflow-hidden" style={{ display: 'flex', flexDirection: 'column' }}>
                     <DialogHeader className="shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                             <Zap className="h-5 w-5 text-purple-400" />
@@ -1586,7 +1818,7 @@ export default function InvoiceOrdersPage() {
                             <div className="flex gap-2">
                                 <Button
                                     variant="outline"
-                                    onClick={() => { setDelightDialogOpen(false); setClassifyDialogOpen(true); }}
+                                    onClick={() => { setDelightDialogOpen(false); setAnnualizeDialogOpen(true); }}
                                     disabled={classifying}
                                 >
                                     ← Voltar
