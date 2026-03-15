@@ -13,7 +13,6 @@ import {
     RefreshCw,
     FileText,
     Loader2,
-    Link2,
     X,
     Eye,
     Filter,
@@ -214,8 +213,23 @@ export default function InvoiceOrdersPage() {
     const [selectedRow, setSelectedRow] = useState<InvoiceOrder | null>(null);
     const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
     const [reconciling, setReconciling] = useState(false);
-    const [bankReconciling, setBankReconciling] = useState(false);
     const [selectedYear, setSelectedYear] = useState<number | "all">("all");
+
+    // Column filters
+    const [filterDate, setFilterDate] = useState("");
+    const [filterDescription, setFilterDescription] = useState("");
+    const [filterFA, setFilterFA] = useState("");
+    const [filterCurrency, setFilterCurrency] = useState("");
+    const [filterStatus, setFilterStatus] = useState("");
+
+    // Edit dialog
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [editingRow, setEditingRow] = useState<InvoiceOrder | null>(null);
+    const [editForm, setEditForm] = useState<{
+        date: string; description: string; amount: string;
+        financial_account_code: string; customer_name: string; customer_email: string;
+    }>({ date: "", description: "", amount: "", financial_account_code: "", customer_name: "", customer_email: "" });
+    const [saving, setSaving] = useState(false);
     const [page, setPage] = useState(1);
     const [totalRows, setTotalRows] = useState(0);
     const PAGE_SIZE = 200;
@@ -317,7 +331,7 @@ export default function InvoiceOrdersPage() {
             }
         } catch (err) {
             console.error("Error loading data:", err);
-            setError("Erro ao carregar dados");
+            setError("Error loading data");
         } finally {
             setLoading(false);
         }
@@ -346,8 +360,8 @@ export default function InvoiceOrdersPage() {
 
             if (!response.ok || !result.success) {
                 toast({
-                    title: "Erro no upload",
-                    description: result.error || "Erro desconhecido",
+                    title: "Upload error",
+                    description: result.error || "Unknown error",
                     variant: "destructive"
                 });
                 return;
@@ -406,15 +420,15 @@ export default function InvoiceOrdersPage() {
 
             if (data.duplicateCount > 0) {
                 toast({
-                    title: `${data.duplicateCount} duplicados detectados`,
-                    description: "Serão atualizados (sobrescritos) ao confirmar."
+                    title: `${data.duplicateCount} duplicates detected`,
+                    description: "They will be updated (overwritten) upon confirmation."
                 });
             }
         } catch (err) {
             console.error("Upload error:", err);
             toast({
-                title: "Erro no upload",
-                description: "Falha ao enviar o arquivo",
+                title: "Upload error",
+                description: "Failed to upload the file",
                 variant: "destructive"
             });
         } finally {
@@ -428,8 +442,8 @@ export default function InvoiceOrdersPage() {
         const unclassified = productGroups.filter((_, g) => !productFACodes[g]);
         if (unclassified.length > 0) {
             toast({
-                title: "Classificação incompleta",
-                description: `${unclassified.length} produtos sem conta financeira.`,
+                title: "Incomplete classification",
+                description: `${unclassified.length} products without a financial account.`,
                 variant: "destructive"
             });
             return;
@@ -607,8 +621,8 @@ export default function InvoiceOrdersPage() {
         const unclassified = delightIndices.filter((i) => !delightCodes[i]);
         if (unclassified.length > 0) {
             toast({
-                title: "Classificação Delight incompleta",
-                description: `${unclassified.length} linhas Delight sem sub-conta atribuída.`,
+                title: "Incomplete Delight classification",
+                description: `${unclassified.length} Delight rows without a sub-account assigned.`,
                 variant: "destructive"
             });
             return;
@@ -772,12 +786,12 @@ export default function InvoiceOrdersPage() {
             setDelightDialogOpen(false);
 
             const parts = [];
-            if (result.data.inserted) parts.push(`${result.data.inserted} inseridas`);
-            if (result.data.overwritten) parts.push(`${result.data.overwritten} atualizadas`);
-            if (annualizeCount > 0) parts.push(`${annualizeCount} anualizadas`);
+            if (result.data.inserted) parts.push(`${result.data.inserted} inserted`);
+            if (result.data.overwritten) parts.push(`${result.data.overwritten} updated`);
+            if (annualizeCount > 0) parts.push(`${annualizeCount} annualized`);
 
             toast({
-                title: "Classificação concluída",
+                title: "Classification complete",
                 description: parts.join(", ") + "."
             });
 
@@ -785,7 +799,7 @@ export default function InvoiceOrdersPage() {
         } catch (err) {
             console.error("Classification error:", err);
             toast({
-                title: "Erro na classificação",
+                title: "Classification error",
                 description: String(err),
                 variant: "destructive"
             });
@@ -813,6 +827,30 @@ export default function InvoiceOrdersPage() {
                         String(v).toLowerCase().includes(term)
                     )
             );
+        }
+
+        // Column filters
+        if (filterDate) {
+            filtered = filtered.filter((inv) => formatDate(inv.date).includes(filterDate));
+        }
+        if (filterDescription) {
+            const fd = filterDescription.toLowerCase();
+            filtered = filtered.filter((inv) => inv.description?.toLowerCase().includes(fd));
+        }
+        if (filterFA) {
+            filtered = filtered.filter((inv) => {
+                const code = (inv.custom_data?.financial_account_code as string) || "";
+                const name = (inv.custom_data?.financial_account_name as string) || "";
+                const combined = `${code} ${name}`.toLowerCase();
+                return combined.includes(filterFA.toLowerCase());
+            });
+        }
+        if (filterCurrency) {
+            filtered = filtered.filter((inv) => inv.currency === filterCurrency);
+        }
+        if (filterStatus) {
+            if (filterStatus === "reconciled") filtered = filtered.filter((inv) => inv.reconciled);
+            if (filterStatus === "pending") filtered = filtered.filter((inv) => !inv.reconciled);
         }
 
         // Sort
@@ -844,7 +882,7 @@ export default function InvoiceOrdersPage() {
         });
 
         return filtered;
-    }, [invoiceOrders, showReconciled, searchTerm, sortField, sortDirection]);
+    }, [invoiceOrders, showReconciled, searchTerm, sortField, sortDirection, filterDate, filterDescription, filterFA, filterCurrency, filterStatus]);
 
     // Stats
     const stats = useMemo(() => {
@@ -885,21 +923,66 @@ export default function InvoiceOrdersPage() {
         setDetailsDialogOpen(true);
     };
 
+    // Edit row
+    const startEdit = (row: InvoiceOrder) => {
+        setEditingRow(row);
+        setEditForm({
+            date: row.date || "",
+            description: row.description || "",
+            amount: String(row.amount),
+            financial_account_code: (row.custom_data?.financial_account_code as string) || "",
+            customer_name: (row.custom_data?.customer_name as string) || "",
+            customer_email: (row.custom_data?.customer_email as string) || "",
+        });
+        setEditDialogOpen(true);
+    };
+
+    const saveEdit = async () => {
+        if (!editingRow) return;
+        setSaving(true);
+        try {
+            const updatedCustomData = { ...editingRow.custom_data };
+            if (editForm.financial_account_code) {
+                updatedCustomData.financial_account_code = editForm.financial_account_code;
+                updatedCustomData.financial_account_name = FA_NAMES[editForm.financial_account_code] || "";
+            }
+            updatedCustomData.customer_name = editForm.customer_name;
+            updatedCustomData.customer_email = editForm.customer_email;
+
+            const { error } = await supabase.from("csv_rows").update({
+                date: editForm.date,
+                description: editForm.description,
+                amount: parseFloat(editForm.amount) || 0,
+                custom_data: updatedCustomData,
+            }).eq("id", editingRow.id);
+
+            if (error) throw error;
+            toast({ title: "Record updated" });
+            setEditDialogOpen(false);
+            loadData();
+        } catch (err) {
+            console.error("Edit error:", err);
+            toast({ title: "Error updating record", description: String(err), variant: "destructive" });
+        } finally {
+            setSaving(false);
+        }
+    };
+
     // Delete row
     const deleteRow = async (id: string) => {
-        if (!confirm("Tem certeza que deseja excluir este registro?")) return;
+        if (!confirm("Are you sure you want to delete this record?")) return;
 
         try {
             const { error } = await supabase.from("csv_rows").delete().eq("id", id);
 
             if (error) throw error;
 
-            toast({ title: "Registro excluído" });
+            toast({ title: "Record deleted" });
             loadData();
         } catch (err) {
             console.error("Delete error:", err);
             toast({
-                title: "Erro ao excluir",
+                title: "Error deleting",
                 description: String(err),
                 variant: "destructive"
             });
@@ -908,8 +991,8 @@ export default function InvoiceOrdersPage() {
 
     // Delete all
     const deleteAll = async () => {
-        if (!confirm("⚠️ Tem certeza que deseja excluir TODOS os registros de Invoice Orders?")) return;
-        if (!confirm("⚠️ Esta ação NÃO pode ser desfeita! Continuar?")) return;
+        if (!confirm("⚠️ Are you sure you want to delete ALL Invoice Orders records?")) return;
+        if (!confirm("⚠️ This action CANNOT be undone! Continue?")) return;
 
         try {
             const response = await fetch("/api/csv-rows?source=invoice-orders", { method: "DELETE" });
@@ -917,46 +1000,15 @@ export default function InvoiceOrdersPage() {
 
             if (!result.success) throw new Error(result.error);
 
-            toast({ title: "Todos os registros excluídos" });
+            toast({ title: "All records deleted" });
             loadData();
         } catch (err) {
             console.error("Delete all error:", err);
             toast({
-                title: "Erro ao excluir",
+                title: "Error deleting",
                 description: String(err),
                 variant: "destructive"
             });
-        }
-    };
-
-    // Auto reconcile with bank
-    const runBankReconcile = async () => {
-        setBankReconciling(true);
-        try {
-            const response = await fetch("/api/reconcile/invoice-orders-bank?dryRun=true");
-            const result = await response.json();
-
-            if (!result.success) throw new Error(result.error);
-
-            toast({
-                title: "Reconciliação com Banco",
-                description: `${result.summary?.matchedInvoices || 0} invoices vinculadas ao banco`
-            });
-
-            if (result.summary?.matchedInvoices > 0) {
-                // Execute real reconciliation
-                await fetch("/api/reconcile/invoice-orders-bank");
-                loadData();
-            }
-        } catch (err) {
-            console.error("Bank reconcile error:", err);
-            toast({
-                title: "Erro na reconciliação",
-                description: String(err),
-                variant: "destructive"
-            });
-        } finally {
-            setBankReconciling(false);
         }
     };
 
@@ -1001,18 +1053,18 @@ export default function InvoiceOrdersPage() {
             const name = row.custom_data?.financial_account_name as string | null;
             if (!code) return <span className="text-gray-500">—</span>;
             return (
-                <Badge className="bg-blue-900/30 text-blue-400 border border-blue-700 text-xs">
+                <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 text-xs">
                     {code} {name ? `- ${name}` : ''}
                 </Badge>
             );
         }
         if (colKey === "reconciled")
             return row.reconciled ? (
-                <Badge className="bg-green-900/30 text-green-400 border border-green-700">
+                <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600">
                     <CheckCircle2 className="h-3 w-3 mr-1" /> Reconciled
                 </Badge>
             ) : (
-                <Badge className="bg-yellow-900/30 text-yellow-400 border border-yellow-700">
+                <Badge className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
                     <AlertCircle className="h-3 w-3 mr-1" /> Pending
                 </Badge>
             );
@@ -1039,7 +1091,7 @@ export default function InvoiceOrdersPage() {
                             ]}
                         />
                         <div className="mt-2">
-                            <PageHeader title="Invoice Orders" subtitle="Gerencie e reconcilie Invoice Orders importadas de CSV" />
+                            <PageHeader title="Invoice Orders" subtitle="Manage and reconcile Invoice Orders imported from CSV" />
                         </div>
                     </div>
 
@@ -1154,22 +1206,6 @@ export default function InvoiceOrdersPage() {
                                 Refresh
                             </Button>
 
-                            {/* Bank Reconcile */}
-                            <Button
-                                variant="outline"
-                                className="bg-green-600 hover:bg-green-700 text-white border-green-500"
-                                onClick={runBankReconcile}
-                                disabled={bankReconciling}
-                                data-tour="bank-match-btn"
-                            >
-                                {bankReconciling ? (
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                ) : (
-                                    <Link2 className="h-4 w-4 mr-2" />
-                                )}
-                                Bank Match
-                            </Button>
-
                             {/* Export */}
                             <Button
                                 variant="outline"
@@ -1276,8 +1312,8 @@ export default function InvoiceOrdersPage() {
                         ) : filteredData.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
                                 <FileText className="h-12 w-12 mb-4 opacity-50" />
-                                <p className="text-lg">Nenhum Invoice Order encontrado</p>
-                                <p className="text-sm">Faça upload de um arquivo CSV para começar</p>
+                                <p className="text-lg">No Invoice Orders found</p>
+                                <p className="text-sm">Upload a CSV file to get started</p>
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
@@ -1307,6 +1343,64 @@ export default function InvoiceOrdersPage() {
                                             ))}
                                             <th className="px-3 py-2 text-right text-gray-500 dark:text-gray-400 font-medium w-24">Actions</th>
                                         </tr>
+                                        {/* Filter Row */}
+                                        <tr className="bg-gray-50 dark:bg-black/30 border-b border-gray-200 dark:border-gray-700">
+                                            {visibleColumns.map((col) => (
+                                                <th key={`filter-${col.key}`} className="px-2 py-1">
+                                                    {col.key === "date" && (
+                                                        <Input
+                                                            type="text"
+                                                            placeholder="Filter date..."
+                                                            value={filterDate}
+                                                            onChange={(e) => setFilterDate(e.target.value)}
+                                                            className="h-7 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400"
+                                                        />
+                                                    )}
+                                                    {col.key === "description" && (
+                                                        <Input
+                                                            type="text"
+                                                            placeholder="Filter description..."
+                                                            value={filterDescription}
+                                                            onChange={(e) => setFilterDescription(e.target.value)}
+                                                            className="h-7 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400"
+                                                        />
+                                                    )}
+                                                    {col.key === "financial_account" && (
+                                                        <Input
+                                                            type="text"
+                                                            placeholder="Filter FA..."
+                                                            value={filterFA}
+                                                            onChange={(e) => setFilterFA(e.target.value)}
+                                                            className="h-7 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400"
+                                                        />
+                                                    )}
+                                                    {col.key === "currency" && (
+                                                        <select
+                                                            value={filterCurrency}
+                                                            onChange={(e) => setFilterCurrency(e.target.value)}
+                                                            className="h-7 w-full text-xs rounded-md bg-white dark:bg-[#0a0a0a] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white px-1"
+                                                        >
+                                                            <option value="">All</option>
+                                                            <option value="EUR">EUR</option>
+                                                            <option value="USD">USD</option>
+                                                            <option value="GBP">GBP</option>
+                                                        </select>
+                                                    )}
+                                                    {col.key === "reconciled" && (
+                                                        <select
+                                                            value={filterStatus}
+                                                            onChange={(e) => setFilterStatus(e.target.value)}
+                                                            className="h-7 w-full text-xs rounded-md bg-white dark:bg-[#0a0a0a] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white px-1"
+                                                        >
+                                                            <option value="">All</option>
+                                                            <option value="reconciled">Reconciled</option>
+                                                            <option value="pending">Pending</option>
+                                                        </select>
+                                                    )}
+                                                </th>
+                                            ))}
+                                            <th className="px-2 py-1" />
+                                        </tr>
                                     </thead>
                                     <tbody>
                                         {filteredData.map((row) => (
@@ -1328,6 +1422,14 @@ export default function InvoiceOrdersPage() {
                                                             onClick={() => viewDetails(row)}
                                                         >
                                                             <Eye className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 w-7 p-0 hover:bg-gray-100 dark:hover:bg-gray-600"
+                                                            onClick={() => startEdit(row)}
+                                                        >
+                                                            <Pencil className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
@@ -1422,11 +1524,11 @@ export default function InvoiceOrdersPage() {
                                     <Label className="text-gray-500 dark:text-gray-400 text-xs">Status</Label>
                                     <p>
                                         {selectedRow.reconciled ? (
-                                            <Badge className="bg-green-900/30 text-green-400 border border-green-700">
+                                            <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600">
                                                 Reconciled
                                             </Badge>
                                         ) : (
-                                            <Badge className="bg-yellow-900/30 text-yellow-400 border border-yellow-700">
+                                            <Badge className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
                                                 Pending
                                             </Badge>
                                         )}
@@ -1465,6 +1567,82 @@ export default function InvoiceOrdersPage() {
                 </DialogContent>
             </Dialog>
 
+            {/* Edit Dialog */}
+            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Pencil className="h-5 w-5 text-blue-400" />
+                            Edit Invoice Order
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-500 dark:text-gray-400">
+                            Update the fields below and save.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div>
+                            <Label className="text-gray-500 dark:text-gray-400 text-xs">Date</Label>
+                            <Input
+                                type="date"
+                                value={editForm.date}
+                                onChange={(e) => setEditForm((f) => ({ ...f, date: e.target.value }))}
+                                className="bg-white dark:bg-[#111] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                        </div>
+                        <div>
+                            <Label className="text-gray-500 dark:text-gray-400 text-xs">Description</Label>
+                            <Input
+                                value={editForm.description}
+                                onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                                className="bg-white dark:bg-[#111] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                        </div>
+                        <div>
+                            <Label className="text-gray-500 dark:text-gray-400 text-xs">Amount</Label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                value={editForm.amount}
+                                onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))}
+                                className="bg-white dark:bg-[#111] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                        </div>
+                        <div>
+                            <Label className="text-gray-500 dark:text-gray-400 text-xs">Financial Account</Label>
+                            <Input
+                                value={editForm.financial_account_code}
+                                onChange={(e) => setEditForm((f) => ({ ...f, financial_account_code: e.target.value }))}
+                                placeholder="e.g. 102.0"
+                                className="bg-white dark:bg-[#111] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                        </div>
+                        <div>
+                            <Label className="text-gray-500 dark:text-gray-400 text-xs">Customer Name</Label>
+                            <Input
+                                value={editForm.customer_name}
+                                onChange={(e) => setEditForm((f) => ({ ...f, customer_name: e.target.value }))}
+                                className="bg-white dark:bg-[#111] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                        </div>
+                        <div>
+                            <Label className="text-gray-500 dark:text-gray-400 text-xs">Customer Email</Label>
+                            <Input
+                                value={editForm.customer_email}
+                                onChange={(e) => setEditForm((f) => ({ ...f, customer_email: e.target.value }))}
+                                className="bg-white dark:bg-[#111] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={saving}>Cancel</Button>
+                        <Button onClick={saveEdit} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white">
+                            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                            Save
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* ═══════════════════════════════════════════════════════════════
                 POPUP 1 — Product Classification (grouped by unique product)
             ═══════════════════════════════════════════════════════════════ */}
@@ -1473,16 +1651,16 @@ export default function InvoiceOrdersPage() {
                     <DialogHeader className="shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                             <Settings2 className="h-5 w-5 text-blue-400" />
-                            Classificar Produtos — Conta Financeira
+                            Classify Products — Financial Account
                         </DialogTitle>
                         <DialogDescription className="text-gray-500 dark:text-gray-400">
-                            {productGroups.length} produtos únicos ({uploadedRows.length} linhas).
+                            {productGroups.length} unique products ({uploadedRows.length} rows).
                             {duplicateOverwrites.length > 0 && (
                                 <span className="text-amber-500 ml-2">
-                                    {duplicateOverwrites.length} duplicados serão sobrescritos.
+                                    {duplicateOverwrites.length} duplicates will be overwritten.
                                 </span>
                             )}
-                            {" "}Atribua uma conta financeira a cada produto.
+                            {" "}Assign a financial account to each product.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -1490,10 +1668,10 @@ export default function InvoiceOrdersPage() {
                         <table className="w-full text-sm">
                             <thead className="sticky top-0 z-10">
                                 <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
-                                    <th className="px-3 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Produto</th>
+                                    <th className="px-3 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Product</th>
                                     <th className="px-3 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[60px]">Qty</th>
                                     <th className="px-3 py-2 text-right text-xs text-gray-500 dark:text-gray-400 w-[110px]">Total</th>
-                                    <th className="px-3 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[260px]">Conta Financeira</th>
+                                    <th className="px-3 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[260px]">Financial Account</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1505,7 +1683,7 @@ export default function InvoiceOrdersPage() {
                                             </span>
                                             {group.faSource !== "none" && (
                                                 <Badge className={`text-[10px] mt-0.5 ${group.faSource === "prior_mapping" ? "bg-green-900/20 text-green-500 border-green-800" : "bg-blue-900/20 text-blue-400 border-blue-800"}`}>
-                                                    {group.faSource === "prior_mapping" ? "mapeado" : "sugerido"}
+                                                    {group.faSource === "prior_mapping" ? "mapped" : "suggested"}
                                                 </Badge>
                                             )}
                                         </td>
@@ -1523,7 +1701,7 @@ export default function InvoiceOrdersPage() {
                                                 onValueChange={(val) => setProductFACodes(prev => ({ ...prev, [g]: val }))}
                                             >
                                                 <SelectTrigger className="h-7 text-xs bg-white dark:bg-black border-gray-300 dark:border-gray-600">
-                                                    <SelectValue placeholder="Selecionar..." />
+                                                    <SelectValue placeholder="Select..." />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
                                                     {FA_OPTIONS_POPUP1.map((opt) => (
@@ -1543,18 +1721,18 @@ export default function InvoiceOrdersPage() {
                     <div className="shrink-0 pt-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] relative z-20">
                         <div className="flex items-center gap-2 w-full justify-between">
                             <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {Object.keys(productFACodes).length}/{productGroups.length} classificados
+                                {Object.keys(productFACodes).length}/{productGroups.length} classified
                             </div>
                             <div className="flex gap-2">
                                 <Button variant="outline" onClick={() => setClassifyDialogOpen(false)} disabled={classifying}>
-                                    Cancelar
+                                    Cancel
                                 </Button>
                                 <Button
                                     className="bg-blue-600 hover:bg-blue-700 text-white"
                                     onClick={handleProductClassifyNext}
                                     disabled={classifying}
                                 >
-                                    Próximo →
+                                    Next →
                                 </Button>
                             </div>
                         </div>
@@ -1570,10 +1748,10 @@ export default function InvoiceOrdersPage() {
                     <DialogHeader className="shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                             <CalendarRange className="h-5 w-5 text-purple-400" />
-                            Anualizar Invoice Orders
+                            Annualize Invoice Orders
                         </DialogTitle>
                         <DialogDescription className="text-gray-500 dark:text-gray-400">
-                            {uploadedRows.length} linhas classificadas. Selecione as que deseja dividir em 12 parcelas mensais.
+                            {uploadedRows.length} classified rows. Select the ones to split into 12 monthly installments.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -1583,10 +1761,10 @@ export default function InvoiceOrdersPage() {
                             <Filter className="h-3.5 w-3.5 text-gray-400" />
                             <Select value={annualizeFilterFA} onValueChange={setAnnualizeFilterFA}>
                                 <SelectTrigger className="h-7 text-xs w-[220px] bg-white dark:bg-black border-gray-300 dark:border-gray-600">
-                                    <SelectValue placeholder="Conta Financeira" />
+                                    <SelectValue placeholder="Financial Account" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
-                                    <SelectItem value="all" className="text-xs">Todas as contas</SelectItem>
+                                    <SelectItem value="all" className="text-xs">All accounts</SelectItem>
                                     {[...new Set(Object.values(rowFACodes))].sort().map(code => (
                                         <SelectItem key={code} value={code} className="text-xs">
                                             {code} — {FA_NAMES[code] || code}
@@ -1598,10 +1776,10 @@ export default function InvoiceOrdersPage() {
                         <div className="flex items-center gap-2">
                             <Select value={annualizeFilterProduct} onValueChange={setAnnualizeFilterProduct}>
                                 <SelectTrigger className="h-7 text-xs w-[260px] bg-white dark:bg-black border-gray-300 dark:border-gray-600">
-                                    <SelectValue placeholder="Produto" />
+                                    <SelectValue placeholder="Product" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
-                                    <SelectItem value="all" className="text-xs">Todos os produtos</SelectItem>
+                                    <SelectItem value="all" className="text-xs">All products</SelectItem>
                                     {[...new Set(uploadedRows.map(r => r.description))].sort().map(desc => (
                                         <SelectItem key={desc} value={desc} className="text-xs">
                                             {desc.length > 50 ? desc.slice(0, 50) + "…" : desc}
@@ -1616,11 +1794,11 @@ export default function InvoiceOrdersPage() {
                         <table className="w-full text-sm">
                             <thead className="sticky top-0 z-10">
                                 <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[90px]">Data</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[140px]">Cliente</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Produto</th>
-                                    <th className="px-2 py-2 text-right text-xs text-gray-500 dark:text-gray-400 w-[90px]">Valor</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[160px]">Conta</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[90px]">Date</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[140px]">Client</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Product</th>
+                                    <th className="px-2 py-2 text-right text-xs text-gray-500 dark:text-gray-400 w-[90px]">Amount</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[160px]">Account</th>
                                     <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[70px]">12x</th>
                                 </tr>
                             </thead>
@@ -1657,7 +1835,7 @@ export default function InvoiceOrdersPage() {
                                                             ? "bg-purple-600 border-purple-500 text-white"
                                                             : "border-gray-300 dark:border-gray-600 text-gray-400 hover:border-purple-400"
                                                             }`}
-                                                        title="Anualizar (12 parcelas mensais)"
+                                                        title="Annualize (12 monthly installments)"
                                                     >
                                                         <CalendarRange className="h-3.5 w-3.5" />
                                                     </button>
@@ -1698,10 +1876,10 @@ export default function InvoiceOrdersPage() {
                             <div className="text-xs text-gray-500 dark:text-gray-400">
                                 {Object.values(annualizeFlags).filter(Boolean).length > 0 ? (
                                     <span className="text-purple-500">
-                                        {Object.values(annualizeFlags).filter(Boolean).length} para anualizar (12x)
+                                        {Object.values(annualizeFlags).filter(Boolean).length} to annualize (12x)
                                     </span>
                                 ) : (
-                                    <span>Nenhuma linha selecionada para anualizar</span>
+                                    <span>No rows selected for annualization</span>
                                 )}
                             </div>
                             <div className="flex gap-2">
@@ -1710,7 +1888,7 @@ export default function InvoiceOrdersPage() {
                                     onClick={() => { setAnnualizeDialogOpen(false); setClassifyDialogOpen(true); }}
                                     disabled={classifying}
                                 >
-                                    ← Voltar
+                                    ← Back
                                 </Button>
                                 <Button
                                     className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -1718,7 +1896,7 @@ export default function InvoiceOrdersPage() {
                                     disabled={classifying}
                                 >
                                     {classifying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                                    {uploadedRows.some((_, i) => rowFACodes[i] === "102.0") ? "Próximo →" : "Confirmar"}
+                                    {uploadedRows.some((_, i) => rowFACodes[i] === "102.0") ? "Next →" : "Confirm"}
                                 </Button>
                             </div>
                         </div>
@@ -1734,11 +1912,11 @@ export default function InvoiceOrdersPage() {
                     <DialogHeader className="shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                             <Zap className="h-5 w-5 text-purple-400" />
-                            Classificação Delight — Sub-conta
+                            Delight Classification — Sub-account
                         </DialogTitle>
                         <DialogDescription className="text-gray-500 dark:text-gray-400">
-                            Refinar as linhas Delight (102.0) com a sub-conta específica.
-                            Sugestões automáticas baseadas no histórico do cliente no ano anterior.
+                            Refine Delight (102.0) rows with the specific sub-account.
+                            Auto-suggestions based on client history from the previous year.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -1746,11 +1924,11 @@ export default function InvoiceOrdersPage() {
                         <table className="w-full text-sm">
                             <thead className="sticky top-0 z-10">
                                 <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[90px]">Data</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[160px]">Cliente</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Produto</th>
-                                    <th className="px-2 py-2 text-right text-xs text-gray-500 dark:text-gray-400 w-[90px]">Valor</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[260px]">Sub-conta Delight</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[90px]">Date</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[160px]">Client</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Product</th>
+                                    <th className="px-2 py-2 text-right text-xs text-gray-500 dark:text-gray-400 w-[90px]">Amount</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[260px]">Delight Sub-account</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1783,7 +1961,7 @@ export default function InvoiceOrdersPage() {
                                                         onValueChange={(val) => setDelightCodes((prev) => ({ ...prev, [i]: val }))}
                                                     >
                                                         <SelectTrigger className={`h-7 text-xs border-gray-300 dark:border-gray-600 ${hasSuggestion ? "bg-green-50 dark:bg-green-900/10 border-green-400 dark:border-green-700" : "bg-white dark:bg-black"}`}>
-                                                            <SelectValue placeholder="Selecionar sub-conta..." />
+                                                            <SelectValue placeholder="Select sub-account..." />
                                                         </SelectTrigger>
                                                         <SelectContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
                                                             {DELIGHT_SUB_OPTIONS.map((opt) => (
@@ -1810,9 +1988,9 @@ export default function InvoiceOrdersPage() {
                     <div className="shrink-0 pt-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] relative z-20">
                         <div className="flex items-center gap-2 w-full justify-between">
                             <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {Object.keys(delightCodes).length}/{uploadedRows.filter((_, i) => rowFACodes[i] === "102.0").length} classificadas
+                                {Object.keys(delightCodes).length}/{uploadedRows.filter((_, i) => rowFACodes[i] === "102.0").length} classified
                                 <span className="text-gray-400 ml-2">
-                                    LAB (104.x) e PC (103.x) serão auto-atribuídos por cliente
+                                    LAB (104.x) and PC (103.x) will be auto-assigned per client
                                 </span>
                             </div>
                             <div className="flex gap-2">
@@ -1821,7 +1999,7 @@ export default function InvoiceOrdersPage() {
                                     onClick={() => { setDelightDialogOpen(false); setAnnualizeDialogOpen(true); }}
                                     disabled={classifying}
                                 >
-                                    ← Voltar
+                                    ← Back
                                 </Button>
                                 <Button
                                     className="bg-purple-600 hover:bg-purple-700 text-white"
@@ -1829,7 +2007,7 @@ export default function InvoiceOrdersPage() {
                                     disabled={classifying}
                                 >
                                     {classifying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                                    Confirmar e Salvar
+                                    Confirm & Save
                                 </Button>
                             </div>
                         </div>
