@@ -22,7 +22,8 @@ import {
     Settings2,
     Columns,
     Check,
-    CalendarRange
+    CalendarRange,
+    Mail
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -259,6 +260,11 @@ export default function InvoiceOrdersPage() {
     const [annualizeFilterProduct, setAnnualizeFilterProduct] = useState<string>("all");
     const [annualizedPreviews, setAnnualizedPreviews] = useState<Record<number, { date: string; installment: string }[]>>({});
 
+    // ── Popup 0: Email Resolution ──
+    const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+    const [missingEmailClients, setMissingEmailClients] = useState<{ name: string; email: string; foundInDB: string | null; rowIndices: number[] }[]>([]);
+    const [emailSearching, setEmailSearching] = useState(false);
+
     // Load data
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -420,7 +426,61 @@ export default function InvoiceOrdersPage() {
             setRowFACodes({});
             setAnnualizeFlags({});
             setAnnualizedPreviews({});
-            setClassifyDialogOpen(true);
+
+            // Check for clients without email
+            const clientsWithoutEmail = new Map<string, number[]>();
+            for (let i = 0; i < parsed.length; i++) {
+                const name = parsed[i].customerName?.trim();
+                if (name && !parsed[i].customerEmail?.trim()) {
+                    if (!clientsWithoutEmail.has(name)) {
+                        clientsWithoutEmail.set(name, []);
+                    }
+                    clientsWithoutEmail.get(name)!.push(i);
+                }
+            }
+
+            if (clientsWithoutEmail.size > 0) {
+                // Search DB for prior emails
+                setEmailSearching(true);
+                const clientEntries: typeof missingEmailClients = [];
+                const names = [...clientsWithoutEmail.keys()];
+
+                // Search in existing invoice-orders for these client names
+                const { data: priorRows } = await supabase
+                    .from("csv_rows")
+                    .select("custom_data")
+                    .eq("source", "invoice-orders")
+                    .not("custom_data->customer_email", "is", null);
+
+                const nameToEmail = new Map<string, string>();
+                if (priorRows) {
+                    for (const r of priorRows) {
+                        const cd = r.custom_data as Record<string, unknown> | null;
+                        const priorName = (cd?.customer_name as string)?.trim()?.toLowerCase();
+                        const priorEmail = (cd?.customer_email as string)?.trim();
+                        if (priorName && priorEmail) {
+                            nameToEmail.set(priorName, priorEmail);
+                        }
+                    }
+                }
+
+                for (const name of names) {
+                    const foundEmail = nameToEmail.get(name.toLowerCase()) || null;
+                    clientEntries.push({
+                        name,
+                        email: foundEmail || "",
+                        foundInDB: foundEmail,
+                        rowIndices: clientsWithoutEmail.get(name)!,
+                    });
+                }
+
+                setMissingEmailClients(clientEntries);
+                setEmailSearching(false);
+                setEmailDialogOpen(true);
+            } else {
+                // All clients have emails — go straight to Popup 1
+                setClassifyDialogOpen(true);
+            }
 
             if (data.duplicateCount > 0) {
                 toast({
@@ -439,6 +499,33 @@ export default function InvoiceOrdersPage() {
             setUploading(false);
             event.target.value = "";
         }
+    };
+
+    // ── Popup 0 → Confirm emails and proceed to Popup 1 ──
+    const confirmEmails = () => {
+        const incomplete = missingEmailClients.filter(c => !c.email.trim());
+        if (incomplete.length > 0) {
+            toast({
+                title: "Missing emails",
+                description: `${incomplete.length} client(s) still without email.`,
+                variant: "destructive"
+            });
+            return;
+        }
+
+        // Apply emails to uploaded rows
+        const updatedRows = [...uploadedRows];
+        for (const client of missingEmailClients) {
+            for (const idx of client.rowIndices) {
+                updatedRows[idx] = { ...updatedRows[idx], customerEmail: client.email.trim() };
+                if (updatedRows[idx].customData) {
+                    updatedRows[idx].customData = { ...updatedRows[idx].customData, customer_email: client.email.trim() };
+                }
+            }
+        }
+        setUploadedRows(updatedRows);
+        setEmailDialogOpen(false);
+        setClassifyDialogOpen(true);
     };
 
     // ── Popup 1 → Next: apply product classifications to all rows, open Popup 2 ──
@@ -1654,6 +1741,95 @@ export default function InvoiceOrdersPage() {
                             Save
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ═══════════════════════════════════════════════════════════════
+                POPUP 0 — Email Resolution (clients without email)
+            ═══════════════════════════════════════════════════════════════ */}
+            <Dialog open={emailDialogOpen} onOpenChange={(open) => { if (!emailSearching) setEmailDialogOpen(open); }}>
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-3xl max-h-[90vh] overflow-hidden" style={{ display: 'flex', flexDirection: 'column' }}>
+                    <DialogHeader className="shrink-0">
+                        <DialogTitle className="flex items-center gap-2">
+                            <Mail className="h-5 w-5 text-blue-400" />
+                            Resolve Client Emails
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-500 dark:text-gray-400">
+                            {missingEmailClients.length} client(s) without email. Confirm or enter their email to proceed.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {emailSearching ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="h-6 w-6 animate-spin text-blue-400 mr-2" />
+                            <span className="text-gray-500">Searching previous purchases...</span>
+                        </div>
+                    ) : (
+                        <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                            <table className="w-full text-sm">
+                                <thead className="sticky top-0 z-10">
+                                    <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
+                                        <th className="px-3 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Client</th>
+                                        <th className="px-3 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[60px]">Rows</th>
+                                        <th className="px-3 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[300px]">Email</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {missingEmailClients.map((client, idx) => (
+                                        <tr key={idx} className="border-b border-gray-100 dark:border-gray-800">
+                                            <td className="px-3 py-2 text-gray-700 dark:text-gray-300 text-xs">
+                                                <span className="block truncate max-w-[280px]" title={client.name}>
+                                                    {client.name}
+                                                </span>
+                                            </td>
+                                            <td className="px-3 py-2 text-center text-xs text-gray-500 dark:text-gray-400 font-mono">
+                                                {client.rowIndices.length}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        type="email"
+                                                        placeholder="client@email.com"
+                                                        value={client.email}
+                                                        onChange={(e) => {
+                                                            setMissingEmailClients(prev => prev.map((c, i) =>
+                                                                i === idx ? { ...c, email: e.target.value } : c
+                                                            ));
+                                                        }}
+                                                        className={`h-7 text-xs bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white ${client.foundInDB ? "border-green-400 dark:border-green-700" : ""}`}
+                                                    />
+                                                    {client.foundInDB && (
+                                                        <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 text-[10px] whitespace-nowrap shrink-0">
+                                                            found
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    <div className="shrink-0 pt-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] relative z-20">
+                        <div className="flex items-center gap-2 w-full justify-between">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {missingEmailClients.filter(c => c.email.trim()).length}/{missingEmailClients.length} resolved
+                            </div>
+                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    onClick={confirmEmails}
+                                >
+                                    Next →
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
 
