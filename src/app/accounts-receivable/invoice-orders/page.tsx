@@ -1373,8 +1373,8 @@ export default function InvoiceOrdersPage() {
                 POPUP 1 — Financial Account Classification
             ═══════════════════════════════════════════════════════════════ */}
             <Dialog open={classifyDialogOpen} onOpenChange={(open) => { if (!classifying) setClassifyDialogOpen(open); }}>
-                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-6xl max-h-[90vh] flex flex-col">
-                    <DialogHeader>
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-6xl max-h-[90vh] overflow-hidden [display:flex] flex-col">
+                    <DialogHeader className="shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                             <Settings2 className="h-5 w-5 text-blue-400" />
                             Classificar Invoice Orders — Conta Financeira
@@ -1390,7 +1390,7 @@ export default function InvoiceOrdersPage() {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <ScrollArea className="flex-1 min-h-0 pr-2">
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-1">
                         <table className="w-full text-sm">
                             <thead className="sticky top-0 z-10">
                                 <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
@@ -1464,9 +1464,9 @@ export default function InvoiceOrdersPage() {
                                 })}
                             </tbody>
                         </table>
-                    </ScrollArea>
+                    </div>
 
-                    <DialogFooter className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="shrink-0 pt-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] relative z-20">
                         <div className="flex items-center gap-2 w-full justify-between">
                             <div className="text-xs text-gray-500 dark:text-gray-400">
                                 {Object.keys(rowFACodes).length}/{uploadedRows.length} classificadas
@@ -1490,7 +1490,7 @@ export default function InvoiceOrdersPage() {
                                 </Button>
                             </div>
                         </div>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
@@ -1498,8 +1498,8 @@ export default function InvoiceOrdersPage() {
                 POPUP 2 — Delight Sub-Classification
             ═══════════════════════════════════════════════════════════════ */}
             <Dialog open={delightDialogOpen} onOpenChange={(open) => { if (!classifying) setDelightDialogOpen(open); }}>
-                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-5xl max-h-[85vh] flex flex-col">
-                    <DialogHeader>
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-5xl max-h-[85vh] overflow-hidden [display:flex] flex-col">
+                    <DialogHeader className="shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                             <Zap className="h-5 w-5 text-purple-400" />
                             Classificação Delight — Sub-conta
@@ -1510,7 +1510,7 @@ export default function InvoiceOrdersPage() {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <ScrollArea className="flex-1 min-h-0 pr-2">
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-1">
                         <table className="w-full text-sm">
                             <thead className="sticky top-0 z-10">
                                 <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
@@ -1573,9 +1573,9 @@ export default function InvoiceOrdersPage() {
                                 })}
                             </tbody>
                         </table>
-                    </ScrollArea>
+                    </div>
 
-                    <DialogFooter className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="shrink-0 pt-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] relative z-20">
                         <div className="flex items-center gap-2 w-full justify-between">
                             <div className="text-xs text-gray-500 dark:text-gray-400">
                                 {Object.keys(delightCodes).length}/{uploadedRows.filter((_, i) => rowFACodes[i] === "102.0").length} classificadas
@@ -1601,7 +1601,7 @@ export default function InvoiceOrdersPage() {
                                 </Button>
                             </div>
                         </div>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>
