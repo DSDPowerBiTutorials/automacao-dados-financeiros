@@ -199,7 +199,7 @@ export async function GET(request: NextRequest) {
                 revQuery = revQuery.ilike("custom_data->>financial_account_code", faCode);
             }
 
-            const { data, error } = await revQuery;
+            const { data, error, count } = await revQuery;
 
             if (error) {
                 console.error("Error fetching revenue drill-down:", error);

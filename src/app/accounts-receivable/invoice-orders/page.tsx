@@ -24,9 +24,12 @@ import {
     Check,
     CalendarRange,
     Mail,
-    ArrowRightLeft
+    ArrowRightLeft,
+    Plus,
+    CalendarIcon
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { format, subMonths, startOfMonth, endOfMonth, startOfYear, subYears } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -63,6 +66,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 // Interface para Invoice Order (dados do CSV)
 interface InvoiceOrder {
@@ -222,7 +227,9 @@ export default function InvoiceOrdersPage() {
     const [selectedYear, setSelectedYear] = useState<number | "all">("all");
 
     // Column filters
-    const [filterDate, setFilterDate] = useState("");
+    const [filterDateFrom, setFilterDateFrom] = useState<Date | undefined>(undefined);
+    const [filterDateTo, setFilterDateTo] = useState<Date | undefined>(undefined);
+    const [dateFilterOpen, setDateFilterOpen] = useState(false);
     const [filterDescription, setFilterDescription] = useState("");
     const [filterFA, setFilterFA] = useState("");
     const [filterCurrency, setFilterCurrency] = useState("");
@@ -236,6 +243,14 @@ export default function InvoiceOrdersPage() {
         financial_account_code: string; customer_name: string; customer_email: string;
     }>({ date: "", description: "", amount: "", financial_account_code: "", customer_name: "", customer_email: "" });
     const [saving, setSaving] = useState(false);
+
+    // Add manual dialog
+    const [addDialogOpen, setAddDialogOpen] = useState(false);
+    const [addForm, setAddForm] = useState({
+        date: "", description: "", amount: "", currency: "EUR",
+        financial_account_code: "", customer_name: "", customer_email: "",
+        invoice_number: "", order_number: "",
+    });
     const [page, setPage] = useState(1);
     const [totalRows, setTotalRows] = useState(0);
     const PAGE_SIZE = 200;
@@ -946,8 +961,14 @@ export default function InvoiceOrdersPage() {
         }
 
         // Column filters
-        if (filterDate) {
-            filtered = filtered.filter((inv) => formatDate(inv.date).includes(filterDate));
+        if (filterDateFrom || filterDateTo) {
+            filtered = filtered.filter((inv) => {
+                if (!inv.date) return false;
+                const d = new Date(inv.date + "T00:00:00");
+                if (filterDateFrom && d < filterDateFrom) return false;
+                if (filterDateTo && d > filterDateTo) return false;
+                return true;
+            });
         }
         if (filterDescription) {
             const fd = filterDescription.toLowerCase();
@@ -998,7 +1019,7 @@ export default function InvoiceOrdersPage() {
         });
 
         return filtered;
-    }, [invoiceOrders, showReconciled, searchTerm, sortField, sortDirection, filterDate, filterDescription, filterFA, filterCurrency, filterStatus]);
+    }, [invoiceOrders, showReconciled, searchTerm, sortField, sortDirection, filterDateFrom, filterDateTo, filterDescription, filterFA, filterCurrency, filterStatus]);
 
     // Stats
     const stats = useMemo(() => {
@@ -1079,6 +1100,48 @@ export default function InvoiceOrdersPage() {
         } catch (err) {
             console.error("Edit error:", err);
             toast({ title: "Error updating record", description: String(err), variant: "destructive" });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // Add manual invoice order
+    const handleAddManual = async () => {
+        if (!addForm.date || !addForm.description || !addForm.amount || !addForm.financial_account_code) {
+            toast({ title: "Missing fields", description: "Date, description, amount and financial account are required.", variant: "destructive" });
+            return;
+        }
+        setSaving(true);
+        try {
+            const customData: Record<string, unknown> = {
+                financial_account_code: addForm.financial_account_code,
+                financial_account_name: FA_NAMES[addForm.financial_account_code] || "",
+                customer_name: addForm.customer_name,
+                customer_email: addForm.customer_email,
+                invoice_number: addForm.invoice_number,
+                order_number: addForm.order_number,
+                manual_entry: true,
+            };
+
+            const { error } = await supabase.from("csv_rows").insert({
+                source: "invoice-orders",
+                file_name: "manual-entry",
+                date: addForm.date,
+                description: addForm.description,
+                amount: parseFloat(addForm.amount) || 0,
+                currency: addForm.currency || "EUR",
+                custom_data: customData,
+                reconciled: false,
+            });
+
+            if (error) throw error;
+            toast({ title: "Invoice order created" });
+            setAddDialogOpen(false);
+            setAddForm({ date: "", description: "", amount: "", currency: "EUR", financial_account_code: "", customer_name: "", customer_email: "", invoice_number: "", order_number: "" });
+            loadData();
+        } catch (err) {
+            console.error("Add error:", err);
+            toast({ title: "Error creating record", description: String(err), variant: "destructive" });
         } finally {
             setSaving(false);
         }
@@ -1311,6 +1374,16 @@ export default function InvoiceOrdersPage() {
                                 </Button>
                             </div>
 
+                            {/* Add Manual */}
+                            <Button
+                                variant="outline"
+                                className="bg-green-600 hover:bg-green-700 text-white border-green-500"
+                                onClick={() => setAddDialogOpen(true)}
+                            >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Manual
+                            </Button>
+
                             {/* Refresh */}
                             <Button
                                 variant="outline"
@@ -1464,13 +1537,58 @@ export default function InvoiceOrdersPage() {
                                             {visibleColumns.map((col) => (
                                                 <th key={`filter-${col.key}`} className="px-2 py-1">
                                                     {col.key === "date" && (
-                                                        <Input
-                                                            type="text"
-                                                            placeholder="Filter date..."
-                                                            value={filterDate}
-                                                            onChange={(e) => setFilterDate(e.target.value)}
-                                                            className="h-7 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400"
-                                                        />
+                                                        <Popover open={dateFilterOpen} onOpenChange={setDateFilterOpen}>
+                                                            <PopoverTrigger asChild>
+                                                                <Button variant="outline" className={`h-7 w-full text-xs justify-start font-normal bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white ${filterDateFrom || filterDateTo ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>
+                                                                    <CalendarIcon className="h-3 w-3 mr-1 shrink-0" />
+                                                                    {filterDateFrom && filterDateTo
+                                                                        ? `${format(filterDateFrom, "dd/MM")} - ${format(filterDateTo, "dd/MM/yy")}`
+                                                                        : filterDateFrom
+                                                                            ? `From ${format(filterDateFrom, "dd/MM/yy")}`
+                                                                            : "Date range..."}
+                                                                </Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-auto p-0 bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700" align="start">
+                                                                <div className="p-2 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-1">
+                                                                    <Button variant="ghost" className="h-6 text-[10px] px-2" onClick={() => {
+                                                                        const now = new Date();
+                                                                        setFilterDateFrom(startOfMonth(subMonths(now, 1)));
+                                                                        setFilterDateTo(endOfMonth(subMonths(now, 1)));
+                                                                        setDateFilterOpen(false);
+                                                                    }}>Last Month</Button>
+                                                                    <Button variant="ghost" className="h-6 text-[10px] px-2" onClick={() => {
+                                                                        const now = new Date();
+                                                                        setFilterDateFrom(startOfYear(now));
+                                                                        setFilterDateTo(now);
+                                                                        setDateFilterOpen(false);
+                                                                    }}>This Year</Button>
+                                                                    <Button variant="ghost" className="h-6 text-[10px] px-2" onClick={() => {
+                                                                        const now = new Date();
+                                                                        setFilterDateFrom(startOfYear(subYears(now, 1)));
+                                                                        setFilterDateTo(new Date(now.getFullYear() - 1, 11, 31));
+                                                                        setDateFilterOpen(false);
+                                                                    }}>Last Year</Button>
+                                                                    {(filterDateFrom || filterDateTo) && (
+                                                                        <Button variant="ghost" className="h-6 text-[10px] px-2 text-red-500" onClick={() => {
+                                                                            setFilterDateFrom(undefined);
+                                                                            setFilterDateTo(undefined);
+                                                                            setDateFilterOpen(false);
+                                                                        }}>Clear</Button>
+                                                                    )}
+                                                                </div>
+                                                                <Calendar
+                                                                    mode="range"
+                                                                    selected={filterDateFrom && filterDateTo ? { from: filterDateFrom, to: filterDateTo } : filterDateFrom ? { from: filterDateFrom, to: undefined } : undefined}
+                                                                    onSelect={(range) => {
+                                                                        setFilterDateFrom(range?.from);
+                                                                        setFilterDateTo(range?.to);
+                                                                        if (range?.from && range?.to) setDateFilterOpen(false);
+                                                                    }}
+                                                                    numberOfMonths={2}
+                                                                    className="text-gray-900 dark:text-white"
+                                                                />
+                                                            </PopoverContent>
+                                                        </Popover>
                                                     )}
                                                     {col.key === "description" && (
                                                         <Input
@@ -2283,8 +2401,8 @@ export default function InvoiceOrdersPage() {
                                         <td className="px-2 py-1.5 text-center text-gray-400">→</td>
                                         <td className="px-2 py-1.5 text-center">
                                             <Badge className={`text-[10px] border ${r.newCode.endsWith(".7")
-                                                    ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700"
-                                                    : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
+                                                ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700"
+                                                : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
                                                 }`}>
                                                 {r.newCode} {FA_NAMES[r.newCode] || ""}
                                             </Badge>
@@ -2337,6 +2455,82 @@ export default function InvoiceOrdersPage() {
                             </div>
                         </div>
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Manual Add Dialog */}
+            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="text-gray-900 dark:text-white">Add Invoice Order Manually</DialogTitle>
+                        <DialogDescription className="text-gray-500 dark:text-gray-400">Fill in the fields below to create a new invoice order entry.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-3 py-2 max-h-[60vh] overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-700 dark:text-gray-300">Date *</Label>
+                                <Input type="date" value={addForm.date} onChange={(e) => setAddForm({ ...addForm, date: e.target.value })} className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-700 dark:text-gray-300">Currency</Label>
+                                <Select value={addForm.currency} onValueChange={(v) => setAddForm({ ...addForm, currency: v })}>
+                                    <SelectTrigger className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
+                                        <SelectItem value="EUR">EUR</SelectItem>
+                                        <SelectItem value="USD">USD</SelectItem>
+                                        <SelectItem value="GBP">GBP</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs text-gray-700 dark:text-gray-300">Description *</Label>
+                            <Input value={addForm.description} onChange={(e) => setAddForm({ ...addForm, description: e.target.value })} placeholder="Invoice description" className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-700 dark:text-gray-300">Amount *</Label>
+                                <Input type="number" step="0.01" value={addForm.amount} onChange={(e) => setAddForm({ ...addForm, amount: e.target.value })} placeholder="0.00" className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-700 dark:text-gray-300">Financial Account *</Label>
+                                <Select value={addForm.financial_account_code} onValueChange={(v) => setAddForm({ ...addForm, financial_account_code: v })}>
+                                    <SelectTrigger className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue placeholder="Select FA" /></SelectTrigger>
+                                    <SelectContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 max-h-60">
+                                        {FA_OPTIONS_POPUP1.map(fa => (
+                                            <SelectItem key={fa.code} value={fa.code} className="text-xs">{fa.code} — {fa.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-700 dark:text-gray-300">Customer Name</Label>
+                                <Input value={addForm.customer_name} onChange={(e) => setAddForm({ ...addForm, customer_name: e.target.value })} placeholder="Customer name" className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-700 dark:text-gray-300">Customer Email</Label>
+                                <Input value={addForm.customer_email} onChange={(e) => setAddForm({ ...addForm, customer_email: e.target.value })} placeholder="email@example.com" className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-700 dark:text-gray-300">Invoice Number</Label>
+                                <Input value={addForm.invoice_number} onChange={(e) => setAddForm({ ...addForm, invoice_number: e.target.value })} placeholder="INV-001" className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-700 dark:text-gray-300">Order Number</Label>
+                                <Input value={addForm.order_number} onChange={(e) => setAddForm({ ...addForm, order_number: e.target.value })} placeholder="ORD-001" className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setAddDialogOpen(false)} className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">Cancel</Button>
+                        <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleAddManual}>
+                            Save
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div >
