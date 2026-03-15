@@ -128,6 +128,9 @@ const FA_OPTIONS_POPUP1 = [
     { code: "101.4", label: "101.4 — PC Membership" },
     { code: "101.5", label: "101.5 — Partnerships" },
     { code: "102.0", label: "102.0 — Delight" },
+    { code: "102.5", label: "102.5 — Consultancies" },
+    { code: "102.6", label: "102.6 — Marketing Coaching" },
+    { code: "102.7", label: "102.7 — Others" },
     { code: "103.0", label: "103.0 — Planning Center" },
     { code: "104.0", label: "104.0 — LAB" },
     { code: "105.1", label: "105.1 — Level 1" },
@@ -143,6 +146,7 @@ const DELIGHT_SUB_OPTIONS = [
     { code: "102.4", label: "102.4 — Level 3 New AMEX" },
     { code: "102.5", label: "102.5 — Consultancies" },
     { code: "102.6", label: "102.6 — Marketing Coaching" },
+    { code: "102.7", label: "102.7 — Others" },
 ] as const;
 
 // Client classification → LAB/PC sub-account mapping
@@ -162,13 +166,13 @@ const FA_NAMES: Record<string, string> = {
     "101.4": "PC Membership", "101.5": "Partnerships",
     "102.0": "Delight", "102.1": "Contracted ROW", "102.2": "Contracted AMEX",
     "102.3": "Level 3 New ROW", "102.4": "Level 3 New AMEX",
-    "102.5": "Consultancies", "102.6": "Marketing Coaching",
+    "102.5": "Consultancies", "102.6": "Marketing Coaching", "102.7": "Others",
     "103.0": "Planning Center", "103.1": "Level 3 ROW", "103.2": "Level 3 AMEX",
     "103.3": "Level 3 New ROW", "103.4": "Level 3 New AMEX",
-    "103.5": "Level 2", "103.6": "Level 1",
+    "103.5": "Level 2", "103.6": "Level 1", "103.7": "Not a Subscriber",
     "104.0": "LAB", "104.1": "Level 3 ROW", "104.2": "Level 3 AMEX",
     "104.3": "Level 3 New ROW", "104.4": "Level 3 New AMEX",
-    "104.5": "Level 2", "104.6": "Level 1",
+    "104.5": "Level 2", "104.6": "Level 1", "104.7": "Not a Subscriber",
     "105.1": "Level 1", "105.2": "CORE Partnerships",
     "105.3": "Study Club", "105.4": "Other Marketing Revenues",
 };
@@ -672,7 +676,12 @@ export default function InvoiceOrdersPage() {
                         updatedCodes[i] = currentCode === "104.0"
                             ? CLIENT_TO_LAB_PC[clientClass].lab
                             : CLIENT_TO_LAB_PC[clientClass].pc;
+                    } else {
+                        // Not a Subscriber — client not found in any classification
+                        updatedCodes[i] = currentCode === "104.0" ? "104.7" : "103.7";
                     }
+                } else {
+                    updatedCodes[i] = currentCode === "104.0" ? "104.7" : "103.7";
                 }
             }
         }
@@ -706,7 +715,12 @@ export default function InvoiceOrdersPage() {
                         updatedCodes[i] = currentCode === "104.0"
                             ? CLIENT_TO_LAB_PC[clientClass].lab
                             : CLIENT_TO_LAB_PC[clientClass].pc;
+                    } else {
+                        // Not a Subscriber — client not found in any classification
+                        updatedCodes[i] = currentCode === "104.0" ? "104.7" : "103.7";
                     }
+                } else {
+                    updatedCodes[i] = currentCode === "104.0" ? "104.7" : "103.7";
                 }
             }
         }
