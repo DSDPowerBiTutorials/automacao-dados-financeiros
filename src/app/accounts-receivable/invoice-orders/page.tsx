@@ -1373,7 +1373,7 @@ export default function InvoiceOrdersPage() {
                 POPUP 1 — Financial Account Classification
             ═══════════════════════════════════════════════════════════════ */}
             <Dialog open={classifyDialogOpen} onOpenChange={(open) => { if (!classifying) setClassifyDialogOpen(open); }}>
-                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-6xl max-h-[90vh] overflow-hidden [display:flex] flex-col">
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-6xl max-h-[90vh] overflow-hidden flex-col" style={{ display: 'flex', flexDirection: 'column' }}>
                     <DialogHeader className="shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                             <Settings2 className="h-5 w-5 text-blue-400" />
@@ -1498,7 +1498,7 @@ export default function InvoiceOrdersPage() {
                 POPUP 2 — Delight Sub-Classification
             ═══════════════════════════════════════════════════════════════ */}
             <Dialog open={delightDialogOpen} onOpenChange={(open) => { if (!classifying) setDelightDialogOpen(open); }}>
-                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-5xl max-h-[85vh] overflow-hidden [display:flex] flex-col">
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-5xl max-h-[85vh] overflow-hidden flex-col" style={{ display: 'flex', flexDirection: 'column' }}>
                     <DialogHeader className="shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                             <Zap className="h-5 w-5 text-purple-400" />
