@@ -1870,7 +1870,7 @@ export default function InvoiceOrdersPage() {
                                                         </span>
                                                     </td>
                                                     <td className="px-2 py-1 text-right text-[11px] font-mono text-purple-500 dark:text-purple-400">
-                                                        {formatEuropeanNumber(row.amount)}
+                                                        {formatEuropeanNumber(row.amount / 12)}
                                                     </td>
                                                     <td className="px-2 py-1 text-[11px] text-purple-500 dark:text-purple-400">
                                                         {faCode}
@@ -2028,6 +2028,6 @@ export default function InvoiceOrdersPage() {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     );
 }

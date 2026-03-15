@@ -30,16 +30,18 @@ export async function POST(request: NextRequest) {
         const baseMonth = baseDate.getUTCMonth();
         const baseYear = baseDate.getUTCFullYear();
         const baseDay = Math.min(baseDate.getUTCDate(), 28); // Safe day for all months
+        const installmentAmount = parseFloat((parseFloat(original.amount) / 12).toFixed(2));
 
-        // Mark the original as installment 1/12
+        // Mark the original as installment 1/12 and update amount to 1/12
         const originalCustomData = { ...(original.custom_data || {}) };
         originalCustomData.annualized = true;
         originalCustomData.installment = "1/12";
         originalCustomData.annualized_from = rowId;
+        originalCustomData.original_total_amount = parseFloat(original.amount);
 
         await supabaseAdmin
             .from("csv_rows")
-            .update({ custom_data: originalCustomData })
+            .update({ custom_data: originalCustomData, amount: installmentAmount })
             .eq("id", rowId);
 
         // Create 11 monthly installments (months 2-12)
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest) {
                 file_name: original.file_name,
                 date: installmentDate,
                 description: original.description,
-                amount: original.amount,
+                amount: installmentAmount,
                 reconciled: false,
                 custom_data: customData
             });
