@@ -286,6 +286,14 @@ export default function InvoiceOrdersPage() {
     const [annualizeFilterProduct, setAnnualizeFilterProduct] = useState<string>("all");
     const [annualizedPreviews, setAnnualizedPreviews] = useState<Record<number, { date: string; installment: string }[]>>({});
 
+    // ── Popup table sorting (shared pattern) ──
+    const [popupSortField, setPopupSortField] = useState<string>("");
+    const [popupSortDir, setPopupSortDir] = useState<"asc" | "desc">("asc");
+    const handlePopupSort = (field: string) => {
+        if (popupSortField === field) setPopupSortDir(popupSortDir === "asc" ? "desc" : "asc");
+        else { setPopupSortField(field); setPopupSortDir("asc"); }
+    };
+
     // ── Popup 0: Email Resolution ──
     const [emailDialogOpen, setEmailDialogOpen] = useState(false);
     const [missingEmailClients, setMissingEmailClients] = useState<{ name: string; email: string; foundInDB: string | null; rowIndices: number[] }[]>([]);
@@ -583,6 +591,8 @@ export default function InvoiceOrdersPage() {
         setAnnualizedPreviews({});
         setAnnualizeFilterFA("all");
         setAnnualizeFilterProduct("all");
+        setPopupSortField("");
+        setPopupSortDir("asc");
         setClassifyDialogOpen(false);
         setAnnualizeDialogOpen(true);
     };
@@ -596,6 +606,7 @@ export default function InvoiceOrdersPage() {
         if (delightIndices.length > 0) {
             await fetchClientHistory(delightIndices);
             setAnnualizeDialogOpen(false);
+            setPopupSortField(""); setPopupSortDir("asc");
             setDelightDialogOpen(true);
         } else {
             setAnnualizeDialogOpen(false);
@@ -808,6 +819,7 @@ export default function InvoiceOrdersPage() {
         if (reallocations.length > 0) {
             setLabPcReallocations(reallocations);
             setPendingUpdatedCodes(finalCodes);
+            setPopupSortField(""); setPopupSortDir("asc");
             setLabPcDialogOpen(true);
         } else {
             // No LAB/PC rows — save directly
@@ -2251,79 +2263,103 @@ export default function InvoiceOrdersPage() {
                         <table className="w-full text-sm">
                             <thead className="sticky top-0 z-10">
                                 <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[90px]">Date</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[140px]">Client</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Product</th>
-                                    <th className="px-2 py-2 text-right text-xs text-gray-500 dark:text-gray-400 w-[90px]">Amount</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[160px]">Account</th>
+                                    {[
+                                        { key: "date", label: "Date", align: "text-left", w: "w-[90px]" },
+                                        { key: "client", label: "Client", align: "text-left", w: "w-[140px]" },
+                                        { key: "product", label: "Product", align: "text-left", w: "" },
+                                        { key: "amount", label: "Amount", align: "text-right", w: "w-[90px]" },
+                                        { key: "account", label: "Account", align: "text-left", w: "w-[160px]" },
+                                    ].map(c => (
+                                        <th key={c.key} className={`px-2 py-2 ${c.align} text-xs text-gray-500 dark:text-gray-400 ${c.w} cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`} onClick={() => handlePopupSort(c.key)}>
+                                            <div className={`flex items-center gap-1 ${c.align === "text-right" ? "justify-end" : ""}`}>
+                                                {c.label}
+                                                {popupSortField === c.key ? (popupSortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                                            </div>
+                                        </th>
+                                    ))}
                                     <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[70px]">12x</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {uploadedRows.map((row, i) => {
-                                    const faCode = rowFACodes[i] || "";
-                                    if (annualizeFilterFA !== "all" && faCode !== annualizeFilterFA) return null;
-                                    if (annualizeFilterProduct !== "all" && row.description !== annualizeFilterProduct) return null;
+                                {(() => {
+                                    const filtered = uploadedRows.map((row, i) => ({ row, i, faCode: rowFACodes[i] || "" }))
+                                        .filter(({ faCode }) => annualizeFilterFA === "all" || faCode === annualizeFilterFA)
+                                        .filter(({ row }) => annualizeFilterProduct === "all" || row.description === annualizeFilterProduct);
+                                    if (popupSortField) {
+                                        filtered.sort((a, b) => {
+                                            let va: string | number = "", vb: string | number = "";
+                                            if (popupSortField === "date") { va = a.row.date || ""; vb = b.row.date || ""; }
+                                            else if (popupSortField === "client") { va = (a.row.customerName || "").toLowerCase(); vb = (b.row.customerName || "").toLowerCase(); }
+                                            else if (popupSortField === "product") { va = (a.row.description || "").toLowerCase(); vb = (b.row.description || "").toLowerCase(); }
+                                            else if (popupSortField === "amount") { va = a.row.amount; vb = b.row.amount; }
+                                            else if (popupSortField === "account") { va = a.faCode; vb = b.faCode; }
+                                            if (va < vb) return popupSortDir === "asc" ? -1 : 1;
+                                            if (va > vb) return popupSortDir === "asc" ? 1 : -1;
+                                            return 0;
+                                        });
+                                    }
+                                    return filtered.map(({ row, i, faCode }) => {
 
-                                    const preview = annualizedPreviews[i];
-                                    return (
-                                        <React.Fragment key={i}>
-                                            <tr className="border-b border-gray-100 dark:border-gray-800">
-                                                <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs">{formatDate(row.date)}</td>
-                                                <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[140px]" title={row.customerName}>
-                                                    {row.customerName || "-"}
-                                                </td>
-                                                <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[250px]" title={row.description}>
-                                                    {row.description}
-                                                </td>
-                                                <td className="px-2 py-1.5 text-right text-xs font-mono">
-                                                    <span className={row.amount >= 0 ? "text-green-500" : "text-red-400"}>
-                                                        {formatEuropeanNumber(row.amount)}
-                                                    </span>
-                                                </td>
-                                                <td className="px-2 py-1.5 text-xs text-gray-600 dark:text-gray-400">
-                                                    {faCode} — {FA_NAMES[faCode] || ""}
-                                                </td>
-                                                <td className="px-2 py-1.5 text-center">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => toggleAnnualizePreview(i)}
-                                                        className={`h-6 w-6 rounded border flex items-center justify-center transition-colors ${annualizeFlags[i]
-                                                            ? "bg-purple-600 border-purple-500 text-white"
-                                                            : "border-gray-300 dark:border-gray-600 text-gray-400 hover:border-purple-400"
-                                                            }`}
-                                                        title="Annualize (12 monthly installments)"
-                                                    >
-                                                        <CalendarRange className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            {annualizeFlags[i] && preview && preview.map((inst, j) => (
-                                                <tr key={`${i}-inst-${j}`} className="bg-purple-50 dark:bg-purple-900/10 border-b border-purple-100 dark:border-purple-900/20">
-                                                    <td className="px-2 py-1 text-purple-600 dark:text-purple-400 text-[11px] pl-6">
-                                                        {formatDate(inst.date)}
-                                                    </td>
-                                                    <td className="px-2 py-1 text-purple-500 dark:text-purple-400 text-[11px]">
+                                        const preview = annualizedPreviews[i];
+                                        return (
+                                            <React.Fragment key={i}>
+                                                <tr className="border-b border-gray-100 dark:border-gray-800">
+                                                    <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs">{formatDate(row.date)}</td>
+                                                    <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[140px]" title={row.customerName}>
                                                         {row.customerName || "-"}
                                                     </td>
-                                                    <td className="px-2 py-1 text-purple-500 dark:text-purple-400 text-[11px]">
-                                                        <span className="flex items-center gap-1">
-                                                            <Badge className="bg-purple-600 text-white text-[9px] px-1 py-0">{inst.installment}</Badge>
-                                                            {row.description}
+                                                    <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[250px]" title={row.description}>
+                                                        {row.description}
+                                                    </td>
+                                                    <td className="px-2 py-1.5 text-right text-xs font-mono">
+                                                        <span className={row.amount >= 0 ? "text-green-500" : "text-red-400"}>
+                                                            {formatEuropeanNumber(row.amount)}
                                                         </span>
                                                     </td>
-                                                    <td className="px-2 py-1 text-right text-[11px] font-mono text-purple-500 dark:text-purple-400">
-                                                        {formatEuropeanNumber(row.amount / 12)}
+                                                    <td className="px-2 py-1.5 text-xs text-gray-600 dark:text-gray-400">
+                                                        {faCode} — {FA_NAMES[faCode] || ""}
                                                     </td>
-                                                    <td className="px-2 py-1 text-[11px] text-purple-500 dark:text-purple-400">
-                                                        {faCode}
+                                                    <td className="px-2 py-1.5 text-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleAnnualizePreview(i)}
+                                                            className={`h-6 w-6 rounded border flex items-center justify-center transition-colors ${annualizeFlags[i]
+                                                                ? "bg-purple-600 border-purple-500 text-white"
+                                                                : "border-gray-300 dark:border-gray-600 text-gray-400 hover:border-purple-400"
+                                                                }`}
+                                                            title="Annualize (12 monthly installments)"
+                                                        >
+                                                            <CalendarRange className="h-3.5 w-3.5" />
+                                                        </button>
                                                     </td>
-                                                    <td></td>
                                                 </tr>
-                                            ))}
-                                        </React.Fragment>
-                                    );
-                                })}
+                                                {annualizeFlags[i] && preview && preview.map((inst, j) => (
+                                                    <tr key={`${i}-inst-${j}`} className="bg-purple-50 dark:bg-purple-900/10 border-b border-purple-100 dark:border-purple-900/20">
+                                                        <td className="px-2 py-1 text-purple-600 dark:text-purple-400 text-[11px] pl-6">
+                                                            {formatDate(inst.date)}
+                                                        </td>
+                                                        <td className="px-2 py-1 text-purple-500 dark:text-purple-400 text-[11px]">
+                                                            {row.customerName || "-"}
+                                                        </td>
+                                                        <td className="px-2 py-1 text-purple-500 dark:text-purple-400 text-[11px]">
+                                                            <span className="flex items-center gap-1">
+                                                                <Badge className="bg-purple-600 text-white text-[9px] px-1 py-0">{inst.installment}</Badge>
+                                                                {row.description}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-2 py-1 text-right text-[11px] font-mono text-purple-500 dark:text-purple-400">
+                                                            {formatEuropeanNumber(row.amount / 12)}
+                                                        </td>
+                                                        <td className="px-2 py-1 text-[11px] text-purple-500 dark:text-purple-400">
+                                                            {faCode}
+                                                        </td>
+                                                        <td></td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        );
+                                    });
+                                })()}
                             </tbody>
                         </table>
                     </div>
@@ -2381,63 +2417,87 @@ export default function InvoiceOrdersPage() {
                         <table className="w-full text-sm">
                             <thead className="sticky top-0 z-10">
                                 <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[90px]">Date</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[160px]">Client</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Product</th>
-                                    <th className="px-2 py-2 text-right text-xs text-gray-500 dark:text-gray-400 w-[90px]">Amount</th>
+                                    {[
+                                        { key: "date", label: "Date", align: "text-left", w: "w-[90px]" },
+                                        { key: "client", label: "Client", align: "text-left", w: "w-[160px]" },
+                                        { key: "product", label: "Product", align: "text-left", w: "" },
+                                        { key: "amount", label: "Amount", align: "text-right", w: "w-[90px]" },
+                                    ].map(c => (
+                                        <th key={c.key} className={`px-2 py-2 ${c.align} text-xs text-gray-500 dark:text-gray-400 ${c.w} cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`} onClick={() => handlePopupSort(c.key)}>
+                                            <div className={`flex items-center gap-1 ${c.align === "text-right" ? "justify-end" : ""}`}>
+                                                {c.label}
+                                                {popupSortField === c.key ? (popupSortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                                            </div>
+                                        </th>
+                                    ))}
                                     <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[260px]">Delight Sub-account</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {uploadedRows.map((row, i) => {
-                                    if (rowFACodes[i] !== "102.0") return null;
-                                    const hasSuggestion = !!delightCodes[i];
-                                    return (
-                                        <tr key={i} className="border-b border-gray-100 dark:border-gray-800">
-                                            <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs">{formatDate(row.date)}</td>
-                                            <td className="px-2 py-1.5 text-xs">
-                                                <div className="text-gray-700 dark:text-gray-300 truncate max-w-[160px]" title={row.customerName}>
-                                                    {row.customerName || "-"}
-                                                </div>
-                                                {row.customerEmail && (
-                                                    <div className="text-gray-400 text-[10px] truncate" title={row.customerEmail}>
-                                                        {row.customerEmail}
+                                {(() => {
+                                    const filtered = uploadedRows.map((row, i) => ({ row, i }))
+                                        .filter(({ i }) => rowFACodes[i] === "102.0");
+                                    if (popupSortField) {
+                                        filtered.sort((a, b) => {
+                                            let va: string | number = "", vb: string | number = "";
+                                            if (popupSortField === "date") { va = a.row.date || ""; vb = b.row.date || ""; }
+                                            else if (popupSortField === "client") { va = (a.row.customerName || "").toLowerCase(); vb = (b.row.customerName || "").toLowerCase(); }
+                                            else if (popupSortField === "product") { va = (a.row.description || "").toLowerCase(); vb = (b.row.description || "").toLowerCase(); }
+                                            else if (popupSortField === "amount") { va = a.row.amount; vb = b.row.amount; }
+                                            if (va < vb) return popupSortDir === "asc" ? -1 : 1;
+                                            if (va > vb) return popupSortDir === "asc" ? 1 : -1;
+                                            return 0;
+                                        });
+                                    }
+                                    return filtered.map(({ row, i }) => {
+                                        const hasSuggestion = !!delightCodes[i];
+                                        return (
+                                            <tr key={i} className="border-b border-gray-100 dark:border-gray-800">
+                                                <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs">{formatDate(row.date)}</td>
+                                                <td className="px-2 py-1.5 text-xs">
+                                                    <div className="text-gray-700 dark:text-gray-300 truncate max-w-[160px]" title={row.customerName}>
+                                                        {row.customerName || "-"}
                                                     </div>
-                                                )}
-                                            </td>
-                                            <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[250px]" title={row.description}>
-                                                {row.description}
-                                            </td>
-                                            <td className="px-2 py-1.5 text-right text-xs font-mono text-green-500">
-                                                {formatEuropeanNumber(row.amount)}
-                                            </td>
-                                            <td className="px-2 py-1.5">
-                                                <div className="flex items-center gap-1">
-                                                    <Select
-                                                        value={delightCodes[i] || ""}
-                                                        onValueChange={(val) => setDelightCodes((prev) => ({ ...prev, [i]: val }))}
-                                                    >
-                                                        <SelectTrigger className={`h-7 text-xs border-gray-300 dark:border-gray-600 ${hasSuggestion ? "bg-green-50 dark:bg-green-900/10 border-green-400 dark:border-green-700" : "bg-white dark:bg-black"}`}>
-                                                            <SelectValue placeholder="Select sub-account..." />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
-                                                            {DELIGHT_SUB_OPTIONS.map((opt) => (
-                                                                <SelectItem key={opt.code} value={opt.code} className="text-xs">
-                                                                    {opt.label}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    {hasSuggestion && (
-                                                        <Badge className="bg-green-900/20 text-green-500 border-green-800 text-[10px] whitespace-nowrap">
-                                                            auto
-                                                        </Badge>
+                                                    {row.customerEmail && (
+                                                        <div className="text-gray-400 text-[10px] truncate" title={row.customerEmail}>
+                                                            {row.customerEmail}
+                                                        </div>
                                                     )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                                </td>
+                                                <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[250px]" title={row.description}>
+                                                    {row.description}
+                                                </td>
+                                                <td className="px-2 py-1.5 text-right text-xs font-mono text-green-500">
+                                                    {formatEuropeanNumber(row.amount)}
+                                                </td>
+                                                <td className="px-2 py-1.5">
+                                                    <div className="flex items-center gap-1">
+                                                        <Select
+                                                            value={delightCodes[i] || ""}
+                                                            onValueChange={(val) => setDelightCodes((prev) => ({ ...prev, [i]: val }))}
+                                                        >
+                                                            <SelectTrigger className={`h-7 text-xs border-gray-300 dark:border-gray-600 ${hasSuggestion ? "bg-green-50 dark:bg-green-900/10 border-green-400 dark:border-green-700" : "bg-white dark:bg-black"}`}>
+                                                                <SelectValue placeholder="Select sub-account..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
+                                                                {DELIGHT_SUB_OPTIONS.map((opt) => (
+                                                                    <SelectItem key={opt.code} value={opt.code} className="text-xs">
+                                                                        {opt.label}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        {hasSuggestion && (
+                                                            <Badge className="bg-green-900/20 text-green-500 border-green-800 text-[10px] whitespace-nowrap">
+                                                                auto
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    });
+                                })()}
                             </tbody>
                         </table>
                     </div>
@@ -2489,18 +2549,50 @@ export default function InvoiceOrdersPage() {
                         <table className="w-full text-sm">
                             <thead className="sticky top-0 z-10">
                                 <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[80px]">Date</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[150px]">Client</th>
-                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Product</th>
-                                    <th className="px-2 py-2 text-right text-xs text-gray-500 dark:text-gray-400 w-[80px]">Amount</th>
-                                    <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[110px]">From</th>
+                                    {[
+                                        { key: "date", label: "Date", align: "text-left", w: "w-[80px]" },
+                                        { key: "client", label: "Client", align: "text-left", w: "w-[150px]" },
+                                        { key: "product", label: "Product", align: "text-left", w: "" },
+                                        { key: "amount", label: "Amount", align: "text-right", w: "w-[80px]" },
+                                        { key: "from", label: "From", align: "text-center", w: "w-[110px]" },
+                                    ].map(c => (
+                                        <th key={c.key} className={`px-2 py-2 ${c.align} text-xs text-gray-500 dark:text-gray-400 ${c.w} cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`} onClick={() => handlePopupSort(c.key)}>
+                                            <div className={`flex items-center gap-1 ${c.align === "text-right" ? "justify-end" : c.align === "text-center" ? "justify-center" : ""}`}>
+                                                {c.label}
+                                                {popupSortField === c.key ? (popupSortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                                            </div>
+                                        </th>
+                                    ))}
                                     <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[20px]"></th>
-                                    <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[150px]">To</th>
-                                    <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[110px]">Based On</th>
+                                    <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[150px] cursor-pointer hover:text-gray-700 dark:hover:text-gray-200" onClick={() => handlePopupSort("to")}>
+                                        <div className="flex items-center gap-1 justify-center">
+                                            To
+                                            {popupSortField === "to" ? (popupSortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                                        </div>
+                                    </th>
+                                    <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[110px] cursor-pointer hover:text-gray-700 dark:hover:text-gray-200" onClick={() => handlePopupSort("based")}>
+                                        <div className="flex items-center gap-1 justify-center">
+                                            Based On
+                                            {popupSortField === "based" ? (popupSortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                                        </div>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {labPcReallocations.map((r, idx) => (
+                                {[...labPcReallocations].sort((a, b) => {
+                                    if (!popupSortField) return 0;
+                                    let va: string | number = "", vb: string | number = "";
+                                    if (popupSortField === "date") { va = a.date || ""; vb = b.date || ""; }
+                                    else if (popupSortField === "client") { va = (a.clientName || "").toLowerCase(); vb = (b.clientName || "").toLowerCase(); }
+                                    else if (popupSortField === "product") { va = (a.product || "").toLowerCase(); vb = (b.product || "").toLowerCase(); }
+                                    else if (popupSortField === "amount") { va = a.amount; vb = b.amount; }
+                                    else if (popupSortField === "from") { va = a.originalCode; vb = b.originalCode; }
+                                    else if (popupSortField === "to") { va = a.newCode; vb = b.newCode; }
+                                    else if (popupSortField === "based") { va = a.clientClass; vb = b.clientClass; }
+                                    if (va < vb) return popupSortDir === "asc" ? -1 : 1;
+                                    if (va > vb) return popupSortDir === "asc" ? 1 : -1;
+                                    return 0;
+                                }).map((r, idx) => (
                                     <tr key={idx} className="border-b border-gray-100 dark:border-gray-800">
                                         <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs">{formatDate(r.date)}</td>
                                         <td className="px-2 py-1.5 text-xs">
