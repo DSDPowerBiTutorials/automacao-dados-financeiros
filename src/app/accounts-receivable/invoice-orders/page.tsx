@@ -23,7 +23,8 @@ import {
     Columns,
     Check,
     CalendarRange,
-    Mail
+    Mail,
+    ArrowRightLeft
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -264,6 +265,11 @@ export default function InvoiceOrdersPage() {
     const [emailDialogOpen, setEmailDialogOpen] = useState(false);
     const [missingEmailClients, setMissingEmailClients] = useState<{ name: string; email: string; foundInDB: string | null; rowIndices: number[] }[]>([]);
     const [emailSearching, setEmailSearching] = useState(false);
+
+    // ── Popup 4: LAB/PC Reallocation Review ──
+    const [labPcDialogOpen, setLabPcDialogOpen] = useState(false);
+    const [labPcReallocations, setLabPcReallocations] = useState<{ rowIndex: number; clientName: string; clientEmail: string; product: string; amount: number; date: string; originalCode: string; newCode: string; clientClass: string }[]>([]);
+    const [pendingUpdatedCodes, setPendingUpdatedCodes] = useState<Record<number, string>>({});
 
     // Load data
     const loadData = useCallback(async () => {
@@ -701,7 +707,98 @@ export default function InvoiceOrdersPage() {
         setDelightCodes(newDelightCodes);
     };
 
-    // ── Popup 3 → Confirm: apply LAB/PC auto-assignment, then save ──
+    // ── Build client classification map from all sources ──
+    const buildClientClassMap = (codes: Record<number, string>) => {
+        const clientClassMap = new Map<string, string>();
+
+        // 1. Delight sub-codes (102.x)
+        for (let i = 0; i < uploadedRows.length; i++) {
+            const code = codes[i];
+            if (code?.startsWith("102.") && code !== "102.0") {
+                const row = uploadedRows[i];
+                if (row.customerEmail) clientClassMap.set(row.customerEmail.toLowerCase(), code);
+                if (row.customerName) clientClassMap.set(row.customerName.toLowerCase(), code);
+            }
+        }
+
+        // 2. Level 1 (105.1) and PC Membership (101.4) — only if no Delight classification
+        for (let i = 0; i < uploadedRows.length; i++) {
+            const code = codes[i];
+            if (code === "105.1" || code === "101.4") {
+                const row = uploadedRows[i];
+                if (row.customerEmail && !clientClassMap.has(row.customerEmail.toLowerCase())) {
+                    clientClassMap.set(row.customerEmail.toLowerCase(), code);
+                }
+                if (row.customerName && !clientClassMap.has(row.customerName.toLowerCase())) {
+                    clientClassMap.set(row.customerName.toLowerCase(), code);
+                }
+            }
+        }
+        return clientClassMap;
+    };
+
+    // ── Compute LAB/PC reallocations and open Popup 4 ──
+    const openLabPcReview = (updatedCodes: Record<number, string>) => {
+        const clientClassMap = buildClientClassMap(updatedCodes);
+        const reallocations: typeof labPcReallocations = [];
+        const finalCodes = { ...updatedCodes };
+
+        for (let i = 0; i < uploadedRows.length; i++) {
+            const currentCode = finalCodes[i];
+            if (currentCode === "103.0" || currentCode === "104.0") {
+                const row = uploadedRows[i];
+                const clientKey = row.customerEmail?.toLowerCase() || row.customerName?.toLowerCase();
+                let newCode: string;
+                let clientClass = "";
+
+                if (clientKey) {
+                    const cls = clientClassMap.get(clientKey);
+                    if (cls && CLIENT_TO_LAB_PC[cls]) {
+                        newCode = currentCode === "104.0" ? CLIENT_TO_LAB_PC[cls].lab : CLIENT_TO_LAB_PC[cls].pc;
+                        clientClass = cls;
+                    } else {
+                        newCode = currentCode === "104.0" ? "104.7" : "103.7";
+                        clientClass = "none";
+                    }
+                } else {
+                    newCode = currentCode === "104.0" ? "104.7" : "103.7";
+                    clientClass = "none";
+                }
+
+                finalCodes[i] = newCode;
+                reallocations.push({
+                    rowIndex: i,
+                    clientName: row.customerName || "-",
+                    clientEmail: row.customerEmail || "",
+                    product: row.description,
+                    amount: row.amount,
+                    date: row.date,
+                    originalCode: currentCode,
+                    newCode,
+                    clientClass,
+                });
+            }
+        }
+
+        if (reallocations.length > 0) {
+            setLabPcReallocations(reallocations);
+            setPendingUpdatedCodes(finalCodes);
+            setLabPcDialogOpen(true);
+        } else {
+            // No LAB/PC rows — save directly
+            setRowFACodes(finalCodes);
+            saveClassifications(finalCodes);
+        }
+    };
+
+    // ── Popup 4 → Confirm & Save ──
+    const handleLabPcConfirm = async () => {
+        setRowFACodes(pendingUpdatedCodes);
+        setLabPcDialogOpen(false);
+        await saveClassifications(pendingUpdatedCodes);
+    };
+
+    // ── Popup 3 → Confirm: apply Delight sub-codes, then open LAB/PC review ──
     const handleDelightConfirm = async () => {
         // Validate all Delight rows have sub-code
         const delightIndices = uploadedRows
@@ -718,101 +815,19 @@ export default function InvoiceOrdersPage() {
             return;
         }
 
-        // Build client → classification map for LAB/PC auto-assignment
-        // Sources: Delight sub-codes (102.x), Level 1 (105.1), PC Membership (101.4)
-        const clientClassMap = new Map<string, string>(); // clientKey → classification code
-
-        // 1. Delight sub-codes (from Popup 3)
-        for (const i of delightIndices) {
-            const row = uploadedRows[i];
-            const subCode = delightCodes[i];
-            if (row.customerEmail) clientClassMap.set(row.customerEmail.toLowerCase(), subCode);
-            if (row.customerName) clientClassMap.set(row.customerName.toLowerCase(), subCode);
-        }
-
-        // 2. Level 1 (105.1) and PC Membership (101.4) — only if no Delight classification
-        for (let i = 0; i < uploadedRows.length; i++) {
-            const code = rowFACodes[i];
-            if (code === "105.1" || code === "101.4") {
-                const row = uploadedRows[i];
-                if (row.customerEmail && !clientClassMap.has(row.customerEmail.toLowerCase())) {
-                    clientClassMap.set(row.customerEmail.toLowerCase(), code);
-                }
-                if (row.customerName && !clientClassMap.has(row.customerName.toLowerCase())) {
-                    clientClassMap.set(row.customerName.toLowerCase(), code);
-                }
-            }
-        }
-
         // Apply Delight sub-codes to 102.0 rows
         const updatedCodes = { ...rowFACodes };
         for (const i of delightIndices) {
             updatedCodes[i] = delightCodes[i];
         }
 
-        // Auto-assign LAB (104.0) and PC (103.0) sub-accounts
-        for (let i = 0; i < uploadedRows.length; i++) {
-            const currentCode = updatedCodes[i];
-            if (currentCode === "103.0" || currentCode === "104.0") {
-                const row = uploadedRows[i];
-                const clientKey = row.customerEmail?.toLowerCase() || row.customerName?.toLowerCase();
-                if (clientKey) {
-                    const clientClass = clientClassMap.get(clientKey);
-                    if (clientClass && CLIENT_TO_LAB_PC[clientClass]) {
-                        updatedCodes[i] = currentCode === "104.0"
-                            ? CLIENT_TO_LAB_PC[clientClass].lab
-                            : CLIENT_TO_LAB_PC[clientClass].pc;
-                    } else {
-                        // Not a Subscriber — client not found in any classification
-                        updatedCodes[i] = currentCode === "104.0" ? "104.7" : "103.7";
-                    }
-                } else {
-                    updatedCodes[i] = currentCode === "104.0" ? "104.7" : "103.7";
-                }
-            }
-        }
-
-        setRowFACodes(updatedCodes);
         setDelightDialogOpen(false);
-        await saveClassifications(updatedCodes);
+        openLabPcReview(updatedCodes);
     };
 
     // ── Save with LAB/PC auto-assignment (no Delight rows, but may have 105.1/101.4) ──
     const saveWithAutoAssignment = async () => {
-        const clientClassMap = new Map<string, string>();
-        for (let i = 0; i < uploadedRows.length; i++) {
-            const code = rowFACodes[i];
-            if (code === "105.1" || code === "101.4") {
-                const row = uploadedRows[i];
-                if (row.customerEmail) clientClassMap.set(row.customerEmail.toLowerCase(), code);
-                if (row.customerName) clientClassMap.set(row.customerName.toLowerCase(), code);
-            }
-        }
-
-        const updatedCodes = { ...rowFACodes };
-        for (let i = 0; i < uploadedRows.length; i++) {
-            const currentCode = updatedCodes[i];
-            if (currentCode === "103.0" || currentCode === "104.0") {
-                const row = uploadedRows[i];
-                const clientKey = row.customerEmail?.toLowerCase() || row.customerName?.toLowerCase();
-                if (clientKey) {
-                    const clientClass = clientClassMap.get(clientKey);
-                    if (clientClass && CLIENT_TO_LAB_PC[clientClass]) {
-                        updatedCodes[i] = currentCode === "104.0"
-                            ? CLIENT_TO_LAB_PC[clientClass].lab
-                            : CLIENT_TO_LAB_PC[clientClass].pc;
-                    } else {
-                        // Not a Subscriber — client not found in any classification
-                        updatedCodes[i] = currentCode === "104.0" ? "104.7" : "103.7";
-                    }
-                } else {
-                    updatedCodes[i] = currentCode === "104.0" ? "104.7" : "103.7";
-                }
-            }
-        }
-
-        setRowFACodes(updatedCodes);
-        await saveClassifications(updatedCodes);
+        openLabPcReview({ ...rowFACodes });
     };
 
     // ── Save all classified rows to DB ──
@@ -884,6 +899,7 @@ export default function InvoiceOrdersPage() {
             setClassifyDialogOpen(false);
             setAnnualizeDialogOpen(false);
             setDelightDialogOpen(false);
+            setLabPcDialogOpen(false);
 
             const parts = [];
             if (result.data.inserted) parts.push(`${result.data.inserted} inserted`);
@@ -2201,6 +2217,118 @@ export default function InvoiceOrdersPage() {
                                 <Button
                                     className="bg-purple-600 hover:bg-purple-700 text-white"
                                     onClick={handleDelightConfirm}
+                                    disabled={classifying}
+                                >
+                                    Next →
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+            {/* ═══════════════════════════════════════════════════════════════
+                POPUP 4 — LAB / Planning Center Reallocation Review
+            ═══════════════════════════════════════════════════════════════ */}
+            <Dialog open={labPcDialogOpen} onOpenChange={(open) => { if (!classifying) setLabPcDialogOpen(open); }}>
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-5xl max-h-[85vh] overflow-hidden" style={{ display: 'flex', flexDirection: 'column' }}>
+                    <DialogHeader className="shrink-0">
+                        <DialogTitle className="flex items-center gap-2">
+                            <ArrowRightLeft className="h-5 w-5 text-amber-500" />
+                            LAB & Planning Center — Reallocation Review
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-500 dark:text-gray-400">
+                            {labPcReallocations.length} row(s) reallocated from LAB (104.0) and Planning Center (103.0) based on client subscription level.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                        <table className="w-full text-sm">
+                            <thead className="sticky top-0 z-10">
+                                <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[80px]">Date</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400 w-[150px]">Client</th>
+                                    <th className="px-2 py-2 text-left text-xs text-gray-500 dark:text-gray-400">Product</th>
+                                    <th className="px-2 py-2 text-right text-xs text-gray-500 dark:text-gray-400 w-[80px]">Amount</th>
+                                    <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[110px]">From</th>
+                                    <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[20px]"></th>
+                                    <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[150px]">To</th>
+                                    <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[110px]">Based On</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {labPcReallocations.map((r, idx) => (
+                                    <tr key={idx} className="border-b border-gray-100 dark:border-gray-800">
+                                        <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs">{formatDate(r.date)}</td>
+                                        <td className="px-2 py-1.5 text-xs">
+                                            <div className="text-gray-700 dark:text-gray-300 truncate max-w-[150px]" title={r.clientName}>
+                                                {r.clientName}
+                                            </div>
+                                            {r.clientEmail && (
+                                                <div className="text-gray-400 text-[10px] truncate" title={r.clientEmail}>
+                                                    {r.clientEmail}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[200px]" title={r.product}>
+                                            {r.product}
+                                        </td>
+                                        <td className="px-2 py-1.5 text-right text-xs font-mono text-green-500">
+                                            {formatEuropeanNumber(r.amount)}
+                                        </td>
+                                        <td className="px-2 py-1.5 text-center">
+                                            <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 text-[10px]">
+                                                {r.originalCode} {FA_NAMES[r.originalCode] || ""}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-2 py-1.5 text-center text-gray-400">→</td>
+                                        <td className="px-2 py-1.5 text-center">
+                                            <Badge className={`text-[10px] border ${r.newCode.endsWith(".7")
+                                                    ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700"
+                                                    : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
+                                                }`}>
+                                                {r.newCode} {FA_NAMES[r.newCode] || ""}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-2 py-1.5 text-center">
+                                            {r.clientClass === "none" ? (
+                                                <span className="text-[10px] text-red-400">No subscription</span>
+                                            ) : (
+                                                <Badge className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 text-[10px]">
+                                                    {r.clientClass} {FA_NAMES[r.clientClass] || ""}
+                                                </Badge>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="shrink-0 pt-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] relative z-20">
+                        <div className="flex items-center gap-2 w-full justify-between">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {labPcReallocations.filter(r => r.originalCode === "104.0").length} LAB · {labPcReallocations.filter(r => r.originalCode === "103.0").length} PC rows
+                                <span className="text-red-400 ml-2">
+                                    {labPcReallocations.filter(r => r.newCode.endsWith(".7")).length} Not a Subscriber
+                                </span>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setLabPcDialogOpen(false);
+                                        // Go back: if there were delight rows, go to delight popup; otherwise annualize
+                                        const hasDelight = uploadedRows.some((_, i) => rowFACodes[i] === "102.0" || delightCodes[i]);
+                                        if (hasDelight) setDelightDialogOpen(true);
+                                        else setAnnualizeDialogOpen(true);
+                                    }}
+                                    disabled={classifying}
+                                >
+                                    ← Back
+                                </Button>
+                                <Button
+                                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                                    onClick={handleLabPcConfirm}
                                     disabled={classifying}
                                 >
                                     {classifying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
