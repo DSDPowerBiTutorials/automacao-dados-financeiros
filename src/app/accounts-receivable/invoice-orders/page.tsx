@@ -427,32 +427,32 @@ export default function InvoiceOrdersPage() {
             setAnnualizeFlags({});
             setAnnualizedPreviews({});
 
-            // Check for clients without email
-            const clientsWithoutEmail = new Map<string, number[]>();
+            // Build client list for email review (always shown)
+            const allClients = new Map<string, { email: string; indices: number[] }>();
             for (let i = 0; i < parsed.length; i++) {
                 const name = parsed[i].customerName?.trim();
-                if (name && !parsed[i].customerEmail?.trim()) {
-                    if (!clientsWithoutEmail.has(name)) {
-                        clientsWithoutEmail.set(name, []);
-                    }
-                    clientsWithoutEmail.get(name)!.push(i);
+                if (!name) continue;
+                if (!allClients.has(name)) {
+                    allClients.set(name, { email: parsed[i].customerEmail?.trim() || "", indices: [] });
+                }
+                allClients.get(name)!.indices.push(i);
+                // Keep first non-empty email found
+                if (!allClients.get(name)!.email && parsed[i].customerEmail?.trim()) {
+                    allClients.set(name, { ...allClients.get(name)!, email: parsed[i].customerEmail.trim() });
                 }
             }
 
-            if (clientsWithoutEmail.size > 0) {
-                // Search DB for prior emails
-                setEmailSearching(true);
-                const clientEntries: typeof missingEmailClients = [];
-                const names = [...clientsWithoutEmail.keys()];
-
-                // Search in existing invoice-orders for these client names
+            // Search DB for prior emails for clients that are missing one
+            setEmailSearching(true);
+            const nameToEmail = new Map<string, string>();
+            const hasMissing = [...allClients.values()].some(c => !c.email);
+            if (hasMissing) {
                 const { data: priorRows } = await supabase
                     .from("csv_rows")
                     .select("custom_data")
                     .eq("source", "invoice-orders")
                     .not("custom_data->customer_email", "is", null);
 
-                const nameToEmail = new Map<string, string>();
                 if (priorRows) {
                     for (const r of priorRows) {
                         const cd = r.custom_data as Record<string, unknown> | null;
@@ -463,24 +463,23 @@ export default function InvoiceOrdersPage() {
                         }
                     }
                 }
-
-                for (const name of names) {
-                    const foundEmail = nameToEmail.get(name.toLowerCase()) || null;
-                    clientEntries.push({
-                        name,
-                        email: foundEmail || "",
-                        foundInDB: foundEmail,
-                        rowIndices: clientsWithoutEmail.get(name)!,
-                    });
-                }
-
-                setMissingEmailClients(clientEntries);
-                setEmailSearching(false);
-                setEmailDialogOpen(true);
-            } else {
-                // All clients have emails — go straight to Popup 1
-                setClassifyDialogOpen(true);
             }
+
+            const clientEntries: typeof missingEmailClients = [];
+            for (const [name, info] of allClients) {
+                const csvEmail = info.email;
+                const dbEmail = !csvEmail ? (nameToEmail.get(name.toLowerCase()) || null) : null;
+                clientEntries.push({
+                    name,
+                    email: csvEmail || dbEmail || "",
+                    foundInDB: dbEmail,
+                    rowIndices: info.indices,
+                });
+            }
+
+            setMissingEmailClients(clientEntries);
+            setEmailSearching(false);
+            setEmailDialogOpen(true);
 
             if (data.duplicateCount > 0) {
                 toast({
@@ -1755,7 +1754,11 @@ export default function InvoiceOrdersPage() {
                             Resolve Client Emails
                         </DialogTitle>
                         <DialogDescription className="text-gray-500 dark:text-gray-400">
-                            {missingEmailClients.length} client(s) without email. Confirm or enter their email to proceed.
+                            {(() => {
+                                const missing = missingEmailClients.filter(c => !c.email.trim()).length;
+                                if (missing === 0) return `All ${missingEmailClients.length} client(s) have emails assigned. Review and proceed.`;
+                                return `${missing} of ${missingEmailClients.length} client(s) without email. Confirm or enter their email to proceed.`;
+                            })()}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -1798,11 +1801,15 @@ export default function InvoiceOrdersPage() {
                                                         }}
                                                         className={`h-7 text-xs bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white ${client.foundInDB ? "border-green-400 dark:border-green-700" : ""}`}
                                                     />
-                                                    {client.foundInDB && (
+                                                    {client.foundInDB ? (
                                                         <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 text-[10px] whitespace-nowrap shrink-0">
                                                             found
                                                         </Badge>
-                                                    )}
+                                                    ) : client.email.trim() && !client.foundInDB ? (
+                                                        <Badge className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 text-[10px] whitespace-nowrap shrink-0">
+                                                            csv
+                                                        </Badge>
+                                                    ) : null}
                                                 </div>
                                             </td>
                                         </tr>
