@@ -190,6 +190,7 @@ export async function GET(request: NextRequest) {
                 .gte("date", startStr)
                 .lte("date", endStr)
                 .neq("amount", 0)
+                .not("custom_data->>order_status", "in", "(Cancelled,Refunded,Expired,cancelled,refunded,expired)")
                 .order("amount", { ascending: false })
                 .range(startIndex, endIndex);
 
@@ -217,7 +218,8 @@ export async function GET(request: NextRequest) {
                 .in("source", ["invoice-orders", "invoice-orders-usd"])
                 .gte("date", startStr)
                 .lte("date", endStr)
-                .neq("amount", 0);
+                .neq("amount", 0)
+                .not("custom_data->>order_status", "in", "(Cancelled,Refunded,Expired,cancelled,refunded,expired)");
 
             if (isRevenueParent) {
                 totalQuery = totalQuery.ilike("custom_data->>financial_account_code", `${revenuePrefix}.%`);

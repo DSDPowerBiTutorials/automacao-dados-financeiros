@@ -103,8 +103,13 @@ export async function GET(request: NextRequest) {
         const totalRevenue: MonthlyData = emptyMonthly();
 
         // Process each row - INCLUDING credit notes (negative values) for net P&L
+        const CANCELLED_STATUSES = ["cancelled", "refunded", "expired", "canceled"];
         for (const row of allData || []) {
             if (!row.date) continue;
+
+            // Skip cancelled/refunded orders
+            const orderStatus = (row.custom_data?.order_status || "").toString().toLowerCase();
+            if (orderStatus && CANCELLED_STATUSES.includes(orderStatus)) continue;
 
             // Incluir TODOS os valores (positivos e negativos) - credit notes abatidas automaticamente
             const amount = row.amount || 0;

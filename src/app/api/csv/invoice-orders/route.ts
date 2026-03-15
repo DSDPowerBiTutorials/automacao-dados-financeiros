@@ -155,7 +155,11 @@ export async function POST(request: NextRequest) {
             country: headers.findIndex((h) => h.toUpperCase() === "COUNTRY"),
             paymentMethod: headers.findIndex((h) => h.toUpperCase() === "PAYMENT METHOD"),
             billingEntity: headers.findIndex((h) => h.toUpperCase() === "BILLING ENTITY"),
-            charged: headers.findIndex((h) => h.toUpperCase() === "CHARGED")
+            charged: headers.findIndex((h) => h.toUpperCase() === "CHARGED"),
+            orderStatus: headers.findIndex((h) => {
+                const u = h.toUpperCase().replace(/[\s_]+/g, "");
+                return u === "ORDERSTATUS" || u === "ORDERSTATUSID" || u === "PAIDSTATUS" || u === "STATUS";
+            })
         };
 
         // ── Buscar mapeamentos prévios de produto → FA do product_pnl_mappings ──
@@ -249,6 +253,14 @@ export async function POST(request: NextRequest) {
                 if (custEmail) customData.customer_email = custEmail;
                 if (customData.Company || customData.COMPANY || customData.company) {
                     customData.company_name = String(customData.Company || customData.COMPANY || customData.company || "").trim();
+                }
+
+                // Normalize order status from various possible column names
+                const rawStatus = colIndex.orderStatus !== -1 ? String(rowArr[colIndex.orderStatus] || "").trim() : "";
+                if (rawStatus) {
+                    // Map numeric Craft Commerce status IDs to labels
+                    const statusMap: Record<string, string> = { "5": "Completed", "7": "Refunded", "9": "Expired", "10": "Pending Payment", "12": "Processing" };
+                    customData.order_status = statusMap[rawStatus] || rawStatus;
                 }
 
                 // ── FA Suggestion: 1) prior mapping, 2) keyword, 3) none ──

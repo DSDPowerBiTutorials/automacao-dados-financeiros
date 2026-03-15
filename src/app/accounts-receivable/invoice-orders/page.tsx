@@ -192,6 +192,7 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
     { key: "financial_account", label: "Fin. Account", visible: true, width: "120px" },
     { key: "amount", label: "Amount", visible: true, width: "100px" },
     { key: "currency", label: "Currency", visible: true, width: "70px" },
+    { key: "order_status", label: "Order Status", visible: true, width: "100px" },
     { key: "reconciled", label: "Status", visible: true, width: "100px" }
 ];
 
@@ -233,6 +234,7 @@ export default function InvoiceOrdersPage() {
     const [filterDescription, setFilterDescription] = useState("");
     const [filterFA, setFilterFA] = useState("");
     const [filterCurrency, setFilterCurrency] = useState("");
+    const [filterOrderStatus, setFilterOrderStatus] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
 
     // Edit dialog
@@ -989,6 +991,14 @@ export default function InvoiceOrdersPage() {
             if (filterStatus === "reconciled") filtered = filtered.filter((inv) => inv.reconciled);
             if (filterStatus === "pending") filtered = filtered.filter((inv) => !inv.reconciled);
         }
+        if (filterOrderStatus) {
+            filtered = filtered.filter((inv) => {
+                const st = ((inv.custom_data?.order_status as string) || "").toLowerCase();
+                if (filterOrderStatus === "cancelled") return st === "cancelled" || st === "refunded" || st === "expired";
+                if (filterOrderStatus === "active") return st !== "cancelled" && st !== "refunded" && st !== "expired";
+                return st === filterOrderStatus.toLowerCase();
+            });
+        }
 
         // Sort
         filtered.sort((a, b) => {
@@ -1019,7 +1029,7 @@ export default function InvoiceOrdersPage() {
         });
 
         return filtered;
-    }, [invoiceOrders, showReconciled, searchTerm, sortField, sortDirection, filterDateFrom, filterDateTo, filterDescription, filterFA, filterCurrency, filterStatus]);
+    }, [invoiceOrders, showReconciled, searchTerm, sortField, sortDirection, filterDateFrom, filterDateTo, filterDescription, filterFA, filterCurrency, filterOrderStatus, filterStatus]);
 
     // Stats
     const stats = useMemo(() => {
@@ -1247,6 +1257,16 @@ export default function InvoiceOrdersPage() {
                     <AlertCircle className="h-3 w-3 mr-1" /> Pending
                 </Badge>
             );
+        if (colKey === "order_status") {
+            const status = (row.custom_data?.order_status as string) || "";
+            if (!status) return <span className="text-gray-400">—</span>;
+            const lower = status.toLowerCase();
+            if (lower === "cancelled" || lower === "refunded" || lower === "expired")
+                return <Badge className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 text-xs">{status}</Badge>;
+            if (lower === "completed" || lower === "paid" || lower === "processing")
+                return <Badge className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 border border-green-300 dark:border-green-700 text-xs">{status}</Badge>;
+            return <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700 text-xs">{status}</Badge>;
+        }
         if (colKey.startsWith("custom_")) {
             const key = colKey.replace("custom_", "");
             const value = row.custom_data?.[key];
@@ -1618,6 +1638,19 @@ export default function InvoiceOrdersPage() {
                                                             <option value="EUR">EUR</option>
                                                             <option value="USD">USD</option>
                                                             <option value="GBP">GBP</option>
+                                                        </select>
+                                                    )}
+                                                    {col.key === "order_status" && (
+                                                        <select
+                                                            value={filterOrderStatus}
+                                                            onChange={(e) => setFilterOrderStatus(e.target.value)}
+                                                            className="h-7 w-full text-xs rounded-md bg-white dark:bg-[#0a0a0a] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white px-1"
+                                                        >
+                                                            <option value="">All</option>
+                                                            <option value="active">Active</option>
+                                                            <option value="cancelled">Cancelled</option>
+                                                            <option value="Completed">Completed</option>
+                                                            <option value="Processing">Processing</option>
                                                         </select>
                                                     )}
                                                     {col.key === "reconciled" && (
