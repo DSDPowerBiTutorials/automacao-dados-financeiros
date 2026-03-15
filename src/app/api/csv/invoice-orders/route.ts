@@ -141,9 +141,17 @@ export async function POST(request: NextRequest) {
             date: headers.findIndex((h) => h.toUpperCase() === "INVOICE DATE") !== -1
                 ? headers.findIndex((h) => h.toUpperCase() === "INVOICE DATE")
                 : headers.findIndex((h) => h.toUpperCase().includes("DATE") || h.toUpperCase().includes("FECHA")),
+            orderDate: headers.findIndex((h) => {
+                const u = h.toUpperCase().replace(/[\s_]+/g, "");
+                return u === "ORDERDATE" || u === "DATEORDERED";
+            }),
             amount: headers.findIndex((h) => h.toUpperCase() === "TOTAL") !== -1
                 ? headers.findIndex((h) => h.toUpperCase() === "TOTAL")
                 : headers.findIndex((h) => h.toUpperCase().includes("AMOUNT") || h.toUpperCase().includes("TOTAL") || h.toUpperCase().includes("VALOR")),
+            discount: headers.findIndex((h) => {
+                const u = h.toUpperCase().replace(/[\s_]+/g, "");
+                return u === "DISCOUNT" || u === "DISCOUNTAMOUNT";
+            }),
             description: headers.findIndex((h) => h.toUpperCase() === "PRODUCTS") !== -1
                 ? headers.findIndex((h) => h.toUpperCase() === "PRODUCTS")
                 : headers.findIndex((h) => h.toUpperCase().includes("DESCRIPTION") || h.toUpperCase().includes("DESCRIPCION") || h.toUpperCase().includes("NAME")),
@@ -225,6 +233,30 @@ export async function POST(request: NextRequest) {
                     else if (typeof rawAmount === "string") amount = parseFloat(rawAmount.replace(",", ".").replace(/[^\d.-]/g, "")) || 0;
                 }
 
+                // Order Date parsing (separate from Invoice Date)
+                let orderDateValue: string | null = null;
+                if (colIndex.orderDate !== -1 && rowArr[colIndex.orderDate]) {
+                    const rawOD = rowArr[colIndex.orderDate];
+                    if (typeof rawOD === "number") {
+                        const parsed = XLSX.SSF.parse_date_code(rawOD);
+                        if (parsed) orderDateValue = `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(parsed.d).padStart(2, "0")}`;
+                    } else if (typeof rawOD === "string") {
+                        if (rawOD.match(/^\d{4}-\d{2}-\d{2}/)) orderDateValue = rawOD.substring(0, 10);
+                        else if (rawOD.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+                            const [day, month, year] = rawOD.split("/");
+                            orderDateValue = `${year}-${month}-${day}`;
+                        } else orderDateValue = rawOD;
+                    }
+                }
+
+                // Discount
+                let discount = 0;
+                if (colIndex.discount !== -1 && rowArr[colIndex.discount]) {
+                    const rawDisc = rowArr[colIndex.discount];
+                    if (typeof rawDisc === "number") discount = rawDisc;
+                    else if (typeof rawDisc === "string") discount = parseFloat(rawDisc.replace(",", ".").replace(/[^\d.-]/g, "")) || 0;
+                }
+
                 const description = colIndex.description !== -1 ? String(rowArr[colIndex.description] || "") : invoiceNumber;
                 const orderNumber = colIndex.orderNumber !== -1 ? String(rowArr[colIndex.orderNumber] || "") : null;
                 const currency = colIndex.currency !== -1 ? String(rowArr[colIndex.currency] || "EUR") : "EUR";
@@ -237,7 +269,10 @@ export async function POST(request: NextRequest) {
                     Number: invoiceNumber,
                     order_id: orderNumber,
                     order_number: orderNumber,
-                    currency: currency
+                    currency: currency,
+                    invoice_date: dateValue,
+                    order_date: orderDateValue,
+                    discount: discount
                 };
 
                 headers.forEach((header, i) => {

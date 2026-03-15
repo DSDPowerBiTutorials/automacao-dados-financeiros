@@ -185,15 +185,19 @@ const FA_NAMES: Record<string, string> = {
 };
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
-    { key: "invoice_number", label: "Invoice #", visible: true, width: "100px" },
-    { key: "order_number", label: "Order #", visible: true, width: "90px" },
-    { key: "date", label: "Date", visible: true, width: "90px" },
-    { key: "description", label: "Description", visible: true, width: "200px" },
-    { key: "financial_account", label: "Fin. Account", visible: true, width: "120px" },
-    { key: "amount", label: "Amount", visible: true, width: "100px" },
-    { key: "currency", label: "Currency", visible: true, width: "70px" },
+    { key: "invoice_date", label: "Invoice Date", visible: true, width: "100px" },
+    { key: "invoice_number", label: "Invoice", visible: true, width: "130px" },
+    { key: "order_date", label: "Order Date", visible: true, width: "100px" },
+    { key: "order_number", label: "Order", visible: true, width: "110px" },
     { key: "order_status", label: "Order Status", visible: true, width: "100px" },
-    { key: "reconciled", label: "Status", visible: true, width: "100px" }
+    { key: "description", label: "Products", visible: true, width: "200px" },
+    { key: "client", label: "Client", visible: true, width: "150px" },
+    { key: "email", label: "Email", visible: true, width: "180px" },
+    { key: "discount", label: "Discount", visible: true, width: "90px" },
+    { key: "amount", label: "Total", visible: true, width: "100px" },
+    { key: "currency", label: "Currency", visible: true, width: "70px" },
+    { key: "financial_account", label: "Fin. Account", visible: false, width: "120px" },
+    { key: "reconciled", label: "Status", visible: false, width: "100px" }
 ];
 
 function formatEuropeanNumber(value: number, decimals: number = 2): string {
@@ -231,7 +235,11 @@ export default function InvoiceOrdersPage() {
     const [filterDateFrom, setFilterDateFrom] = useState<Date | undefined>(undefined);
     const [filterDateTo, setFilterDateTo] = useState<Date | undefined>(undefined);
     const [dateFilterOpen, setDateFilterOpen] = useState(false);
+    const [filterInvoice, setFilterInvoice] = useState("");
+    const [filterOrder, setFilterOrder] = useState("");
     const [filterDescription, setFilterDescription] = useState("");
+    const [filterClient, setFilterClient] = useState("");
+    const [filterEmail, setFilterEmail] = useState("");
     const [filterFA, setFilterFA] = useState("");
     const [filterCurrency, setFilterCurrency] = useState("");
     const [filterOrderStatus, setFilterOrderStatus] = useState("");
@@ -972,9 +980,25 @@ export default function InvoiceOrdersPage() {
                 return true;
             });
         }
+        if (filterInvoice) {
+            const fi = filterInvoice.toLowerCase();
+            filtered = filtered.filter((inv) => inv.invoice_number?.toLowerCase().includes(fi));
+        }
+        if (filterOrder) {
+            const fo = filterOrder.toLowerCase();
+            filtered = filtered.filter((inv) => inv.order_number?.toLowerCase().includes(fo));
+        }
         if (filterDescription) {
             const fd = filterDescription.toLowerCase();
             filtered = filtered.filter((inv) => inv.description?.toLowerCase().includes(fd));
+        }
+        if (filterClient) {
+            const fc = filterClient.toLowerCase();
+            filtered = filtered.filter((inv) => ((inv.custom_data?.customer_name as string) || "").toLowerCase().includes(fc));
+        }
+        if (filterEmail) {
+            const fe = filterEmail.toLowerCase();
+            filtered = filtered.filter((inv) => ((inv.custom_data?.customer_email as string) || "").toLowerCase().includes(fe));
         }
         if (filterFA) {
             filtered = filtered.filter((inv) => {
@@ -1005,12 +1029,29 @@ export default function InvoiceOrdersPage() {
             let aVal: string | number = "";
             let bVal: string | number = "";
 
-            if (sortField === "amount") {
-                aVal = a.amount;
-                bVal = b.amount;
-            } else if (sortField === "date") {
+            if (sortField === "amount" || sortField === "discount") {
+                if (sortField === "amount") {
+                    aVal = a.amount;
+                    bVal = b.amount;
+                } else {
+                    aVal = Number(a.custom_data?.discount || 0);
+                    bVal = Number(b.custom_data?.discount || 0);
+                }
+            } else if (sortField === "invoice_date" || sortField === "date") {
                 aVal = a.date || "";
                 bVal = b.date || "";
+            } else if (sortField === "order_date") {
+                aVal = (a.custom_data?.order_date as string) || "";
+                bVal = (b.custom_data?.order_date as string) || "";
+            } else if (sortField === "client") {
+                aVal = ((a.custom_data?.customer_name as string) || "").toLowerCase();
+                bVal = ((b.custom_data?.customer_name as string) || "").toLowerCase();
+            } else if (sortField === "email") {
+                aVal = ((a.custom_data?.customer_email as string) || "").toLowerCase();
+                bVal = ((b.custom_data?.customer_email as string) || "").toLowerCase();
+            } else if (sortField === "order_status") {
+                aVal = ((a.custom_data?.order_status as string) || "").toLowerCase();
+                bVal = ((b.custom_data?.order_status as string) || "").toLowerCase();
             } else if (sortField.startsWith("custom_")) {
                 const key = sortField.replace("custom_", "");
                 aVal = String(a.custom_data?.[key] || "");
@@ -1029,7 +1070,7 @@ export default function InvoiceOrdersPage() {
         });
 
         return filtered;
-    }, [invoiceOrders, showReconciled, searchTerm, sortField, sortDirection, filterDateFrom, filterDateTo, filterDescription, filterFA, filterCurrency, filterOrderStatus, filterStatus]);
+    }, [invoiceOrders, showReconciled, searchTerm, sortField, sortDirection, filterDateFrom, filterDateTo, filterInvoice, filterOrder, filterDescription, filterClient, filterEmail, filterFA, filterCurrency, filterOrderStatus, filterStatus]);
 
     // Stats
     const stats = useMemo(() => {
@@ -1226,10 +1267,35 @@ export default function InvoiceOrdersPage() {
 
     // Get cell value
     const getCellValue = (row: InvoiceOrder, colKey: string): React.ReactNode => {
+        if (colKey === "invoice_date") return formatDate(row.date);
         if (colKey === "invoice_number") return row.invoice_number || "-";
+        if (colKey === "order_date") {
+            const od = (row.custom_data?.order_date as string) || "";
+            return od ? formatDate(od) : "-";
+        }
         if (colKey === "order_number") return row.order_number || "-";
-        if (colKey === "date") return formatDate(row.date);
+        if (colKey === "order_status") {
+            const status = (row.custom_data?.order_status as string) || "";
+            if (!status) return <span className="text-gray-400">—</span>;
+            const lower = status.toLowerCase();
+            if (lower === "cancelled" || lower === "refunded" || lower === "expired")
+                return <Badge className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 text-xs">{status}</Badge>;
+            if (lower === "completed" || lower === "paid" || lower === "processing")
+                return <Badge className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 border border-green-300 dark:border-green-700 text-xs">{status}</Badge>;
+            return <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700 text-xs">{status}</Badge>;
+        }
         if (colKey === "description") return row.description || "-";
+        if (colKey === "client") return (row.custom_data?.customer_name as string) || "-";
+        if (colKey === "email") return (row.custom_data?.customer_email as string) || "-";
+        if (colKey === "discount") {
+            const disc = Number(row.custom_data?.discount || 0);
+            if (!disc) return "-";
+            return (
+                <span className="text-orange-500">
+                    {formatEuropeanNumber(disc)}
+                </span>
+            );
+        }
         if (colKey === "amount")
             return (
                 <span className={row.amount >= 0 ? "text-green-400" : "text-red-400"}>
@@ -1257,16 +1323,7 @@ export default function InvoiceOrdersPage() {
                     <AlertCircle className="h-3 w-3 mr-1" /> Pending
                 </Badge>
             );
-        if (colKey === "order_status") {
-            const status = (row.custom_data?.order_status as string) || "";
-            if (!status) return <span className="text-gray-400">—</span>;
-            const lower = status.toLowerCase();
-            if (lower === "cancelled" || lower === "refunded" || lower === "expired")
-                return <Badge className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 text-xs">{status}</Badge>;
-            if (lower === "completed" || lower === "paid" || lower === "processing")
-                return <Badge className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 border border-green-300 dark:border-green-700 text-xs">{status}</Badge>;
-            return <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700 text-xs">{status}</Badge>;
-        }
+        if (colKey === "date") return formatDate(row.date);
         if (colKey.startsWith("custom_")) {
             const key = colKey.replace("custom_", "");
             const value = row.custom_data?.[key];
@@ -1556,7 +1613,7 @@ export default function InvoiceOrdersPage() {
                                         <tr className="bg-gray-50 dark:bg-black/30 border-b border-gray-200 dark:border-gray-700">
                                             {visibleColumns.map((col) => (
                                                 <th key={`filter-${col.key}`} className="px-2 py-1">
-                                                    {col.key === "date" && (
+                                                    {col.key === "invoice_date" && (
                                                         <Popover open={dateFilterOpen} onOpenChange={setDateFilterOpen}>
                                                             <PopoverTrigger asChild>
                                                                 <Button variant="outline" className={`h-7 w-full text-xs justify-start font-normal bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white ${filterDateFrom || filterDateTo ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>
@@ -1610,21 +1667,48 @@ export default function InvoiceOrdersPage() {
                                                             </PopoverContent>
                                                         </Popover>
                                                     )}
+                                                    {col.key === "invoice_number" && (
+                                                        <Input
+                                                            type="text"
+                                                            placeholder="Filter invoice..."
+                                                            value={filterInvoice}
+                                                            onChange={(e) => setFilterInvoice(e.target.value)}
+                                                            className="h-7 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400"
+                                                        />
+                                                    )}
+                                                    {col.key === "order_number" && (
+                                                        <Input
+                                                            type="text"
+                                                            placeholder="Filter order..."
+                                                            value={filterOrder}
+                                                            onChange={(e) => setFilterOrder(e.target.value)}
+                                                            className="h-7 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400"
+                                                        />
+                                                    )}
                                                     {col.key === "description" && (
                                                         <Input
                                                             type="text"
-                                                            placeholder="Filter description..."
+                                                            placeholder="Filter products..."
                                                             value={filterDescription}
                                                             onChange={(e) => setFilterDescription(e.target.value)}
                                                             className="h-7 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400"
                                                         />
                                                     )}
-                                                    {col.key === "financial_account" && (
+                                                    {col.key === "client" && (
                                                         <Input
                                                             type="text"
-                                                            placeholder="Filter FA..."
-                                                            value={filterFA}
-                                                            onChange={(e) => setFilterFA(e.target.value)}
+                                                            placeholder="Filter client..."
+                                                            value={filterClient}
+                                                            onChange={(e) => setFilterClient(e.target.value)}
+                                                            className="h-7 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400"
+                                                        />
+                                                    )}
+                                                    {col.key === "email" && (
+                                                        <Input
+                                                            type="text"
+                                                            placeholder="Filter email..."
+                                                            value={filterEmail}
+                                                            onChange={(e) => setFilterEmail(e.target.value)}
                                                             className="h-7 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400"
                                                         />
                                                     )}
@@ -1652,6 +1736,15 @@ export default function InvoiceOrdersPage() {
                                                             <option value="Completed">Completed</option>
                                                             <option value="Processing">Processing</option>
                                                         </select>
+                                                    )}
+                                                    {col.key === "financial_account" && (
+                                                        <Input
+                                                            type="text"
+                                                            placeholder="Filter FA..."
+                                                            value={filterFA}
+                                                            onChange={(e) => setFilterFA(e.target.value)}
+                                                            className="h-7 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400"
+                                                        />
                                                     )}
                                                     {col.key === "reconciled" && (
                                                         <select
