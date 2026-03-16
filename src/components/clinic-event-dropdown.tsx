@@ -24,10 +24,10 @@ interface ClinicEventDropdownProps {
 }
 
 const eventColors: Record<string, { bg: string; text: string; border: string }> = {
-    New: { bg: "bg-green-900/50", text: "text-green-400", border: "border-green-600" },
+    New: { bg: "bg-white", text: "text-blue-600", border: "border-blue-300" },
     Pause: { bg: "bg-yellow-900/50", text: "text-yellow-400", border: "border-yellow-600" },
     Return: { bg: "bg-blue-900/50", text: "text-blue-400", border: "border-blue-600" },
-    Churn: { bg: "bg-red-900/50", text: "text-red-400", border: "border-red-600" },
+    Churn: { bg: "bg-white", text: "text-red-600", border: "border-red-300" },
 };
 
 export function ClinicEventDropdown({

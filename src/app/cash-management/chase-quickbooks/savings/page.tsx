@@ -537,7 +537,7 @@ export default function ChaseSavingsPage() {
                                         {filteredTransactions.length === 0 ? (
                                             <tr>
                                                 <td colSpan={5} className="py-8 text-center text-gray-500">
-                                                    No transactions found. Click "Sync Now" to sync data from QuickBooks.
+                                                    No transactions found. Click &quot;Sync Now&quot; to sync data from QuickBooks.
                                                 </td>
                                             </tr>
                                         ) : (

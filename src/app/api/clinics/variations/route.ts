@@ -315,9 +315,18 @@ export async function GET(request: NextRequest) {
             }
 
             // Get manual event override from events table
+            // But do NOT override to "Churn" if client has revenue now,
+            // and do NOT override to "New" if client had revenue before.
             const clinicEvent = clinicId ? eventsMap.get(clinicId) : null;
             if (clinicEvent?.event_type) {
-                eventType = clinicEvent.event_type;
+                const overrideType = clinicEvent.event_type;
+                if (overrideType === "Churn" && hasRevenueInThisFANow) {
+                    // Client has current revenue — ignore stale Churn event
+                } else if (overrideType === "New" && hadRevenueInThisFABefore) {
+                    // Client had previous revenue — ignore stale New event
+                } else {
+                    eventType = overrideType;
+                }
             }
             const eventConfirmed = clinicEvent?.confirmed ?? false;
 

@@ -276,8 +276,15 @@ export async function GET(request: NextRequest) {
                 } else if (currentMRR === 0 && prevMRR === 0) {
                     // Check if had any monthly fee this year
                     const hasAnyFees = data.monthlyFeeRevenue.size > 0;
-                    status = hasAnyFees ? "churned" : "churned";
+                    status = hasAnyFees ? "paused" : "churned";
                 }
+            }
+
+            // OVERRIDE: Real transaction data always prevails over stale events.
+            // If the client has revenue in the current month, they are active (not churned/paused).
+            if (currentMRR > 0 && (status === "churned" || status === "paused")) {
+                const hasOlderFees = [...data.monthlyFeeRevenue.keys()].some(ym => ym < currentYM);
+                status = hasOlderFees ? "active" : "new";
             }
 
             // Count months with monthly fee revenue

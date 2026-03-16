@@ -571,7 +571,7 @@ export default function CustomersPage() {
                     <div className="text-center py-20 text-gray-500">
                         <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
                         <p className="text-lg">No customers found</p>
-                        <p className="text-sm mt-1">Add customers manually or use "Analyze & Sync from Invoices" to auto-populate</p>
+                        <p className="text-sm mt-1">Add customers manually or use &quot;Analyze &amp; Sync from Invoices&quot; to auto-populate</p>
                     </div>
                 ) : (
                     filteredCustomers.map((customer) => {

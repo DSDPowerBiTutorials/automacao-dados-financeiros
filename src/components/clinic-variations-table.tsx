@@ -230,11 +230,11 @@ export function ClinicVariationsTable({
                             {variations.map((v, idx) => (
                                 <TableRow
                                     key={v.clinic_id || idx}
-                                    className={`border-gray-200 dark:border-gray-700 ${v.is_churned ? "bg-red-900/20" :
-                                            v.is_new ? "bg-green-900/20" :
-                                                v.event_type === "Pause" ? "bg-yellow-900/20" :
-                                                    v.event_type === "Return" ? "bg-blue-900/20" :
-                                                        ""
+                                    className={`border-gray-200 dark:border-gray-700 ${v.is_churned ? "bg-red-50 dark:bg-red-900/10" :
+                                        v.is_new ? "bg-blue-50 dark:bg-blue-900/10" :
+                                            v.event_type === "Pause" ? "bg-yellow-900/20" :
+                                                v.event_type === "Return" ? "bg-blue-900/20" :
+                                                    ""
                                         }`}
                                 >
                                     <TableCell className="py-2">

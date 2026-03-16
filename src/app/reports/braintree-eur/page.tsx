@@ -380,9 +380,7 @@ export default function BraintreeEURPage() {
         },
         (payload) => {
           // Filtrar manualmente já que filter complexo causa CHANNEL_ERROR
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const newRecord = payload.new as any;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const oldRecord = payload.old as any;
           const source = newRecord?.source || oldRecord?.source;
           if (source && (source.includes('braintree-api') || source === 'braintree-eur')) {
@@ -857,9 +855,7 @@ export default function BraintreeEURPage() {
         return q;
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let rowsData: any[] | null = null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let error: any = null;
 
       // Tentar com retry automático
@@ -876,7 +872,6 @@ export default function BraintreeEURPage() {
             new Promise((_, reject) =>
               setTimeout(() => reject(new Error("Timeout after 30s")), 30000)
             )
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ]) as any;
 
           rowsData = result.data;

@@ -87,9 +87,9 @@ interface OverviewData {
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
     active: { label: "Active", className: "bg-green-900/50 text-green-400 border-green-600" },
-    new: { label: "New", className: "bg-emerald-900/50 text-emerald-400 border-emerald-600" },
+    new: { label: "New", className: "bg-white text-blue-600 border-blue-300" },
     paused: { label: "Paused", className: "bg-yellow-900/50 text-yellow-400 border-yellow-600" },
-    churned: { label: "Churned", className: "bg-red-900/50 text-red-400 border-red-600" },
+    churned: { label: "Churned", className: "bg-white text-red-600 border-red-300" },
 };
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

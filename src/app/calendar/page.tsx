@@ -241,7 +241,6 @@ export default function DSDCalendarPage() {
             const json = await res.json();
             if (json.success && json.data) {
                 setUserEvents(
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     json.data.map((ev: any) => ({
                         ...ev,
                         isUserCreated: true,
