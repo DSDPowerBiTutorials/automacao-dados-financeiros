@@ -181,12 +181,24 @@ export async function GET(request: NextRequest) {
             }
         }
 
+        // ── 3b. Detect last month with actual monthly-fee data ──
+        // If user selects March but only Jan has data, cap at Jan to avoid false churns
+        let lastMonthWithData = 0;
+        for (const [, cd] of clinicMap) {
+            for (let m = 1; m <= month; m++) {
+                if ((cd.monthlyFeeRevenue.get(ym(year, m)) || 0) > 0) {
+                    if (m > lastMonthWithData) lastMonthWithData = m;
+                }
+            }
+        }
+        const effectiveMonth = lastMonthWithData > 0 ? lastMonthWithData : month;
+
         // ── 4. Fetch manual clinic_events for the year ──
         const { data: manualEvents } = await supabaseAdmin
             .from("clinic_events")
             .select("*, clinics(name)")
             .gte("year_month", `${year}-01`)
-            .lte("year_month", ym(year, month));
+            .lte("year_month", ym(year, effectiveMonth));
 
         // Index manual events by (clinicName, yearMonth)
         const manualEventMap = new Map<string, any>(); // key: "name|YYYY-MM"
@@ -210,9 +222,9 @@ export async function GET(request: NextRequest) {
             is_manual: boolean;
         }
 
-        const currentYM = ym(year, month);
-        const prevMonth = month === 1 ? 12 : month - 1;
-        const prevYear = month === 1 ? year - 1 : year;
+        const currentYM = ym(year, effectiveMonth);
+        const prevMonth = effectiveMonth === 1 ? 12 : effectiveMonth - 1;
+        const prevYear = effectiveMonth === 1 ? year - 1 : year;
         const prevYM = ym(prevYear, prevMonth);
 
         interface ClinicRow {
@@ -241,7 +253,7 @@ export async function GET(request: NextRequest) {
 
         // Timeline accumulators
         const timelineAutoEvents = new Map<string, { new: number; churn: number; pause: number; return: number }>();
-        for (let m = 1; m <= month; m++) {
+        for (let m = 1; m <= effectiveMonth; m++) {
             timelineAutoEvents.set(ym(year, m), { new: 0, churn: 0, pause: 0, return: 0 });
         }
 
@@ -251,18 +263,18 @@ export async function GET(request: NextRequest) {
             const wasInBaseline = baselineRevenue.has(name);
             const baselineMRR = baselineRevenue.get(name) || 0;
 
-            // Build monthly_fees map for months 1..month
+            // Build monthly_fees map for months 1..effectiveMonth
             const monthlyFees: Record<string, number> = {};
-            for (let m = 1; m <= month; m++) {
+            for (let m = 1; m <= effectiveMonth; m++) {
                 const key = ym(year, m);
                 monthlyFees[key] = data.monthlyFeeRevenue.get(key) || 0;
             }
 
-            // Auto-detect events by iterating months 1..month
+            // Auto-detect events by iterating months 1..effectiveMonth
             const autoEvents: AutoEvent[] = [];
             let state: ClinicState = wasInBaseline ? "active" : "inactive";
 
-            for (let m = 1; m <= month; m++) {
+            for (let m = 1; m <= effectiveMonth; m++) {
                 const ymKey = ym(year, m);
                 const fee = data.monthlyFeeRevenue.get(ymKey) || 0;
                 const hasFee = fee > 0;
@@ -344,14 +356,14 @@ export async function GET(request: NextRequest) {
 
             // Count months with monthly fee revenue (in the selected year)
             let monthsActive = 0;
-            for (let m = 1; m <= month; m++) {
+            for (let m = 1; m <= effectiveMonth; m++) {
                 if ((data.monthlyFeeRevenue.get(ym(year, m)) || 0) > 0) monthsActive++;
             }
 
             // Consecutive months from most recent
             let consecutive = 0;
             let expectedYM = currentYM;
-            for (let m = month; m >= 1; m--) {
+            for (let m = effectiveMonth; m >= 1; m--) {
                 const key = ym(year, m);
                 if (key !== expectedYM) break;
                 if ((data.monthlyFeeRevenue.get(key) || 0) > 0) {
@@ -364,7 +376,7 @@ export async function GET(request: NextRequest) {
                 }
             }
             // Check baseline month for consecutive streak extending back
-            if (consecutive === month && wasInBaseline && baselineMRR > 0) {
+            if (consecutive === effectiveMonth && wasInBaseline && baselineMRR > 0) {
                 consecutive++; // Baseline Dec counts
             }
 
@@ -430,7 +442,7 @@ export async function GET(request: NextRequest) {
 
         // ── 7. Monthly timeline (using auto-detected + manual events) ──
         const timeline: { month: string; new: number; churn: number; pause: number; return: number; active_count: number; mrr: number }[] = [];
-        for (let m = 1; m <= month; m++) {
+        for (let m = 1; m <= effectiveMonth; m++) {
             const ymKey = ym(year, m);
             const tl = timelineAutoEvents.get(ymKey) || { new: 0, churn: 0, pause: 0, return: 0 };
 
@@ -455,7 +467,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
             success: true,
             year,
-            month,
+            month: effectiveMonth,
             region,
             kpis: {
                 total_clinics: clinicRows.length,
