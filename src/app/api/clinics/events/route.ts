@@ -77,11 +77,46 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { clinic_id, event_type, event_date, year_month, notes, previous_mrr, new_mrr } = body;
+        let { clinic_id, event_type, event_date, year_month, notes, previous_mrr, new_mrr, clinic_name } = body;
 
-        if (!clinic_id || !event_type || !year_month) {
+        if (!event_type || !year_month) {
             return NextResponse.json(
-                { error: "clinic_id, event_type e year_month são obrigatórios" },
+                { error: "event_type e year_month são obrigatórios" },
+                { status: 400 }
+            );
+        }
+
+        // Resolve clinic_id from clinic_name if needed
+        if (!clinic_id && clinic_name) {
+            const { data: existing } = await supabaseAdmin
+                .from("clinics")
+                .select("id")
+                .eq("name", clinic_name)
+                .limit(1)
+                .single();
+
+            if (existing) {
+                clinic_id = existing.id;
+            } else {
+                // Auto-create clinic record
+                const { data: created, error: createErr } = await supabaseAdmin
+                    .from("clinics")
+                    .insert({ name: clinic_name, status: "active" })
+                    .select("id")
+                    .single();
+                if (createErr) {
+                    return NextResponse.json(
+                        { error: "Erro ao criar clínica: " + createErr.message },
+                        { status: 500 }
+                    );
+                }
+                clinic_id = created!.id;
+            }
+        }
+
+        if (!clinic_id) {
+            return NextResponse.json(
+                { error: "clinic_id ou clinic_name é obrigatório" },
                 { status: 400 }
             );
         }

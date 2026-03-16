@@ -3,17 +3,16 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // ============================================================
 // Sales Insights → Clinics Overview API
-// Aggregates clinic data from multiple tables:
-//   - csv_rows (invoice-orders) FA 102.x for raw transaction data
-//   - clinics table for master data
-//   - clinic_events for lifecycle events
+// Baseline logic: Dec (year-1) is the starting roster.
+// Events (New / Pause / Return / Churn) are detected by comparing
+// each month's monthly-fee revenue against the previous state.
+// Manual events from clinic_events table override auto-detected ones.
+// Churn is NEVER auto-detected — only set manually by the user.
 // ============================================================
 
-// Monthly fee clinic FA codes
 const CLINIC_FA_PREFIXES = ["102.1", "102.2", "102.3", "102.4"];
 const ALL_CLINIC_FA_PREFIXES = ["102.", "103.", "104."];
 
-// Readable FA names
 const FA_NAMES: Record<string, string> = {
     "102.1": "Contracted ROW",
     "102.2": "Contracted AMEX",
@@ -50,90 +49,75 @@ function getLastDayOfMonth(year: number, month: number): string {
     return `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 }
 
+function ym(y: number, m: number): string {
+    return `${y}-${String(m).padStart(2, "0")}`;
+}
+
+/** Paginated fetch of csv_rows */
+async function fetchRows(source: string, dateFrom: string, dateTo: string): Promise<any[]> {
+    let all: any[] = [];
+    let offset = 0;
+    const PAGE = 1000;
+    while (true) {
+        const { data, error } = await supabaseAdmin
+            .from("csv_rows")
+            .select("id, date, amount, custom_data")
+            .eq("source", source)
+            .gte("date", dateFrom)
+            .lte("date", dateTo)
+            .range(offset, offset + PAGE - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all = all.concat(data);
+        if (data.length < PAGE) break;
+        offset += PAGE;
+    }
+    return all;
+}
+
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const year = parseInt(searchParams.get("year") || String(new Date().getFullYear()));
     const month = searchParams.get("month") ? parseInt(searchParams.get("month")!) : new Date().getMonth() + 1;
-    const region = searchParams.get("region") || "all"; // ROW, AMEX, all
+    const region = searchParams.get("region") || "all";
 
     try {
-        // 1. Fetch ALL invoice-orders for the year (for clinic FA codes)
-        const yearStart = `${year}-01-01`;
-        const yearEnd = `${year}-12-31`;
-        const currentMonthStart = `${year}-${String(month).padStart(2, "0")}-01`;
-        const currentMonthEnd = getLastDayOfMonth(year, month);
-
-        // Previous month
-        const prevMonth = month === 1 ? 12 : month - 1;
-        const prevYear = month === 1 ? year - 1 : year;
-        const prevMonthStart = `${prevYear}-${String(prevMonth).padStart(2, "0")}-01`;
-        const prevMonthEnd = getLastDayOfMonth(prevYear, prevMonth);
-
-        // Fetch year data in pages
-        let allYearTx: any[] = [];
-        let offset = 0;
-        const PAGE_SIZE = 1000;
-        while (true) {
-            const { data, error } = await supabaseAdmin
-                .from("csv_rows")
-                .select("id, date, amount, custom_data")
-                .eq("source", "invoice-orders")
-                .gte("date", yearStart)
-                .lte("date", yearEnd)
-                .range(offset, offset + PAGE_SIZE - 1);
-            if (error) throw error;
-            if (!data || data.length === 0) break;
-            allYearTx = allYearTx.concat(data);
-            if (data.length < PAGE_SIZE) break;
-            offset += PAGE_SIZE;
-        }
-
-        // Also fetch previous month if it's in a different year
-        let prevMonthTx: any[] = [];
-        if (prevYear < year) {
-            let pOffset = 0;
-            while (true) {
-                const { data, error } = await supabaseAdmin
-                    .from("csv_rows")
-                    .select("id, date, amount, custom_data")
-                    .eq("source", "invoice-orders")
-                    .gte("date", prevMonthStart)
-                    .lte("date", prevMonthEnd)
-                    .range(pOffset, pOffset + PAGE_SIZE - 1);
-                if (error) throw error;
-                if (!data || data.length === 0) break;
-                prevMonthTx = prevMonthTx.concat(data);
-                if (data.length < PAGE_SIZE) break;
-                pOffset += PAGE_SIZE;
-            }
-        }
-
-        // Filter: only clinic-related FA codes (102.x, 103.x, 104.x)
         const isClinicFA = (fa: string) => ALL_CLINIC_FA_PREFIXES.some(p => fa.startsWith(p));
         const isMonthlyFeeFA = (fa: string) => CLINIC_FA_PREFIXES.includes(fa);
 
-        const clinicTx = allYearTx.filter(tx => {
-            const fa = tx.custom_data?.financial_account_code || "";
-            return isClinicFA(fa);
-        });
+        // ── 1. Fetch baseline (Dec year-1) + current year transactions ──
+        const baselineYear = year - 1;
+        const baselineStart = `${baselineYear}-12-01`;
+        const baselineEnd = `${baselineYear}-12-31`;
 
-        // Add prev month tx if from different year
-        if (prevYear < year) {
-            const prevClinicTx = prevMonthTx.filter(tx => {
-                const fa = tx.custom_data?.financial_account_code || "";
-                return isClinicFA(fa);
-            });
-            clinicTx.push(...prevClinicTx);
+        const [baselineTx, yearTx] = await Promise.all([
+            fetchRows("invoice-orders", baselineStart, baselineEnd),
+            fetchRows("invoice-orders", `${year}-01-01`, `${year}-12-31`),
+        ]);
+
+        // ── 2. Build baseline set: clinics with 102.x monthly fee in Dec (year-1) ──
+        const baselineRevenue = new Map<string, number>();
+        for (const tx of baselineTx) {
+            const cd = tx.custom_data || {};
+            const fa = String(cd.financial_account_code || "").trim();
+            if (!isMonthlyFeeFA(fa)) continue;
+            const name = String(cd.customer_name || "").trim();
+            if (!name) continue;
+            // Region filter
+            const txRegion = ["102.1", "102.3"].includes(fa) ? "ROW" : "AMEX";
+            if (region !== "all" && txRegion !== region) continue;
+            const amount = parseEuropeanNumber(tx.amount);
+            baselineRevenue.set(name, (baselineRevenue.get(name) || 0) + amount);
         }
 
-        // 2. Build per-clinic aggregated data
+        // ── 3. Aggregate year transactions per clinic ──
         interface ClinicData {
             name: string;
             email: string;
             region: string;
-            monthlyRevenue: Map<string, number>; // YYYY-MM → revenue
-            monthlyFeeRevenue: Map<string, number>; // Only 102.x monthly fees
-            products: Map<string, { revenue: number; count: number }>; // FA code → totals
+            monthlyRevenue: Map<string, number>;
+            monthlyFeeRevenue: Map<string, number>;
+            products: Map<string, { revenue: number; count: number }>;
             totalRevenue: number;
             totalMonthlyFee: number;
             firstDate: string;
@@ -143,87 +127,93 @@ export async function GET(request: NextRequest) {
 
         const clinicMap = new Map<string, ClinicData>();
 
-        for (const tx of clinicTx) {
+        for (const tx of yearTx) {
             const cd = tx.custom_data || {};
             const customerName = String(cd.customer_name || "").trim();
             if (!customerName) continue;
-
             const fa = String(cd.financial_account_code || "").trim();
             if (!fa || !isClinicFA(fa)) continue;
-
-            // Region filter
-            const txRegion = fa.startsWith("102.") ?
-                (["102.1", "102.3"].includes(fa) ? "ROW" : "AMEX") :
-                fa.startsWith("103.") ? "ROW" : "AMEX";
+            const txRegion = fa.startsWith("102.")
+                ? (["102.1", "102.3"].includes(fa) ? "ROW" : "AMEX")
+                : fa.startsWith("103.") ? "ROW" : "AMEX";
             if (region !== "all" && txRegion !== region) continue;
 
             const amount = parseEuropeanNumber(tx.amount);
             const date = tx.date || "";
-            const ym = date.substring(0, 7); // YYYY-MM
+            const ymKey = date.substring(0, 7);
             const email = String(cd.email || "").trim().toLowerCase();
 
             let clinic = clinicMap.get(customerName);
             if (!clinic) {
                 clinic = {
-                    name: customerName,
-                    email: email,
-                    region: txRegion,
-                    monthlyRevenue: new Map(),
-                    monthlyFeeRevenue: new Map(),
-                    products: new Map(),
-                    totalRevenue: 0,
-                    totalMonthlyFee: 0,
-                    firstDate: date,
-                    lastDate: date,
-                    txCount: 0,
+                    name: customerName, email, region: txRegion,
+                    monthlyRevenue: new Map(), monthlyFeeRevenue: new Map(),
+                    products: new Map(), totalRevenue: 0, totalMonthlyFee: 0,
+                    firstDate: date, lastDate: date, txCount: 0,
                 };
                 clinicMap.set(customerName, clinic);
             }
-
-            // Update email if we didn't have one
             if (!clinic.email && email) clinic.email = email;
-
-            // Monthly revenue
-            clinic.monthlyRevenue.set(ym, (clinic.monthlyRevenue.get(ym) || 0) + amount);
-
-            // Monthly fee revenue (only 102.x)
+            clinic.monthlyRevenue.set(ymKey, (clinic.monthlyRevenue.get(ymKey) || 0) + amount);
             if (isMonthlyFeeFA(fa)) {
-                clinic.monthlyFeeRevenue.set(ym, (clinic.monthlyFeeRevenue.get(ym) || 0) + amount);
+                clinic.monthlyFeeRevenue.set(ymKey, (clinic.monthlyFeeRevenue.get(ymKey) || 0) + amount);
                 clinic.totalMonthlyFee += amount;
             }
-
-            // Products breakdown
             const prod = clinic.products.get(fa) || { revenue: 0, count: 0 };
             prod.revenue += amount;
             prod.count += 1;
             clinic.products.set(fa, prod);
-
             clinic.totalRevenue += amount;
             clinic.txCount += 1;
             if (date < clinic.firstDate) clinic.firstDate = date;
             if (date > clinic.lastDate) clinic.lastDate = date;
         }
 
-        // 3. Fetch clinic_events for the year
-        const { data: events } = await supabaseAdmin
+        // Also ensure baseline clinics appear even if they have zero year tx
+        for (const [name] of baselineRevenue) {
+            if (!clinicMap.has(name)) {
+                clinicMap.set(name, {
+                    name, email: "", region: "ROW",
+                    monthlyRevenue: new Map(), monthlyFeeRevenue: new Map(),
+                    products: new Map(), totalRevenue: 0, totalMonthlyFee: 0,
+                    firstDate: "", lastDate: "", txCount: 0,
+                });
+            }
+        }
+
+        // ── 4. Fetch manual clinic_events for the year ──
+        const { data: manualEvents } = await supabaseAdmin
             .from("clinic_events")
             .select("*, clinics(name)")
             .gte("year_month", `${year}-01`)
-            .lte("year_month", `${year}-${String(month).padStart(2, "0")}`);
+            .lte("year_month", ym(year, month));
 
-        // Map events by clinic name for easier lookup
-        const eventsByName = new Map<string, any[]>();
-        for (const e of events || []) {
+        // Index manual events by (clinicName, yearMonth)
+        const manualEventMap = new Map<string, any>(); // key: "name|YYYY-MM"
+        const manualEventsByName = new Map<string, any[]>();
+        for (const e of manualEvents || []) {
             const name = (e.clinics as any)?.name || "";
             if (!name) continue;
-            const list = eventsByName.get(name) || [];
+            manualEventMap.set(`${name}|${e.year_month}`, e);
+            const list = manualEventsByName.get(name) || [];
             list.push(e);
-            eventsByName.set(name, list);
+            manualEventsByName.set(name, list);
         }
 
-        // 4. Determine status for each clinic
-        const currentYM = `${year}-${String(month).padStart(2, "0")}`;
-        const prevYM = `${prevYear}-${String(prevMonth).padStart(2, "0")}`;
+        // ── 5. Auto-detect events per clinic with baseline logic ──
+        type EventType = "New" | "Pause" | "Return" | "Churn";
+        type ClinicState = "active" | "inactive" | "paused";
+
+        interface AutoEvent {
+            type: EventType;
+            month: string;  // YYYY-MM
+            is_manual: boolean;
+        }
+
+        const currentYM = ym(year, month);
+        const prevMonth = month === 1 ? 12 : month - 1;
+        const prevYear = month === 1 ? year - 1 : year;
+        const prevYM = ym(prevYear, prevMonth);
 
         interface ClinicRow {
             name: string;
@@ -241,81 +231,150 @@ export async function GET(request: NextRequest) {
             tx_count: number;
             products: { code: string; name: string; revenue: number; count: number }[];
             events: { type: string; month: string; confirmed: boolean }[];
+            auto_events: { type: string; month: string; is_manual: boolean }[];
+            monthly_fees: Record<string, number>;
+            baseline_mrr: number;
+            was_in_baseline: boolean;
             months_active: number;
             consecutive_months: number;
+        }
+
+        // Timeline accumulators
+        const timelineAutoEvents = new Map<string, { new: number; churn: number; pause: number; return: number }>();
+        for (let m = 1; m <= month; m++) {
+            timelineAutoEvents.set(ym(year, m), { new: 0, churn: 0, pause: 0, return: 0 });
         }
 
         const clinicRows: ClinicRow[] = [];
 
         for (const [name, data] of clinicMap) {
-            const currentMRR = data.monthlyFeeRevenue.get(currentYM) || 0;
-            const prevMRR = data.monthlyFeeRevenue.get(prevYM) || 0;
-            const mrrChange = currentMRR - prevMRR;
-            const mrrChangePct = prevMRR > 0 ? (mrrChange / prevMRR) * 100 : (currentMRR > 0 ? 100 : 0);
+            const wasInBaseline = baselineRevenue.has(name);
+            const baselineMRR = baselineRevenue.get(name) || 0;
 
-            // Check events for status
-            const clinicEvents = eventsByName.get(name) || [];
-            const latestEvent = clinicEvents.sort((a: any, b: any) =>
-                b.year_month.localeCompare(a.year_month)
-            )[0];
-
-            let status: "active" | "paused" | "churned" | "new" = "active";
-            if (latestEvent) {
-                if (latestEvent.event_type === "Churn") status = "churned";
-                else if (latestEvent.event_type === "Pause") status = "paused";
-                else if (latestEvent.event_type === "New") status = "new";
-                else if (latestEvent.event_type === "Return") status = "active";
-            } else {
-                // No events — determine from data
-                if (currentMRR > 0 && prevMRR === 0) {
-                    // Check if truly new (no monthly fee before current month)
-                    const hasOlderFees = [...data.monthlyFeeRevenue.keys()].some(ym => ym < currentYM);
-                    if (!hasOlderFees) status = "new";
-                } else if (currentMRR === 0 && prevMRR > 0) {
-                    status = "paused";
-                } else if (currentMRR === 0 && prevMRR === 0) {
-                    // Check if had any monthly fee this year
-                    const hasAnyFees = data.monthlyFeeRevenue.size > 0;
-                    status = hasAnyFees ? "paused" : "churned";
-                }
+            // Build monthly_fees map for months 1..month
+            const monthlyFees: Record<string, number> = {};
+            for (let m = 1; m <= month; m++) {
+                const key = ym(year, m);
+                monthlyFees[key] = data.monthlyFeeRevenue.get(key) || 0;
             }
 
-            // OVERRIDE: Real transaction data always prevails over stale events.
-            // If the client has revenue in the current month, they are active (not churned/paused).
-            if (currentMRR > 0 && (status === "churned" || status === "paused")) {
-                const hasOlderFees = [...data.monthlyFeeRevenue.keys()].some(ym => ym < currentYM);
-                status = hasOlderFees ? "active" : "new";
-            }
+            // Auto-detect events by iterating months 1..month
+            const autoEvents: AutoEvent[] = [];
+            let state: ClinicState = wasInBaseline ? "active" : "inactive";
 
-            // Count months with monthly fee revenue
-            const monthsActive = data.monthlyFeeRevenue.size;
+            for (let m = 1; m <= month; m++) {
+                const ymKey = ym(year, m);
+                const fee = data.monthlyFeeRevenue.get(ymKey) || 0;
+                const hasFee = fee > 0;
 
-            // Consecutive months from most recent
-            const sortedMonths = [...data.monthlyFeeRevenue.keys()].sort().reverse();
-            let consecutive = 0;
-            if (sortedMonths.length > 0) {
-                let expectedYM = currentYM;
-                for (const ym of sortedMonths) {
-                    if (ym === expectedYM) {
-                        consecutive++;
-                        // Move to previous month
-                        const [y, m] = expectedYM.split("-").map(Number);
-                        const pm = m === 1 ? 12 : m - 1;
-                        const py = m === 1 ? y - 1 : y;
-                        expectedYM = `${py}-${String(pm).padStart(2, "0")}`;
-                    } else if (ym < expectedYM) {
-                        break;
+                // Check for manual override first
+                const manualKey = `${name}|${ymKey}`;
+                const manual = manualEventMap.get(manualKey);
+
+                if (manual) {
+                    // Manual event takes precedence
+                    const mType = manual.event_type as EventType;
+                    autoEvents.push({ type: mType, month: ymKey, is_manual: true });
+                    // Update state based on manual event
+                    if (mType === "New" || mType === "Return") state = "active";
+                    else if (mType === "Pause") state = "paused";
+                    else if (mType === "Churn") state = "paused"; // Churn keeps paused state
+                    // Count in timeline
+                    const tl = timelineAutoEvents.get(ymKey);
+                    if (tl) {
+                        if (mType === "New") tl.new++;
+                        else if (mType === "Churn") tl.churn++;
+                        else if (mType === "Pause") tl.pause++;
+                        else if (mType === "Return") tl.return++;
+                    }
+                } else {
+                    // Auto-detect based on state transitions
+                    if (hasFee) {
+                        if (state === "inactive") {
+                            // Was never active (not in baseline) → New
+                            autoEvents.push({ type: "New", month: ymKey, is_manual: false });
+                            state = "active";
+                            const tl = timelineAutoEvents.get(ymKey);
+                            if (tl) tl.new++;
+                        } else if (state === "paused") {
+                            // Was paused, now has fee → Return
+                            autoEvents.push({ type: "Return", month: ymKey, is_manual: false });
+                            state = "active";
+                            const tl = timelineAutoEvents.get(ymKey);
+                            if (tl) tl.return++;
+                        }
+                        // else: state === "active" and still has fee → no event
+                    } else {
+                        if (state === "active") {
+                            // Was active, now no fee → Pause (never auto-churn)
+                            autoEvents.push({ type: "Pause", month: ymKey, is_manual: false });
+                            state = "paused";
+                            const tl = timelineAutoEvents.get(ymKey);
+                            if (tl) tl.pause++;
+                        }
+                        // else: state === "inactive" or "paused" with no fee → no event
                     }
                 }
             }
 
+            // Final status from last event
+            const currentMRR = data.monthlyFeeRevenue.get(currentYM) || 0;
+            const prevMRR = data.monthlyFeeRevenue.get(prevYM) || 0;
+
+            let status: "active" | "paused" | "churned" | "new" = "active";
+            if (autoEvents.length > 0) {
+                const lastEvt = autoEvents[autoEvents.length - 1];
+                if (lastEvt.type === "New") status = "new";
+                else if (lastEvt.type === "Return") status = "active";
+                else if (lastEvt.type === "Pause") status = "paused";
+                else if (lastEvt.type === "Churn") status = "churned";
+            } else {
+                // No events at all — was in baseline and still active, or inactive with no activity
+                if (wasInBaseline && currentMRR > 0) status = "active";
+                else if (wasInBaseline && currentMRR === 0) status = "paused";
+                else if (!wasInBaseline && currentMRR > 0) status = "new";
+                else status = "paused"; // inactive with no revenue
+            }
+
+            // Skip clinics that were never in baseline AND never had any year transactions
+            if (!wasInBaseline && data.txCount === 0) continue;
+
+            const mrrChange = currentMRR - prevMRR;
+            const mrrChangePct = prevMRR > 0 ? (mrrChange / prevMRR) * 100 : (currentMRR > 0 ? 100 : 0);
+
+            // Count months with monthly fee revenue (in the selected year)
+            let monthsActive = 0;
+            for (let m = 1; m <= month; m++) {
+                if ((data.monthlyFeeRevenue.get(ym(year, m)) || 0) > 0) monthsActive++;
+            }
+
+            // Consecutive months from most recent
+            let consecutive = 0;
+            let expectedYM = currentYM;
+            for (let m = month; m >= 1; m--) {
+                const key = ym(year, m);
+                if (key !== expectedYM) break;
+                if ((data.monthlyFeeRevenue.get(key) || 0) > 0) {
+                    consecutive++;
+                    const pm = m === 1 ? 12 : m - 1;
+                    const py = m === 1 ? year - 1 : year;
+                    expectedYM = ym(py, pm);
+                } else {
+                    break;
+                }
+            }
+            // Check baseline month for consecutive streak extending back
+            if (consecutive === month && wasInBaseline && baselineMRR > 0) {
+                consecutive++; // Baseline Dec counts
+            }
+
             // Products breakdown
             const products = [...data.products.entries()].map(([code, d]) => ({
-                code,
-                name: FA_NAMES[code] || code,
-                revenue: d.revenue,
-                count: d.count,
+                code, name: FA_NAMES[code] || code, revenue: d.revenue, count: d.count,
             })).sort((a, b) => b.revenue - a.revenue);
+
+            // Manual events for backward compat
+            const clinicManualEvents = manualEventsByName.get(name) || [];
 
             clinicRows.push({
                 name,
@@ -332,11 +391,15 @@ export async function GET(request: NextRequest) {
                 last_date: data.lastDate,
                 tx_count: data.txCount,
                 products,
-                events: clinicEvents.map((e: any) => ({
-                    type: e.event_type,
-                    month: e.year_month,
-                    confirmed: e.confirmed,
+                events: clinicManualEvents.map((e: any) => ({
+                    type: e.event_type, month: e.year_month, confirmed: e.confirmed,
                 })),
+                auto_events: autoEvents.map(e => ({
+                    type: e.type, month: e.month, is_manual: e.is_manual,
+                })),
+                monthly_fees: monthlyFees,
+                baseline_mrr: baselineMRR,
+                was_in_baseline: wasInBaseline,
                 months_active: monthsActive,
                 consecutive_months: consecutive,
             });
@@ -351,7 +414,7 @@ export async function GET(request: NextRequest) {
             return b.total_revenue_ytd - a.total_revenue_ytd;
         });
 
-        // 5. KPIs
+        // ── 6. KPIs ──
         const activeClinics = clinicRows.filter(c => c.status === "active" || c.status === "new");
         const pausedClinics = clinicRows.filter(c => c.status === "paused");
         const churnedClinics = clinicRows.filter(c => c.status === "churned");
@@ -361,39 +424,29 @@ export async function GET(request: NextRequest) {
         const avgMRR = activeClinics.length > 0 ? totalMRR / activeClinics.length : 0;
         const totalRevenueYTD = clinicRows.reduce((sum, c) => sum + c.total_revenue_ytd, 0);
 
-        // Churn rate: churned / (active + churned) for the period
         const churnRate = (activeClinics.length + churnedClinics.length) > 0
             ? (churnedClinics.length / (activeClinics.length + churnedClinics.length)) * 100
             : 0;
 
-        // 6. Monthly timeline (events by month)
+        // ── 7. Monthly timeline (using auto-detected + manual events) ──
         const timeline: { month: string; new: number; churn: number; pause: number; return: number; active_count: number; mrr: number }[] = [];
         for (let m = 1; m <= month; m++) {
-            const ym = `${year}-${String(m).padStart(2, "0")}`;
-            const monthEvents = (events || []).filter(e => e.year_month === ym);
-            const monthActive = clinicRows.filter(c => {
-                const rev = c.current_mrr; // simplified — just active ones
-                return (c.status === "active" || c.status === "new") ||
-                    [...(clinicMap.get(c.name)?.monthlyFeeRevenue.keys() || [])].includes(ym);
-            });
+            const ymKey = ym(year, m);
+            const tl = timelineAutoEvents.get(ymKey) || { new: 0, churn: 0, pause: 0, return: 0 };
 
-            // Count clinics with monthly fee revenue in this month
             let monthMRR = 0;
             let monthActiveCount = 0;
-            for (const [, data] of clinicMap) {
-                const rev = data.monthlyFeeRevenue.get(ym) || 0;
-                if (rev > 0) {
-                    monthActiveCount++;
-                    monthMRR += rev;
-                }
+            for (const [, d] of clinicMap) {
+                const rev = d.monthlyFeeRevenue.get(ymKey) || 0;
+                if (rev > 0) { monthActiveCount++; monthMRR += rev; }
             }
 
             timeline.push({
-                month: ym,
-                new: monthEvents.filter(e => e.event_type === "New").length,
-                churn: monthEvents.filter(e => e.event_type === "Churn").length,
-                pause: monthEvents.filter(e => e.event_type === "Pause").length,
-                return: monthEvents.filter(e => e.event_type === "Return").length,
+                month: ymKey,
+                new: tl.new,
+                churn: tl.churn,
+                pause: tl.pause,
+                return: tl.return,
                 active_count: monthActiveCount,
                 mrr: monthMRR,
             });
@@ -415,6 +468,7 @@ export async function GET(request: NextRequest) {
                 total_revenue_ytd: totalRevenueYTD,
                 churn_rate: churnRate,
                 net_change: newClinics.length - churnedClinics.length,
+                baseline_clinics_count: baselineRevenue.size,
             },
             clinics: clinicRows,
             timeline,
