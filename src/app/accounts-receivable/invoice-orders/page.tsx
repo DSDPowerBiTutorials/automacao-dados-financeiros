@@ -257,10 +257,21 @@ export default function InvoiceOrdersPage() {
     // Add manual dialog
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [addForm, setAddForm] = useState({
-        date: "", description: "", amount: "", currency: "EUR",
-        financial_account_code: "", customer_name: "", customer_email: "",
+        date: "", order_date: "", description: "", amount: "", discount: "",
+        currency: "EUR", financial_account_code: "",
+        customer_name: "", customer_email: "", company: "",
         invoice_number: "", order_number: "",
+        country: "", payment_method: "", billing_entity: "",
+        order_status: "", charged: "",
     });
+    const ADD_FORM_EMPTY = {
+        date: "", order_date: "", description: "", amount: "", discount: "",
+        currency: "EUR", financial_account_code: "",
+        customer_name: "", customer_email: "", company: "",
+        invoice_number: "", order_number: "",
+        country: "", payment_method: "", billing_entity: "",
+        order_status: "", charged: "",
+    };
     const [page, setPage] = useState(1);
     const [totalRows, setTotalRows] = useState(0);
     const PAGE_SIZE = 200;
@@ -1181,8 +1192,16 @@ export default function InvoiceOrdersPage() {
                 financial_account_name: FA_NAMES[addForm.financial_account_code] || "",
                 customer_name: addForm.customer_name,
                 customer_email: addForm.customer_email,
+                company_name: addForm.company,
                 invoice_number: addForm.invoice_number,
                 order_number: addForm.order_number,
+                order_date: addForm.order_date || null,
+                discount: addForm.discount ? parseFloat(addForm.discount) || 0 : 0,
+                country: addForm.country,
+                payment_method: addForm.payment_method,
+                billing_entity: addForm.billing_entity,
+                order_status: addForm.order_status,
+                charged: addForm.charged,
                 manual_entry: true,
             };
 
@@ -1200,7 +1219,7 @@ export default function InvoiceOrdersPage() {
             if (error) throw error;
             toast({ title: "Invoice order created" });
             setAddDialogOpen(false);
-            setAddForm({ date: "", description: "", amount: "", currency: "EUR", financial_account_code: "", customer_name: "", customer_email: "", invoice_number: "", order_number: "" });
+            setAddForm(ADD_FORM_EMPTY);
             loadData();
         } catch (err) {
             console.error("Add error:", err);
@@ -2678,74 +2697,144 @@ export default function InvoiceOrdersPage() {
 
             {/* Manual Add Dialog */}
             <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 max-w-lg">
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 sm:max-w-3xl">
                     <DialogHeader>
-                        <DialogTitle className="text-gray-900 dark:text-white">Add Invoice Order Manually</DialogTitle>
-                        <DialogDescription className="text-gray-500 dark:text-gray-400">Fill in the fields below to create a new invoice order entry.</DialogDescription>
+                        <DialogTitle className="text-gray-900 dark:text-white text-lg">Add Invoice Order Manually</DialogTitle>
+                        <DialogDescription className="text-gray-500 dark:text-gray-400">Fill in the fields below to create a new invoice order entry. Fields marked with * are required.</DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-3 py-2 max-h-[60vh] overflow-y-auto">
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-700 dark:text-gray-300">Date *</Label>
-                                <Input type="date" value={addForm.date} onChange={(e) => setAddForm({ ...addForm, date: e.target.value })} className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-700 dark:text-gray-300">Currency</Label>
-                                <Select value={addForm.currency} onValueChange={(v) => setAddForm({ ...addForm, currency: v })}>
-                                    <SelectTrigger className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
-                                    <SelectContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
-                                        <SelectItem value="EUR">EUR</SelectItem>
-                                        <SelectItem value="USD">USD</SelectItem>
-                                        <SelectItem value="GBP">GBP</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <div className="space-y-1">
-                            <Label className="text-xs text-gray-700 dark:text-gray-300">Description *</Label>
-                            <Input value={addForm.description} onChange={(e) => setAddForm({ ...addForm, description: e.target.value })} placeholder="Invoice description" className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-700 dark:text-gray-300">Amount *</Label>
-                                <Input type="number" step="0.01" value={addForm.amount} onChange={(e) => setAddForm({ ...addForm, amount: e.target.value })} placeholder="0.00" className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-700 dark:text-gray-300">Financial Account *</Label>
-                                <Select value={addForm.financial_account_code} onValueChange={(v) => setAddForm({ ...addForm, financial_account_code: v })}>
-                                    <SelectTrigger className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue placeholder="Select FA" /></SelectTrigger>
-                                    <SelectContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 max-h-60">
-                                        {FA_OPTIONS_POPUP1.map(fa => (
-                                            <SelectItem key={fa.code} value={fa.code} className="text-xs">{fa.code} — {fa.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                    <div className="grid gap-4 py-3 max-h-[70vh] overflow-y-auto pr-1">
+                        {/* ── Section: Dates & Currency ── */}
+                        <div>
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Dates & Currency</p>
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Invoice Date *</Label>
+                                    <Input type="date" value={addForm.date} onChange={(e) => setAddForm({ ...addForm, date: e.target.value })} className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Order Date</Label>
+                                    <Input type="date" value={addForm.order_date} onChange={(e) => setAddForm({ ...addForm, order_date: e.target.value })} className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Currency</Label>
+                                    <Select value={addForm.currency} onValueChange={(v) => setAddForm({ ...addForm, currency: v })}>
+                                        <SelectTrigger className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
+                                        <SelectContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
+                                            <SelectItem value="EUR">EUR</SelectItem>
+                                            <SelectItem value="USD">USD</SelectItem>
+                                            <SelectItem value="GBP">GBP</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-700 dark:text-gray-300">Customer Name</Label>
-                                <Input value={addForm.customer_name} onChange={(e) => setAddForm({ ...addForm, customer_name: e.target.value })} placeholder="Customer name" className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-700 dark:text-gray-300">Customer Email</Label>
-                                <Input value={addForm.customer_email} onChange={(e) => setAddForm({ ...addForm, customer_email: e.target.value })} placeholder="email@example.com" className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+
+                        {/* ── Section: Invoice & Order ── */}
+                        <div>
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Invoice & Order</p>
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Invoice Number</Label>
+                                    <Input value={addForm.invoice_number} onChange={(e) => setAddForm({ ...addForm, invoice_number: e.target.value })} placeholder="INV-001" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Order Number</Label>
+                                    <Input value={addForm.order_number} onChange={(e) => setAddForm({ ...addForm, order_number: e.target.value })} placeholder="ORD-001" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Order Status</Label>
+                                    <Select value={addForm.order_status} onValueChange={(v) => setAddForm({ ...addForm, order_status: v })}>
+                                        <SelectTrigger className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue placeholder="Select status" /></SelectTrigger>
+                                        <SelectContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
+                                            <SelectItem value="Completed">Completed</SelectItem>
+                                            <SelectItem value="Processing">Processing</SelectItem>
+                                            <SelectItem value="Pending Payment">Pending Payment</SelectItem>
+                                            <SelectItem value="Refunded">Refunded</SelectItem>
+                                            <SelectItem value="Expired">Expired</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-700 dark:text-gray-300">Invoice Number</Label>
-                                <Input value={addForm.invoice_number} onChange={(e) => setAddForm({ ...addForm, invoice_number: e.target.value })} placeholder="INV-001" className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+
+                        {/* ── Section: Product & Amount ── */}
+                        <div>
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Product & Amount</p>
+                            <div className="space-y-3">
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Products / Description *</Label>
+                                    <Input value={addForm.description} onChange={(e) => setAddForm({ ...addForm, description: e.target.value })} placeholder="Product name or invoice description" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs text-gray-700 dark:text-gray-300">Total / Amount *</Label>
+                                        <Input type="number" step="0.01" value={addForm.amount} onChange={(e) => setAddForm({ ...addForm, amount: e.target.value })} placeholder="0.00" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs text-gray-700 dark:text-gray-300">Discount</Label>
+                                        <Input type="number" step="0.01" value={addForm.discount} onChange={(e) => setAddForm({ ...addForm, discount: e.target.value })} placeholder="0.00" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs text-gray-700 dark:text-gray-300">Financial Account *</Label>
+                                        <Select value={addForm.financial_account_code} onValueChange={(v) => setAddForm({ ...addForm, financial_account_code: v })}>
+                                            <SelectTrigger className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue placeholder="Select FA" /></SelectTrigger>
+                                            <SelectContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 max-h-60">
+                                                {FA_OPTIONS_POPUP1.map(fa => (
+                                                    <SelectItem key={fa.code} value={fa.code} className="text-xs">{fa.label}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-gray-700 dark:text-gray-300">Order Number</Label>
-                                <Input value={addForm.order_number} onChange={(e) => setAddForm({ ...addForm, order_number: e.target.value })} placeholder="ORD-001" className="h-8 text-xs bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                        </div>
+
+                        {/* ── Section: Customer ── */}
+                        <div>
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Customer</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Client Name</Label>
+                                    <Input value={addForm.customer_name} onChange={(e) => setAddForm({ ...addForm, customer_name: e.target.value })} placeholder="Customer / Clinic name" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Email</Label>
+                                    <Input type="email" value={addForm.customer_email} onChange={(e) => setAddForm({ ...addForm, customer_email: e.target.value })} placeholder="email@example.com" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Company</Label>
+                                    <Input value={addForm.company} onChange={(e) => setAddForm({ ...addForm, company: e.target.value })} placeholder="Company name" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Country</Label>
+                                    <Input value={addForm.country} onChange={(e) => setAddForm({ ...addForm, country: e.target.value })} placeholder="e.g. Spain" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ── Section: Payment & Billing ── */}
+                        <div>
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Payment & Billing</p>
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Payment Method</Label>
+                                    <Input value={addForm.payment_method} onChange={(e) => setAddForm({ ...addForm, payment_method: e.target.value })} placeholder="e.g. Credit Card, Bank Transfer" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Billing Entity</Label>
+                                    <Input value={addForm.billing_entity} onChange={(e) => setAddForm({ ...addForm, billing_entity: e.target.value })} placeholder="e.g. DSD ES, DSD US" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Charged</Label>
+                                    <Input value={addForm.charged} onChange={(e) => setAddForm({ ...addForm, charged: e.target.value })} placeholder="e.g. Yes, No, Partial" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="border-t border-gray-200 dark:border-gray-700 pt-4">
                         <Button variant="outline" onClick={() => setAddDialogOpen(false)} className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">Cancel</Button>
-                        <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleAddManual}>
+                        <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleAddManual} disabled={saving}>
+                            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                             Save
                         </Button>
                     </DialogFooter>
