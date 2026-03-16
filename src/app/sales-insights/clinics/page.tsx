@@ -210,6 +210,7 @@ export default function ClinicsOverviewPage() {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const filteredClinics = data?.clinics.filter(c => {
+        if (!c.was_in_baseline) return false;
         if (statusFilter !== "all" && c.status !== statusFilter) return false;
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
@@ -219,6 +220,7 @@ export default function ClinicsOverviewPage() {
     }) || [];
 
     const gridFilteredClinics = data?.clinics.filter(c => {
+        if (!c.was_in_baseline) return false;
         if (gridSearchTerm) {
             const term = gridSearchTerm.toLowerCase();
             return c.name.toLowerCase().includes(term) || c.email.toLowerCase().includes(term);
@@ -505,333 +507,335 @@ export default function ClinicsOverviewPage() {
                         </CardContent>
                     </Card>
 
-                    {/* ══════════════════════════════════════════════════════
+                    <div className="flex flex-col-reverse gap-6">
+                        {/* ══════════════════════════════════════════════════════
                         Monthly Grid (PnL-style): Clinic × Month with MRR + events
                        ══════════════════════════════════════════════════════ */}
-                    <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700">
-                        <CardHeader className="py-3 px-4">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200 flex items-center gap-2">
-                                    <DollarSign className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                    Monthly Fees Grid — {year}
-                                    <span className="text-[10px] text-gray-400 font-normal ml-1">
-                                        (Dec {year - 1} = Baseline · click event badge to edit)
-                                    </span>
-                                </CardTitle>
-                                <input type="text" placeholder="Search clinic..." value={gridSearchTerm}
-                                    onChange={e => setGridSearchTerm(e.target.value)}
-                                    className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-200 placeholder-gray-500 w-48 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                            </div>
-                        </CardHeader>
-                        <CardContent className="px-0 py-0">
-                            <div className="overflow-auto max-h-[700px]">
-                                {/* Fixed grid: Clinic(180px) + Status(60px) + Dec baseline(65px) + months + YTD(70px) + Action(60px) */}
-                                <div className="min-w-max">
-                                    {/* Header */}
-                                    <div className={`grid gap-0 sticky top-0 z-10 bg-gray-100 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700`}
-                                        style={{ gridTemplateColumns: `180px 60px 65px repeat(${monthColumns.length}, minmax(70px, 1fr)) 70px 60px` }}>
-                                        <div className="px-3 py-2 text-[10px] font-semibold text-gray-500 uppercase">Clinic</div>
-                                        <div className="px-1 py-2 text-[10px] font-semibold text-gray-500 uppercase text-center">Status</div>
-                                        <div className="px-1 py-2 text-[10px] font-semibold text-gray-500 uppercase text-right">Dec {year - 1}</div>
-                                        {monthColumns.map((mc, i) => (
-                                            <div key={mc} className="px-1 py-2 text-[10px] font-semibold text-gray-500 uppercase text-right">
-                                                {MONTH_NAMES[i]}
-                                            </div>
-                                        ))}
-                                        <div className="px-1 py-2 text-[10px] font-semibold text-gray-500 uppercase text-right">YTD</div>
-                                        <div className="px-1 py-2 text-[10px] font-semibold text-gray-500 uppercase text-center">Action</div>
-                                    </div>
+                        <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700">
+                            <CardHeader className="py-3 px-4">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200 flex items-center gap-2">
+                                        <DollarSign className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                        Monthly Fees Grid — {year}
+                                        <span className="text-[10px] text-gray-400 font-normal ml-1">
+                                            (Dec {year - 1} = Baseline · click event badge to edit)
+                                        </span>
+                                    </CardTitle>
+                                    <input type="text" placeholder="Search clinic..." value={gridSearchTerm}
+                                        onChange={e => setGridSearchTerm(e.target.value)}
+                                        className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-200 placeholder-gray-500 w-48 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                                </div>
+                            </CardHeader>
+                            <CardContent className="px-0 py-0">
+                                <div className="overflow-auto max-h-[700px]">
+                                    {/* Fixed grid: Clinic(180px) + Status(60px) + Dec baseline(65px) + months + YTD(70px) + Action(60px) */}
+                                    <div className="min-w-max">
+                                        {/* Header */}
+                                        <div className={`grid gap-0 sticky top-0 z-10 bg-gray-100 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700`}
+                                            style={{ gridTemplateColumns: `180px 60px 65px repeat(${monthColumns.length}, 70px) 70px 60px` }}>
+                                            <div className="px-3 py-2 text-[10px] font-semibold text-gray-500 uppercase">Clinic</div>
+                                            <div className="px-1 py-2 text-[10px] font-semibold text-gray-500 uppercase text-center">Status</div>
+                                            <div className="px-1 py-2 text-[10px] font-semibold text-gray-500 uppercase text-right">Dec {year - 1}</div>
+                                            {monthColumns.map((mc, i) => (
+                                                <div key={mc} className="px-1 py-2 text-[10px] font-semibold text-gray-500 uppercase text-right">
+                                                    {MONTH_NAMES[i]}
+                                                </div>
+                                            ))}
+                                            <div className="px-1 py-2 text-[10px] font-semibold text-gray-500 uppercase text-right">YTD</div>
+                                            <div className="px-1 py-2 text-[10px] font-semibold text-gray-500 uppercase text-center">Action</div>
+                                        </div>
 
-                                    {/* Rows */}
-                                    {gridFilteredClinics.map((clinic) => {
-                                        const ytd = Object.values(clinic.monthly_fees || {}).reduce((s, v) => s + v, 0);
-                                        return (
-                                            <div key={clinic.name}
-                                                className={`grid gap-0 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors ${clinic.status === "churned" ? "bg-red-50/50 dark:bg-red-900/5" :
+                                        {/* Rows */}
+                                        {gridFilteredClinics.map((clinic) => {
+                                            const ytd = Object.values(clinic.monthly_fees || {}).reduce((s, v) => s + v, 0);
+                                            return (
+                                                <div key={clinic.name}
+                                                    className={`grid gap-0 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors ${clinic.status === "churned" ? "bg-red-50/50 dark:bg-red-900/5" :
                                                         clinic.status === "paused" ? "bg-yellow-50/50 dark:bg-yellow-900/5" :
                                                             clinic.status === "new" ? "bg-blue-50/50 dark:bg-blue-900/5" : ""
-                                                    }`}
-                                                style={{ gridTemplateColumns: `180px 60px 65px repeat(${monthColumns.length}, minmax(70px, 1fr)) 70px 60px` }}>
-                                                {/* Clinic name */}
-                                                <div className="px-3 py-1.5 flex flex-col justify-center min-w-0">
-                                                    <span className="text-[11px] font-medium text-gray-700 dark:text-gray-200 truncate" title={clinic.name}>
-                                                        {clinic.name}
-                                                    </span>
-                                                    {clinic.email && (
-                                                        <span className="text-[9px] text-gray-400 truncate">{clinic.email}</span>
-                                                    )}
-                                                </div>
+                                                        }`}
+                                                    style={{ gridTemplateColumns: `180px 60px 65px repeat(${monthColumns.length}, 70px) 70px 60px` }}>
+                                                    {/* Clinic name */}
+                                                    <div className="px-3 py-1.5 flex flex-col justify-center min-w-0">
+                                                        <span className="text-[11px] font-medium text-gray-700 dark:text-gray-200 truncate" title={clinic.name}>
+                                                            {clinic.name}
+                                                        </span>
+                                                        {clinic.email && (
+                                                            <span className="text-[9px] text-gray-400 truncate">{clinic.email}</span>
+                                                        )}
+                                                    </div>
 
-                                                {/* Status badge */}
-                                                <div className="px-1 py-1.5 flex items-center justify-center">
-                                                    <Badge variant="outline" className={`text-[8px] px-1 py-0 ${STATUS_BADGES[clinic.status]?.className || ""}`}>
-                                                        {STATUS_BADGES[clinic.status]?.label || clinic.status}
-                                                    </Badge>
-                                                </div>
+                                                    {/* Status badge */}
+                                                    <div className="px-1 py-1.5 flex items-center justify-center">
+                                                        <Badge variant="outline" className={`text-[8px] px-1 py-0 ${STATUS_BADGES[clinic.status]?.className || ""}`}>
+                                                            {STATUS_BADGES[clinic.status]?.label || clinic.status}
+                                                        </Badge>
+                                                    </div>
 
-                                                {/* Baseline Dec */}
-                                                <div className="px-1 py-1.5 flex items-center justify-end">
-                                                    <span className={`text-[10px] font-mono ${clinic.baseline_mrr > 0 ? "text-gray-600 dark:text-gray-300" : "text-gray-300 dark:text-gray-700"}`}>
-                                                        {clinic.baseline_mrr > 0 ? formatCompact(clinic.baseline_mrr) : "-"}
-                                                    </span>
-                                                </div>
+                                                    {/* Baseline Dec */}
+                                                    <div className="px-1 py-1.5 flex items-center justify-end">
+                                                        <span className={`text-[10px] font-mono ${clinic.baseline_mrr > 0 ? "text-gray-600 dark:text-gray-300" : "text-gray-300 dark:text-gray-700"}`}>
+                                                            {clinic.baseline_mrr > 0 ? formatCompact(clinic.baseline_mrr) : "-"}
+                                                        </span>
+                                                    </div>
 
-                                                {/* Monthly fee cells */}
-                                                {monthColumns.map(mc => {
-                                                    const fee = clinic.monthly_fees?.[mc] || 0;
-                                                    const evt = getEventForMonth(clinic, mc);
-                                                    const isEditing = editingEvent?.clinicName === clinic.name && editingEvent?.month === mc;
+                                                    {/* Monthly fee cells */}
+                                                    {monthColumns.map(mc => {
+                                                        const fee = clinic.monthly_fees?.[mc] || 0;
+                                                        const evt = getEventForMonth(clinic, mc);
+                                                        const isEditing = editingEvent?.clinicName === clinic.name && editingEvent?.month === mc;
 
-                                                    return (
-                                                        <div key={mc} className="px-1 py-1 flex flex-col items-end justify-center gap-0.5 relative">
-                                                            <span className={`text-[10px] font-mono ${fee > 0 ? "text-gray-700 dark:text-gray-200" : "text-gray-300 dark:text-gray-700"}`}>
-                                                                {fee > 0 ? formatCompact(fee) : "-"}
-                                                            </span>
-                                                            {evt ? (
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); setEditingEvent({ clinicName: clinic.name, month: mc }); }}
-                                                                    className={`inline-flex items-center gap-0.5 px-1 py-0 rounded text-[8px] font-bold border cursor-pointer hover:opacity-80 transition-opacity ${EVENT_BADGES[evt.type]?.bg || ""} ${EVENT_BADGES[evt.type]?.text || ""} ${evt.is_manual ? "border-current" : "border-transparent"}`}
-                                                                    title={`${evt.type}${evt.is_manual ? " (manual)" : " (auto)"} — click to edit`}>
-                                                                    {evt.type}
-                                                                    {evt.is_manual && <Edit3 className="h-2 w-2" />}
-                                                                </button>
-                                                            ) : fee === 0 && clinic.was_in_baseline ? (
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); setEditingEvent({ clinicName: clinic.name, month: mc }); }}
-                                                                    className="text-[8px] text-gray-300 dark:text-gray-600 hover:text-gray-500 cursor-pointer"
-                                                                    title="Add event">
-                                                                    +
-                                                                </button>
-                                                            ) : null}
-
-                                                            {/* Inline event editor dropdown */}
-                                                            {isEditing && (
-                                                                <div className="absolute top-full right-0 mt-0.5 z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg p-1 min-w-[90px]"
-                                                                    onClick={e => e.stopPropagation()}>
-                                                                    {EVENT_OPTIONS.map(opt => (
-                                                                        <button key={opt}
-                                                                            disabled={savingEvent}
-                                                                            onClick={() => handleEventChange(clinic.name, mc, opt)}
-                                                                            className={`w-full text-left px-2 py-1 text-[10px] rounded hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-1.5 ${EVENT_BADGES[opt]?.text || ""}`}>
-                                                                            <span className={`w-2 h-2 rounded-full ${EVENT_BADGES[opt]?.bg || ""}`} />
-                                                                            {opt}
-                                                                        </button>
-                                                                    ))}
-                                                                    {evt && (
-                                                                        <button
-                                                                            disabled={savingEvent}
-                                                                            onClick={() => handleEventChange(clinic.name, mc, null)}
-                                                                            className="w-full text-left px-2 py-1 text-[10px] rounded hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-1.5 text-gray-400">
-                                                                            <X className="h-2 w-2" /> Remove
-                                                                        </button>
-                                                                    )}
+                                                        return (
+                                                            <div key={mc} className="px-1 py-1 flex flex-col items-end justify-center gap-0.5 relative">
+                                                                <span className={`text-[10px] font-mono ${fee > 0 ? "text-gray-700 dark:text-gray-200" : "text-gray-300 dark:text-gray-700"}`}>
+                                                                    {fee > 0 ? formatCompact(fee) : "-"}
+                                                                </span>
+                                                                {evt ? (
                                                                     <button
-                                                                        onClick={() => setEditingEvent(null)}
-                                                                        className="w-full text-left px-2 py-1 text-[10px] rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 border-t border-gray-100 dark:border-gray-800 mt-0.5">
-                                                                        Cancel
+                                                                        onClick={(e) => { e.stopPropagation(); setEditingEvent({ clinicName: clinic.name, month: mc }); }}
+                                                                        className={`inline-flex items-center gap-0.5 px-1 py-0 rounded text-[8px] font-bold border cursor-pointer hover:opacity-80 transition-opacity ${EVENT_BADGES[evt.type]?.bg || ""} ${EVENT_BADGES[evt.type]?.text || ""} ${evt.is_manual ? "border-current" : "border-transparent"}`}
+                                                                        title={`${evt.type}${evt.is_manual ? " (manual)" : " (auto)"} — click to edit`}>
+                                                                        {evt.type}
+                                                                        {evt.is_manual && <Edit3 className="h-2 w-2" />}
                                                                     </button>
-                                                                </div>
-                                                            )}
+                                                                ) : fee === 0 && clinic.was_in_baseline ? (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); setEditingEvent({ clinicName: clinic.name, month: mc }); }}
+                                                                        className="text-[8px] text-gray-300 dark:text-gray-600 hover:text-gray-500 cursor-pointer"
+                                                                        title="Add event">
+                                                                        +
+                                                                    </button>
+                                                                ) : null}
+
+                                                                {/* Inline event editor dropdown */}
+                                                                {isEditing && (
+                                                                    <div className="absolute top-full right-0 mt-0.5 z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg p-1 min-w-[90px]"
+                                                                        onClick={e => e.stopPropagation()}>
+                                                                        {EVENT_OPTIONS.map(opt => (
+                                                                            <button key={opt}
+                                                                                disabled={savingEvent}
+                                                                                onClick={() => handleEventChange(clinic.name, mc, opt)}
+                                                                                className={`w-full text-left px-2 py-1 text-[10px] rounded hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-1.5 ${EVENT_BADGES[opt]?.text || ""}`}>
+                                                                                <span className={`w-2 h-2 rounded-full ${EVENT_BADGES[opt]?.bg || ""}`} />
+                                                                                {opt}
+                                                                            </button>
+                                                                        ))}
+                                                                        {evt && (
+                                                                            <button
+                                                                                disabled={savingEvent}
+                                                                                onClick={() => handleEventChange(clinic.name, mc, null)}
+                                                                                className="w-full text-left px-2 py-1 text-[10px] rounded hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-1.5 text-gray-400">
+                                                                                <X className="h-2 w-2" /> Remove
+                                                                            </button>
+                                                                        )}
+                                                                        <button
+                                                                            onClick={() => setEditingEvent(null)}
+                                                                            className="w-full text-left px-2 py-1 text-[10px] rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 border-t border-gray-100 dark:border-gray-800 mt-0.5">
+                                                                            Cancel
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+
+                                                    {/* YTD */}
+                                                    <div className="px-1 py-1.5 flex items-center justify-end">
+                                                        <span className="text-[10px] font-mono font-bold text-gray-700 dark:text-gray-200">
+                                                            {ytd > 0 ? formatCompact(ytd) : "-"}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Action */}
+                                                    <div className="px-1 py-1.5 flex items-center justify-center gap-1">
+                                                        <button
+                                                            onClick={() => { setMergeClinic(clinic); setMergeOpen(true); setMergeSearch(""); setMergeTarget(null); setMergeResults([]); }}
+                                                            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                                            title="Link / merge duplicate clinic">
+                                                            <Link2 className="h-3 w-3" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+
+                                        {gridFilteredClinics.length === 0 && (
+                                            <div className="text-center py-8 text-gray-500 text-sm">No clinics found</div>
+                                        )}
+
+                                        {/* Totals row */}
+                                        {gridFilteredClinics.length > 0 && (
+                                            <div className={`grid gap-0 bg-gray-100 dark:bg-[#0a0a0a] border-t-2 border-gray-300 dark:border-gray-600 sticky bottom-0`}
+                                                style={{ gridTemplateColumns: `180px 60px 65px repeat(${monthColumns.length}, 70px) 70px 60px` }}>
+                                                <div className="px-3 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase">
+                                                    Total ({gridFilteredClinics.length})
+                                                </div>
+                                                <div />
+                                                <div className="px-1 py-2 text-right">
+                                                    <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300">
+                                                        {formatCompact(gridFilteredClinics.reduce((s, c) => s + (c.baseline_mrr || 0), 0))}
+                                                    </span>
+                                                </div>
+                                                {monthColumns.map(mc => {
+                                                    const total = gridFilteredClinics.reduce((s, c) => s + (c.monthly_fees?.[mc] || 0), 0);
+                                                    return (
+                                                        <div key={mc} className="px-1 py-2 text-right">
+                                                            <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300">
+                                                                {total > 0 ? formatCompact(total) : "-"}
+                                                            </span>
                                                         </div>
                                                     );
                                                 })}
-
-                                                {/* YTD */}
-                                                <div className="px-1 py-1.5 flex items-center justify-end">
-                                                    <span className="text-[10px] font-mono font-bold text-gray-700 dark:text-gray-200">
-                                                        {ytd > 0 ? formatCompact(ytd) : "-"}
+                                                <div className="px-1 py-2 text-right">
+                                                    <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300">
+                                                        {formatCompact(gridFilteredClinics.reduce((s, c) => s + Object.values(c.monthly_fees || {}).reduce((a, b) => a + b, 0), 0))}
                                                     </span>
                                                 </div>
-
-                                                {/* Action */}
-                                                <div className="px-1 py-1.5 flex items-center justify-center gap-1">
-                                                    <button
-                                                        onClick={() => { setMergeClinic(clinic); setMergeOpen(true); setMergeSearch(""); setMergeTarget(null); setMergeResults([]); }}
-                                                        className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                                                        title="Link / merge duplicate clinic">
-                                                        <Link2 className="h-3 w-3" />
-                                                    </button>
-                                                </div>
+                                                <div />
                                             </div>
-                                        );
-                                    })}
-
-                                    {gridFilteredClinics.length === 0 && (
-                                        <div className="text-center py-8 text-gray-500 text-sm">No clinics found</div>
-                                    )}
-
-                                    {/* Totals row */}
-                                    {gridFilteredClinics.length > 0 && (
-                                        <div className={`grid gap-0 bg-gray-100 dark:bg-[#0a0a0a] border-t-2 border-gray-300 dark:border-gray-600 sticky bottom-0`}
-                                            style={{ gridTemplateColumns: `180px 60px 65px repeat(${monthColumns.length}, minmax(70px, 1fr)) 70px 60px` }}>
-                                            <div className="px-3 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase">
-                                                Total ({gridFilteredClinics.length})
-                                            </div>
-                                            <div />
-                                            <div className="px-1 py-2 text-right">
-                                                <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300">
-                                                    {formatCompact(gridFilteredClinics.reduce((s, c) => s + (c.baseline_mrr || 0), 0))}
-                                                </span>
-                                            </div>
-                                            {monthColumns.map(mc => {
-                                                const total = gridFilteredClinics.reduce((s, c) => s + (c.monthly_fees?.[mc] || 0), 0);
-                                                return (
-                                                    <div key={mc} className="px-1 py-2 text-right">
-                                                        <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300">
-                                                            {total > 0 ? formatCompact(total) : "-"}
-                                                        </span>
-                                                    </div>
-                                                );
-                                            })}
-                                            <div className="px-1 py-2 text-right">
-                                                <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300">
-                                                    {formatCompact(gridFilteredClinics.reduce((s, c) => s + Object.values(c.monthly_fees || {}).reduce((a, b) => a + b, 0), 0))}
-                                                </span>
-                                            </div>
-                                            <div />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Legend */}
-                            <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 flex items-center gap-4 text-[10px] text-gray-500">
-                                {Object.entries(EVENT_BADGES).map(([key, val]) => (
-                                    <span key={key} className="flex items-center gap-1">
-                                        <span className={`inline-block w-3 px-0.5 py-0 rounded text-[8px] font-bold text-center ${val.bg} ${val.text}`}>{val.label}</span>
-                                        {key}
-                                    </span>
-                                ))}
-                                <span className="ml-2 flex items-center gap-1"><Edit3 className="h-2.5 w-2.5" /> Manual override</span>
-                                <span className="flex items-center gap-1"><Link2 className="h-2.5 w-2.5" /> Merge clinics</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Clinic Detail Table */}
-                    <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700">
-                        <CardHeader className="py-3 px-4">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200 flex items-center gap-2">
-                                    <Building2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                    All Clinics ({filteredClinics.length})
-                                </CardTitle>
-                                <div className="flex items-center gap-2">
-                                    <input type="text" placeholder="Search clinic..." value={searchTerm}
-                                        onChange={e => setSearchTerm(e.target.value)}
-                                        className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-200 placeholder-gray-500 w-48 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                        <SelectTrigger className="w-[120px] h-8 text-xs bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">
-                                            <SelectValue placeholder="Status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All Status</SelectItem>
-                                            <SelectItem value="active">Active</SelectItem>
-                                            <SelectItem value="new">New</SelectItem>
-                                            <SelectItem value="paused">Paused</SelectItem>
-                                            <SelectItem value="churned">Churned</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="px-0 py-0">
-                            <div className="max-h-[600px] overflow-auto">
-                                <Table>
-                                    <TableHeader className="sticky top-0 bg-gray-100 dark:bg-black z-10">
-                                        <TableRow className="border-gray-200 dark:border-gray-700">
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300 w-8"></TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300">Clinic</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300">Region</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300">Status</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Baseline</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Current MRR</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">MRR Change</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Revenue YTD</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-center">Months</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300">Last Payment</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredClinics.map((clinic) => (
-                                            <React.Fragment key={clinic.name}>
-                                                <TableRow
-                                                    className={`border-gray-200 dark:border-gray-700 cursor-pointer transition-colors hover:bg-gray-100 dark:bg-black/50 ${clinic.status === "churned" ? "bg-red-900/10" :
-                                                            clinic.status === "paused" ? "bg-yellow-900/10" :
-                                                                clinic.status === "new" ? "bg-blue-900/10" : ""
-                                                        }`}
-                                                    onClick={() => setExpandedClinic(expandedClinic === clinic.name ? null : clinic.name)}>
-                                                    <TableCell className="py-2 px-2">
-                                                        {expandedClinic === clinic.name
-                                                            ? <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
-                                                            : <ChevronRight className="h-3.5 w-3.5 text-gray-500" />}
-                                                    </TableCell>
-                                                    <TableCell className="py-2">
-                                                        <div>
-                                                            <span className="text-xs font-medium text-gray-600 dark:text-gray-200 block truncate max-w-[200px]" title={clinic.name}>{clinic.name}</span>
-                                                            {clinic.email && <span className="text-[10px] text-gray-500 block truncate max-w-[200px]">{clinic.email}</span>}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="py-2">
-                                                        <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-black text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">{clinic.region}</Badge>
-                                                    </TableCell>
-                                                    <TableCell className="py-2">
-                                                        <Badge variant="outline" className={`text-[10px] ${STATUS_BADGES[clinic.status]?.className || ""}`}>
-                                                            {STATUS_BADGES[clinic.status]?.label || clinic.status}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="py-2 text-right">
-                                                        <span className={`text-xs ${clinic.was_in_baseline ? "text-gray-600 dark:text-gray-300" : "text-gray-300 dark:text-gray-600"}`}>
-                                                            {clinic.was_in_baseline ? formatCurrency(clinic.baseline_mrr, "EUR") : "-"}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell className="py-2 text-right">
-                                                        <span className="text-xs font-medium text-gray-600 dark:text-gray-200">{formatCurrency(clinic.current_mrr, "EUR")}</span>
-                                                    </TableCell>
-                                                    <TableCell className="py-2 text-right">
-                                                        <MRRChangeCell change={clinic.mrr_change} pct={clinic.mrr_change_pct} />
-                                                    </TableCell>
-                                                    <TableCell className="py-2 text-right">
-                                                        <span className="text-xs text-gray-700 dark:text-gray-300">{formatCurrency(clinic.total_revenue_ytd, "EUR")}</span>
-                                                    </TableCell>
-                                                    <TableCell className="py-2 text-center">
-                                                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                            {clinic.consecutive_months > 0 ? `${clinic.consecutive_months}/${clinic.months_active}` : clinic.months_active}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell className="py-2">
-                                                        <span className="text-xs text-gray-500 dark:text-gray-400">{clinic.last_date ? formatDate(clinic.last_date) : "-"}</span>
-                                                    </TableCell>
-                                                </TableRow>
-                                                {expandedClinic === clinic.name && (
-                                                    <TableRow className="border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30">
-                                                        <TableCell colSpan={10} className="p-4">
-                                                            <ClinicDetail clinic={clinic} year={year} />
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )}
-                                            </React.Fragment>
-                                        ))}
-                                        {filteredClinics.length === 0 && (
-                                            <TableRow>
-                                                <TableCell colSpan={10} className="text-center py-8 text-gray-500 text-sm">No clinics found</TableCell>
-                                            </TableRow>
                                         )}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                            {data.kpis && (
-                                <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black px-4 py-2 flex items-center justify-between text-xs">
-                                    <span className="text-gray-500 dark:text-gray-400">Showing {filteredClinics.length} of {data.clinics.length} clinics</span>
-                                    <div className="flex items-center gap-4">
-                                        <span className="flex items-center gap-1 text-blue-400"><UserPlus className="h-3 w-3" /> {data.kpis.new_clinics} new</span>
-                                        <span className="flex items-center gap-1 text-red-400"><UserMinus className="h-3 w-3" /> {data.kpis.churned_clinics} churned</span>
-                                        <span className="flex items-center gap-1 text-yellow-400"><AlertCircle className="h-3 w-3" /> {data.kpis.paused_clinics} paused</span>
                                     </div>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+
+                                {/* Legend */}
+                                <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 flex items-center gap-4 text-[10px] text-gray-500">
+                                    {Object.entries(EVENT_BADGES).map(([key, val]) => (
+                                        <span key={key} className="flex items-center gap-1">
+                                            <span className={`inline-block w-3 px-0.5 py-0 rounded text-[8px] font-bold text-center ${val.bg} ${val.text}`}>{val.label}</span>
+                                            {key}
+                                        </span>
+                                    ))}
+                                    <span className="ml-2 flex items-center gap-1"><Edit3 className="h-2.5 w-2.5" /> Manual override</span>
+                                    <span className="flex items-center gap-1"><Link2 className="h-2.5 w-2.5" /> Merge clinics</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Clinic Detail Table */}
+                        <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700">
+                            <CardHeader className="py-3 px-4">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200 flex items-center gap-2">
+                                        <Building2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                        All Clinics ({filteredClinics.length})
+                                    </CardTitle>
+                                    <div className="flex items-center gap-2">
+                                        <input type="text" placeholder="Search clinic..." value={searchTerm}
+                                            onChange={e => setSearchTerm(e.target.value)}
+                                            className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-200 placeholder-gray-500 w-48 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                            <SelectTrigger className="w-[120px] h-8 text-xs bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">
+                                                <SelectValue placeholder="Status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All Status</SelectItem>
+                                                <SelectItem value="active">Active</SelectItem>
+                                                <SelectItem value="new">New</SelectItem>
+                                                <SelectItem value="paused">Paused</SelectItem>
+                                                <SelectItem value="churned">Churned</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="px-0 py-0">
+                                <div className="max-h-[600px] overflow-auto">
+                                    <Table>
+                                        <TableHeader className="sticky top-0 bg-gray-100 dark:bg-black z-10">
+                                            <TableRow className="border-gray-200 dark:border-gray-700">
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 w-8"></TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300">Clinic</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300">Region</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300">Status</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Baseline</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Current MRR</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">MRR Change</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Revenue YTD</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-center">Months</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300">Last Payment</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredClinics.map((clinic) => (
+                                                <React.Fragment key={clinic.name}>
+                                                    <TableRow
+                                                        className={`border-gray-200 dark:border-gray-700 cursor-pointer transition-colors hover:bg-gray-100 dark:bg-black/50 ${clinic.status === "churned" ? "bg-red-900/10" :
+                                                            clinic.status === "paused" ? "bg-yellow-900/10" :
+                                                                clinic.status === "new" ? "bg-blue-900/10" : ""
+                                                            }`}
+                                                        onClick={() => setExpandedClinic(expandedClinic === clinic.name ? null : clinic.name)}>
+                                                        <TableCell className="py-2 px-2">
+                                                            {expandedClinic === clinic.name
+                                                                ? <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+                                                                : <ChevronRight className="h-3.5 w-3.5 text-gray-500" />}
+                                                        </TableCell>
+                                                        <TableCell className="py-2">
+                                                            <div>
+                                                                <span className="text-xs font-medium text-gray-600 dark:text-gray-200 block truncate max-w-[200px]" title={clinic.name}>{clinic.name}</span>
+                                                                {clinic.email && <span className="text-[10px] text-gray-500 block truncate max-w-[200px]">{clinic.email}</span>}
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="py-2">
+                                                            <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-black text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">{clinic.region}</Badge>
+                                                        </TableCell>
+                                                        <TableCell className="py-2">
+                                                            <Badge variant="outline" className={`text-[10px] ${STATUS_BADGES[clinic.status]?.className || ""}`}>
+                                                                {STATUS_BADGES[clinic.status]?.label || clinic.status}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="py-2 text-right">
+                                                            <span className={`text-xs ${clinic.was_in_baseline ? "text-gray-600 dark:text-gray-300" : "text-gray-300 dark:text-gray-600"}`}>
+                                                                {clinic.was_in_baseline ? formatCurrency(clinic.baseline_mrr, "EUR") : "-"}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="py-2 text-right">
+                                                            <span className="text-xs font-medium text-gray-600 dark:text-gray-200">{formatCurrency(clinic.current_mrr, "EUR")}</span>
+                                                        </TableCell>
+                                                        <TableCell className="py-2 text-right">
+                                                            <MRRChangeCell change={clinic.mrr_change} pct={clinic.mrr_change_pct} />
+                                                        </TableCell>
+                                                        <TableCell className="py-2 text-right">
+                                                            <span className="text-xs text-gray-700 dark:text-gray-300">{formatCurrency(clinic.total_revenue_ytd, "EUR")}</span>
+                                                        </TableCell>
+                                                        <TableCell className="py-2 text-center">
+                                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                                {clinic.consecutive_months > 0 ? `${clinic.consecutive_months}/${clinic.months_active}` : clinic.months_active}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="py-2">
+                                                            <span className="text-xs text-gray-500 dark:text-gray-400">{clinic.last_date ? formatDate(clinic.last_date) : "-"}</span>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                    {expandedClinic === clinic.name && (
+                                                        <TableRow className="border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30">
+                                                            <TableCell colSpan={10} className="p-4">
+                                                                <ClinicDetail clinic={clinic} year={year} />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                </React.Fragment>
+                                            ))}
+                                            {filteredClinics.length === 0 && (
+                                                <TableRow>
+                                                    <TableCell colSpan={10} className="text-center py-8 text-gray-500 text-sm">No clinics found</TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                                {data.kpis && (
+                                    <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black px-4 py-2 flex items-center justify-between text-xs">
+                                        <span className="text-gray-500 dark:text-gray-400">Showing {filteredClinics.length} of {data.clinics.length} clinics</span>
+                                        <div className="flex items-center gap-4">
+                                            <span className="flex items-center gap-1 text-blue-400"><UserPlus className="h-3 w-3" /> {data.kpis.new_clinics} new</span>
+                                            <span className="flex items-center gap-1 text-red-400"><UserMinus className="h-3 w-3" /> {data.kpis.churned_clinics} churned</span>
+                                            <span className="flex items-center gap-1 text-yellow-400"><AlertCircle className="h-3 w-3" /> {data.kpis.paused_clinics} paused</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
                 </>
             )}
 
