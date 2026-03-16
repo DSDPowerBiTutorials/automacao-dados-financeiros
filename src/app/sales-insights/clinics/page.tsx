@@ -11,7 +11,7 @@ import {
 import {
     Building2, Users, UserPlus, UserMinus, TrendingUp, TrendingDown,
     DollarSign, Loader2, ChevronDown, ChevronRight, RotateCcw,
-    Activity, AlertCircle, Minus, RefreshCw,
+    Activity, AlertCircle, Minus, RefreshCw, Lock, Unlock,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { PageHeader } from "@/components/ui/page-header";
@@ -94,22 +94,70 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+// Helper: default to previous month
+function getDefaultMonth(): number {
+    const now = new Date();
+    const m = now.getMonth(); // 0-indexed → Mar=2, so prev month = 2 (Feb) as 1-indexed
+    return m === 0 ? 12 : m;
+}
+function getDefaultYear(): number {
+    const now = new Date();
+    return now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+}
+
+// LocalStorage persistence for Numbers Closed
+const CLOSED_MONTHS_KEY = "clinic-numbers-closed";
+
+function loadClosedMonths(year: number): Record<number, boolean> {
+    try {
+        const raw = localStorage.getItem(`${CLOSED_MONTHS_KEY}-${year}`);
+        if (raw) return JSON.parse(raw);
+    } catch { /* ignore */ }
+    return {};
+}
+
+function saveClosedMonths(year: number, closed: Record<number, boolean>) {
+    try {
+        localStorage.setItem(`${CLOSED_MONTHS_KEY}-${year}`, JSON.stringify(closed));
+    } catch { /* ignore */ }
+}
+
 export default function ClinicsOverviewPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [data, setData] = useState<OverviewData | null>(null);
-    const [year, setYear] = useState(new Date().getFullYear());
-    const [month, setMonth] = useState(new Date().getMonth() + 1);
+    const [year, setYear] = useState(getDefaultYear());
+    const [month, setMonth] = useState(getDefaultMonth());
     const [region, setRegion] = useState("all");
     const [expandedClinic, setExpandedClinic] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
+    const [closedMonths, setClosedMonths] = useState<Record<number, boolean>>({});
+
+    // Load closedMonths from localStorage when year changes
+    useEffect(() => {
+        setClosedMonths(loadClosedMonths(year));
+    }, [year]);
+
+    // Effective month = last closed month <= selected month
+    const effectiveMonth = React.useMemo(() => {
+        for (let m = month; m >= 1; m--) {
+            if (closedMonths[m]) return m;
+        }
+        return month; // If no months explicitly closed, use selected
+    }, [month, closedMonths]);
+
+    const toggleClosedMonth = (m: number) => {
+        const updated = { ...closedMonths, [m]: !closedMonths[m] };
+        setClosedMonths(updated);
+        saveClosedMonths(year, updated);
+    };
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const params = new URLSearchParams({ year: String(year), month: String(month), region });
+            const params = new URLSearchParams({ year: String(year), month: String(effectiveMonth), region });
             const res = await fetch(`/api/sales-insights/clinics/overview?${params}`);
             const json = await res.json();
             if (!json.success) throw new Error(json.error || "Failed to load");
@@ -119,7 +167,7 @@ export default function ClinicsOverviewPage() {
         } finally {
             setLoading(false);
         }
-    }, [year, month, region]);
+    }, [year, effectiveMonth, region]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -271,51 +319,120 @@ export default function ClinicsOverviewPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="px-4 pb-4">
+                            {/* Notice when effective month differs from selected */}
+                            {effectiveMonth !== month && (
+                                <div className="mb-3 px-3 py-2 rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 text-xs text-yellow-700 dark:text-yellow-400 flex items-center gap-2">
+                                    <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                                    <span>
+                                        Numbers not closed for {MONTH_NAMES[month - 1]}. Status &amp; KPIs based on last closed month: <strong>{MONTH_NAMES[effectiveMonth - 1]}</strong>.
+                                    </span>
+                                </div>
+                            )}
                             <div className="grid grid-cols-12 gap-1">
                                 {/* Header row */}
-                                {data.timeline.map((t, i) => (
-                                    <div key={`h-${i}`} className="text-center">
-                                        <span className="text-xs text-gray-500">{MONTH_NAMES[i]}</span>
-                                    </div>
+                                {Array.from({ length: month }, (_, i) => {
+                                    const monthIdx = i + 1;
+                                    const isClosed = !!closedMonths[monthIdx];
+                                    const isEffective = monthIdx === effectiveMonth;
+                                    return (
+                                        <div key={`h-${i}`} className={`text-center ${!isClosed && monthIdx > effectiveMonth ? "opacity-40" : ""}`}>
+                                            <span className={`text-xs ${isEffective ? "font-bold text-blue-500" : "text-gray-500"}`}>{MONTH_NAMES[i]}</span>
+                                        </div>
+                                    );
+                                })}
+                                {Array.from({ length: 12 - month }, (_, i) => (
+                                    <div key={`hp-${i}`} />
                                 ))}
+
                                 {/* Active count row */}
-                                {data.timeline.map((t, i) => (
-                                    <div key={`a-${i}`} className="text-center">
-                                        <span className="text-sm font-bold text-gray-600 dark:text-gray-200">{t.active_count || "-"}</span>
-                                    </div>
+                                {Array.from({ length: month }, (_, i) => {
+                                    const monthIdx = i + 1;
+                                    const t = data.timeline[i];
+                                    const isClosed = !!closedMonths[monthIdx];
+                                    return (
+                                        <div key={`a-${i}`} className={`text-center ${!isClosed && monthIdx > effectiveMonth ? "opacity-40" : ""}`}>
+                                            <span className="text-sm font-bold text-gray-600 dark:text-gray-200">{t ? (t.active_count || "-") : "-"}</span>
+                                        </div>
+                                    );
+                                })}
+                                {Array.from({ length: 12 - month }, (_, i) => (
+                                    <div key={`ap-${i}`} />
                                 ))}
+
                                 {/* MRR row */}
-                                {data.timeline.map((t, i) => (
-                                    <div key={`m-${i}`} className="text-center">
-                                        <span className="text-[10px] text-gray-500">
-                                            {t.mrr > 0 ? formatCurrency(t.mrr, "EUR") : "-"}
-                                        </span>
-                                    </div>
+                                {Array.from({ length: month }, (_, i) => {
+                                    const monthIdx = i + 1;
+                                    const t = data.timeline[i];
+                                    const isClosed = !!closedMonths[monthIdx];
+                                    return (
+                                        <div key={`m-${i}`} className={`text-center ${!isClosed && monthIdx > effectiveMonth ? "opacity-40" : ""}`}>
+                                            <span className="text-[10px] text-gray-500">
+                                                {t && t.mrr > 0 ? formatCurrency(t.mrr, "EUR") : "-"}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                                {Array.from({ length: 12 - month }, (_, i) => (
+                                    <div key={`mp-${i}`} />
                                 ))}
+
                                 {/* Events row */}
-                                {data.timeline.map((t, i) => (
-                                    <div key={`e-${i}`} className="flex justify-center gap-0.5 mt-1">
-                                        {t.new > 0 && (
-                                            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-900/60 text-green-400 text-[9px] font-bold">
-                                                +{t.new}
-                                            </span>
-                                        )}
-                                        {t.churn > 0 && (
-                                            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-900/60 text-red-400 text-[9px] font-bold">
-                                                -{t.churn}
-                                            </span>
-                                        )}
-                                        {t.pause > 0 && (
-                                            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-yellow-900/60 text-yellow-400 text-[9px] font-bold">
-                                                P{t.pause}
-                                            </span>
-                                        )}
-                                        {t.return > 0 && (
-                                            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-900/60 text-blue-400 text-[9px] font-bold">
-                                                R{t.return}
-                                            </span>
-                                        )}
-                                    </div>
+                                {Array.from({ length: month }, (_, i) => {
+                                    const monthIdx = i + 1;
+                                    const t = data.timeline[i];
+                                    const isClosed = !!closedMonths[monthIdx];
+                                    return (
+                                        <div key={`e-${i}`} className={`flex justify-center gap-0.5 mt-1 ${!isClosed && monthIdx > effectiveMonth ? "opacity-40" : ""}`}>
+                                            {t && t.new > 0 && (
+                                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-900/60 text-green-400 text-[9px] font-bold">
+                                                    +{t.new}
+                                                </span>
+                                            )}
+                                            {t && t.churn > 0 && (
+                                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-900/60 text-red-400 text-[9px] font-bold">
+                                                    -{t.churn}
+                                                </span>
+                                            )}
+                                            {t && t.pause > 0 && (
+                                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-yellow-900/60 text-yellow-400 text-[9px] font-bold">
+                                                    P{t.pause}
+                                                </span>
+                                            )}
+                                            {t && t.return > 0 && (
+                                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-900/60 text-blue-400 text-[9px] font-bold">
+                                                    R{t.return}
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                                {Array.from({ length: 12 - month }, (_, i) => (
+                                    <div key={`ep-${i}`} />
+                                ))}
+
+                                {/* Numbers Closed toggle row */}
+                                {Array.from({ length: month }, (_, i) => {
+                                    const monthIdx = i + 1;
+                                    const isClosed = !!closedMonths[monthIdx];
+                                    return (
+                                        <div key={`c-${i}`} className="flex justify-center mt-2">
+                                            <button
+                                                onClick={() => toggleClosedMonth(monthIdx)}
+                                                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium border transition-colors ${
+                                                    isClosed
+                                                        ? "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
+                                                        : "bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                                                }`}
+                                                title={isClosed ? "Numbers closed — click to open" : "Numbers not closed — click to close"}
+                                            >
+                                                {isClosed ? <Lock className="h-2.5 w-2.5" /> : <Unlock className="h-2.5 w-2.5" />}
+                                                {isClosed ? "Closed" : "Open"}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                                {Array.from({ length: 12 - month }, (_, i) => (
+                                    <div key={`cp-${i}`} />
                                 ))}
                             </div>
                             <div className="flex items-center gap-4 mt-3 text-[10px] text-gray-500">
@@ -330,6 +447,9 @@ export default function ClinicsOverviewPage() {
                                 </span>
                                 <span className="flex items-center gap-1">
                                     <span className="w-2.5 h-2.5 rounded-full bg-blue-900/60" /> Return
+                                </span>
+                                <span className="ml-2 flex items-center gap-1">
+                                    <Lock className="h-2.5 w-2.5" /> Numbers Closed
                                 </span>
                             </div>
                         </CardContent>
