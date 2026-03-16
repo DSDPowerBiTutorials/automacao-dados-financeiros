@@ -306,11 +306,11 @@ export async function GET(request: NextRequest) {
                         // else: state === "active" and still has fee → no event
                     } else {
                         if (state === "active") {
-                            // Was active, now no fee → Pause (never auto-churn)
-                            autoEvents.push({ type: "Pause", month: ymKey, is_manual: false });
+                            // Was active, now no fee → Churn
+                            autoEvents.push({ type: "Churn", month: ymKey, is_manual: false });
                             state = "paused";
                             const tl = timelineAutoEvents.get(ymKey);
-                            if (tl) tl.pause++;
+                            if (tl) tl.churn++;
                         }
                         // else: state === "inactive" or "paused" with no fee → no event
                     }
@@ -331,9 +331,9 @@ export async function GET(request: NextRequest) {
             } else {
                 // No events at all — was in baseline and still active, or inactive with no activity
                 if (wasInBaseline && currentMRR > 0) status = "active";
-                else if (wasInBaseline && currentMRR === 0) status = "paused";
+                else if (wasInBaseline && currentMRR === 0) status = "churned";
                 else if (!wasInBaseline && currentMRR > 0) status = "new";
-                else status = "paused"; // inactive with no revenue
+                else status = "churned"; // inactive with no revenue
             }
 
             // Skip clinics that were never in baseline AND never had any year transactions
