@@ -210,7 +210,7 @@ export default function ClinicsOverviewPage() {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const filteredClinics = data?.clinics.filter(c => {
-        if (!c.was_in_baseline) return false;
+        if (!c.was_in_baseline && c.status !== "new") return false;
         if (statusFilter !== "all" && c.status !== statusFilter) return false;
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
@@ -220,7 +220,7 @@ export default function ClinicsOverviewPage() {
     }) || [];
 
     const gridFilteredClinics = data?.clinics.filter(c => {
-        if (!c.was_in_baseline) return false;
+        if (!c.was_in_baseline && c.status !== "new") return false;
         if (gridSearchTerm) {
             const term = gridSearchTerm.toLowerCase();
             return c.name.toLowerCase().includes(term) || c.email.toLowerCase().includes(term);
@@ -323,13 +323,15 @@ export default function ClinicsOverviewPage() {
     );
 
     // ── Build month columns for the grid ──
+    // Use the API's effectiveMonth (data.month) when available, so grid matches actual data
+    const gridMonth = data?.month ?? effectiveMonth;
     const monthColumns = useMemo(() => {
         const cols: string[] = [];
-        for (let m = 1; m <= effectiveMonth; m++) {
+        for (let m = 1; m <= gridMonth; m++) {
             cols.push(`${year}-${String(m).padStart(2, "0")}`);
         }
         return cols;
-    }, [year, effectiveMonth]);
+    }, [year, gridMonth]);
 
     // Helper: get event for a clinic in a specific month
     const getEventForMonth = (clinic: Clinic, monthStr: string): AutoEvent | undefined => {
@@ -670,264 +672,264 @@ export default function ClinicsOverviewPage() {
                                                         </button>
                                                     </div>
                                                 </div>
-                                    );
+                                            );
                                         })}
 
-                                    {gridFilteredClinics.length === 0 && (
-                                        <div className="text-center py-8 text-gray-500 text-sm">No clinics found</div>
-                                    )}
+                                        {gridFilteredClinics.length === 0 && (
+                                            <div className="text-center py-8 text-gray-500 text-sm">No clinics found</div>
+                                        )}
 
-                                    {/* Totals row */}
-                                    {gridFilteredClinics.length > 0 && (() => {
-                                        const lastMC = monthColumns[monthColumns.length - 1];
-                                        const totalMrrDelta = gridFilteredClinics.reduce((s, c) => {
-                                            const lastFee = c.monthly_fees?.[lastMC] || 0;
-                                            const prevFee = monthColumns.length > 1
-                                                ? (c.monthly_fees?.[monthColumns[monthColumns.length - 2]] || 0)
-                                                : (c.baseline_mrr || 0);
-                                            return s + (lastFee - prevFee);
-                                        }, 0);
-                                        return (
-                                        <div className={`grid gap-0 bg-gray-100 dark:bg-[#0a0a0a] border-t-2 border-gray-300 dark:border-gray-600 sticky bottom-0`}
-                                            style={{ gridTemplateColumns: `180px 60px 65px repeat(${monthColumns.length}, 70px) 70px 70px 60px` }}>
-                                            <div className="px-3 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase">
-                                                Total ({gridFilteredClinics.length})
-                                            </div>
-                                            <div />
-                                            <div className="px-1 py-2 text-right">
-                                                <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300">
-                                                    {formatCompact(gridFilteredClinics.reduce((s, c) => s + (c.baseline_mrr || 0), 0))}
-                                                </span>
-                                            </div>
-                                            {monthColumns.map(mc => {
-                                                const total = gridFilteredClinics.reduce((s, c) => s + (c.monthly_fees?.[mc] || 0), 0);
-                                                return (
-                                                    <div key={mc} className="px-1 py-2 text-right">
+                                        {/* Totals row */}
+                                        {gridFilteredClinics.length > 0 && (() => {
+                                            const lastMC = monthColumns[monthColumns.length - 1];
+                                            const totalMrrDelta = gridFilteredClinics.reduce((s, c) => {
+                                                const lastFee = c.monthly_fees?.[lastMC] || 0;
+                                                const prevFee = monthColumns.length > 1
+                                                    ? (c.monthly_fees?.[monthColumns[monthColumns.length - 2]] || 0)
+                                                    : (c.baseline_mrr || 0);
+                                                return s + (lastFee - prevFee);
+                                            }, 0);
+                                            return (
+                                                <div className={`grid gap-0 bg-gray-100 dark:bg-[#0a0a0a] border-t-2 border-gray-300 dark:border-gray-600 sticky bottom-0`}
+                                                    style={{ gridTemplateColumns: `180px 60px 65px repeat(${monthColumns.length}, 70px) 70px 70px 60px` }}>
+                                                    <div className="px-3 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase">
+                                                        Total ({gridFilteredClinics.length})
+                                                    </div>
+                                                    <div />
+                                                    <div className="px-1 py-2 text-right">
                                                         <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300">
-                                                            {total > 0 ? formatCompact(total) : "-"}
+                                                            {formatCompact(gridFilteredClinics.reduce((s, c) => s + (c.baseline_mrr || 0), 0))}
                                                         </span>
                                                     </div>
-                                                );
-                                            })}
-                                            <div className="px-1 py-2 text-right">
-                                                <span className={`text-[10px] font-mono font-bold ${totalMrrDelta > 0 ? "text-green-600 dark:text-green-400" : totalMrrDelta < 0 ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-gray-300"}`}>
-                                                    {totalMrrDelta > 0 ? `+${formatCompact(totalMrrDelta)}` : totalMrrDelta < 0 ? `-${formatCompact(Math.abs(totalMrrDelta))}` : "-"}
-                                                </span>
-                                            </div>
-                                            <div className="px-1 py-2 text-right">
-                                                <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300">
-                                                    {formatCompact(gridFilteredClinics.reduce((s, c) => s + Object.values(c.monthly_fees || {}).reduce((a, b) => a + b, 0), 0))}
-                                                </span>
-                                            </div>
-                                            <div />
-                                        </div>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-
-                            {/* Legend */}
-                            <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 flex items-center gap-4 text-[10px] text-gray-500">
-                                {Object.entries(EVENT_BADGES).map(([key, val]) => (
-                                    <span key={key} className="flex items-center gap-1">
-                                        <span className={`inline-block w-3 px-0.5 py-0 rounded text-[8px] font-bold text-center ${val.bg} ${val.text}`}>{val.label}</span>
-                                        {key}
-                                    </span>
-                                ))}
-                                <span className="ml-2 flex items-center gap-1"><Edit3 className="h-2.5 w-2.5" /> Manual override</span>
-                                <span className="flex items-center gap-1"><Link2 className="h-2.5 w-2.5" /> Merge clinics</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Clinic Detail Table */}
-                    <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700">
-                        <CardHeader className="py-3 px-4">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200 flex items-center gap-2">
-                                    <Building2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                    All Clinics ({filteredClinics.length})
-                                </CardTitle>
-                                <div className="flex items-center gap-2">
-                                    <input type="text" placeholder="Search clinic..." value={searchTerm}
-                                        onChange={e => setSearchTerm(e.target.value)}
-                                        className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-200 placeholder-gray-500 w-48 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                        <SelectTrigger className="w-[120px] h-8 text-xs bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">
-                                            <SelectValue placeholder="Status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All Status</SelectItem>
-                                            <SelectItem value="active">Active</SelectItem>
-                                            <SelectItem value="new">New</SelectItem>
-                                            <SelectItem value="paused">Paused</SelectItem>
-                                            <SelectItem value="churned">Churned</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="px-0 py-0">
-                            <div className="max-h-[600px] overflow-auto">
-                                <Table>
-                                    <TableHeader className="sticky top-0 bg-gray-100 dark:bg-black z-10">
-                                        <TableRow className="border-gray-200 dark:border-gray-700">
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300 w-8"></TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300">Clinic</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300">Region</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300">Status</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Baseline</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Current MRR</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">MRR Change</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Revenue YTD</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-center">Months</TableHead>
-                                            <TableHead className="text-xs text-gray-700 dark:text-gray-300">Last Payment</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredClinics.map((clinic) => (
-                                            <React.Fragment key={clinic.name}>
-                                                <TableRow
-                                                    className={`border-gray-200 dark:border-gray-700 cursor-pointer transition-colors hover:bg-gray-100 dark:bg-black/50 ${clinic.status === "churned" ? "bg-red-900/10" :
-                                                        clinic.status === "paused" ? "bg-yellow-900/10" :
-                                                            clinic.status === "new" ? "bg-blue-900/10" : ""
-                                                        }`}
-                                                    onClick={() => setExpandedClinic(expandedClinic === clinic.name ? null : clinic.name)}>
-                                                    <TableCell className="py-2 px-2">
-                                                        {expandedClinic === clinic.name
-                                                            ? <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
-                                                            : <ChevronRight className="h-3.5 w-3.5 text-gray-500" />}
-                                                    </TableCell>
-                                                    <TableCell className="py-2">
-                                                        <div>
-                                                            <span className="text-xs font-medium text-gray-600 dark:text-gray-200 block truncate max-w-[200px]" title={clinic.name}>{clinic.name}</span>
-                                                            {clinic.email && <span className="text-[10px] text-gray-500 block truncate max-w-[200px]">{clinic.email}</span>}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="py-2">
-                                                        <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-black text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">{clinic.region}</Badge>
-                                                    </TableCell>
-                                                    <TableCell className="py-2">
-                                                        <Badge variant="outline" className={`text-[10px] ${STATUS_BADGES[clinic.status]?.className || ""}`}>
-                                                            {STATUS_BADGES[clinic.status]?.label || clinic.status}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="py-2 text-right">
-                                                        <span className={`text-xs ${clinic.was_in_baseline ? "text-gray-600 dark:text-gray-300" : "text-gray-300 dark:text-gray-600"}`}>
-                                                            {clinic.was_in_baseline ? formatCurrency(clinic.baseline_mrr, "EUR") : "-"}
+                                                    {monthColumns.map(mc => {
+                                                        const total = gridFilteredClinics.reduce((s, c) => s + (c.monthly_fees?.[mc] || 0), 0);
+                                                        return (
+                                                            <div key={mc} className="px-1 py-2 text-right">
+                                                                <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300">
+                                                                    {total > 0 ? formatCompact(total) : "-"}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    <div className="px-1 py-2 text-right">
+                                                        <span className={`text-[10px] font-mono font-bold ${totalMrrDelta > 0 ? "text-green-600 dark:text-green-400" : totalMrrDelta < 0 ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-gray-300"}`}>
+                                                            {totalMrrDelta > 0 ? `+${formatCompact(totalMrrDelta)}` : totalMrrDelta < 0 ? `-${formatCompact(Math.abs(totalMrrDelta))}` : "-"}
                                                         </span>
-                                                    </TableCell>
-                                                    <TableCell className="py-2 text-right">
-                                                        <span className="text-xs font-medium text-gray-600 dark:text-gray-200">{formatCurrency(clinic.current_mrr, "EUR")}</span>
-                                                    </TableCell>
-                                                    <TableCell className="py-2 text-right">
-                                                        <MRRChangeCell change={clinic.mrr_change} pct={clinic.mrr_change_pct} />
-                                                    </TableCell>
-                                                    <TableCell className="py-2 text-right">
-                                                        <span className="text-xs text-gray-700 dark:text-gray-300">{formatCurrency(clinic.total_revenue_ytd, "EUR")}</span>
-                                                    </TableCell>
-                                                    <TableCell className="py-2 text-center">
-                                                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                            {clinic.consecutive_months > 0 ? `${clinic.consecutive_months}/${clinic.months_active}` : clinic.months_active}
+                                                    </div>
+                                                    <div className="px-1 py-2 text-right">
+                                                        <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300">
+                                                            {formatCompact(gridFilteredClinics.reduce((s, c) => s + Object.values(c.monthly_fees || {}).reduce((a, b) => a + b, 0), 0))}
                                                         </span>
-                                                    </TableCell>
-                                                    <TableCell className="py-2">
-                                                        <span className="text-xs text-gray-500 dark:text-gray-400">{clinic.last_date ? formatDate(clinic.last_date) : "-"}</span>
-                                                    </TableCell>
-                                                </TableRow>
-                                                {expandedClinic === clinic.name && (
-                                                    <TableRow className="border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30">
-                                                        <TableCell colSpan={10} className="p-4">
-                                                            <ClinicDetail clinic={clinic} year={year} />
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )}
-                                            </React.Fragment>
-                                        ))}
-                                        {filteredClinics.length === 0 && (
-                                            <TableRow>
-                                                <TableCell colSpan={10} className="text-center py-8 text-gray-500 text-sm">No clinics found</TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                            {data.kpis && (
-                                <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black px-4 py-2 flex items-center justify-between text-xs">
-                                    <span className="text-gray-500 dark:text-gray-400">Showing {filteredClinics.length} of {data.clinics.length} clinics</span>
-                                    <div className="flex items-center gap-4">
-                                        <span className="flex items-center gap-1 text-blue-400"><UserPlus className="h-3 w-3" /> {data.kpis.new_clinics} new</span>
-                                        <span className="flex items-center gap-1 text-red-400"><UserMinus className="h-3 w-3" /> {data.kpis.churned_clinics} churned</span>
-                                        <span className="flex items-center gap-1 text-yellow-400"><AlertCircle className="h-3 w-3" /> {data.kpis.paused_clinics} paused</span>
+                                                    </div>
+                                                    <div />
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-        </>
-    )
-}
 
-{/* ══════════ Merge Dialog ══════════ */ }
-<Dialog open={mergeOpen} onOpenChange={setMergeOpen}>
-    <DialogContent className="sm:max-w-md bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
-        <DialogHeader>
-            <DialogTitle className="text-gray-700 dark:text-gray-200 flex items-center gap-2">
-                <Link2 className="h-4 w-4" /> Link Duplicate Clinic
-            </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-            <div>
-                <p className="text-xs text-gray-500 mb-1">Primary clinic (will keep this name):</p>
-                <div className="px-3 py-2 bg-gray-50 dark:bg-black rounded border border-gray-200 dark:border-gray-700">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{mergeClinic?.name}</span>
-                    {mergeClinic?.email && <span className="text-xs text-gray-400 block">{mergeClinic.email}</span>}
-                </div>
-            </div>
-            <div>
-                <p className="text-xs text-gray-500 mb-1">Search for duplicate to merge into this clinic:</p>
-                <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
-                    <input type="text" placeholder="Search by name..." value={mergeSearch}
-                        onChange={e => { setMergeSearch(e.target.value); searchMergeClinics(e.target.value); }}
-                        className="w-full pl-8 pr-3 py-2 text-xs bg-gray-100 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                </div>
-                {mergeLoading && <Loader2 className="h-4 w-4 animate-spin text-gray-400 mt-2" />}
-                {mergeResults.length > 0 && (
-                    <div className="mt-2 max-h-40 overflow-auto border border-gray-200 dark:border-gray-700 rounded-md">
-                        {mergeResults.filter(r => r.name !== mergeClinic?.name).map(r => (
-                            <button key={r.name}
-                                onClick={() => setMergeTarget(r.name)}
-                                className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-0 ${mergeTarget === r.name ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400" : "text-gray-600 dark:text-gray-300"
-                                    }`}>
-                                {r.name}
-                            </button>
-                        ))}
+                                {/* Legend */}
+                                <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 flex items-center gap-4 text-[10px] text-gray-500">
+                                    {Object.entries(EVENT_BADGES).map(([key, val]) => (
+                                        <span key={key} className="flex items-center gap-1">
+                                            <span className={`inline-block w-3 px-0.5 py-0 rounded text-[8px] font-bold text-center ${val.bg} ${val.text}`}>{val.label}</span>
+                                            {key}
+                                        </span>
+                                    ))}
+                                    <span className="ml-2 flex items-center gap-1"><Edit3 className="h-2.5 w-2.5" /> Manual override</span>
+                                    <span className="flex items-center gap-1"><Link2 className="h-2.5 w-2.5" /> Merge clinics</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Clinic Detail Table */}
+                        <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700">
+                            <CardHeader className="py-3 px-4">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200 flex items-center gap-2">
+                                        <Building2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                        All Clinics ({filteredClinics.length})
+                                    </CardTitle>
+                                    <div className="flex items-center gap-2">
+                                        <input type="text" placeholder="Search clinic..." value={searchTerm}
+                                            onChange={e => setSearchTerm(e.target.value)}
+                                            className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-200 placeholder-gray-500 w-48 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                            <SelectTrigger className="w-[120px] h-8 text-xs bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">
+                                                <SelectValue placeholder="Status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All Status</SelectItem>
+                                                <SelectItem value="active">Active</SelectItem>
+                                                <SelectItem value="new">New</SelectItem>
+                                                <SelectItem value="paused">Paused</SelectItem>
+                                                <SelectItem value="churned">Churned</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="px-0 py-0">
+                                <div className="max-h-[600px] overflow-auto">
+                                    <Table>
+                                        <TableHeader className="sticky top-0 bg-gray-100 dark:bg-black z-10">
+                                            <TableRow className="border-gray-200 dark:border-gray-700">
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 w-8"></TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300">Clinic</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300">Region</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300">Status</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Baseline</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Current MRR</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">MRR Change</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Revenue YTD</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-center">Months</TableHead>
+                                                <TableHead className="text-xs text-gray-700 dark:text-gray-300">Last Payment</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredClinics.map((clinic) => (
+                                                <React.Fragment key={clinic.name}>
+                                                    <TableRow
+                                                        className={`border-gray-200 dark:border-gray-700 cursor-pointer transition-colors hover:bg-gray-100 dark:bg-black/50 ${clinic.status === "churned" ? "bg-red-900/10" :
+                                                            clinic.status === "paused" ? "bg-yellow-900/10" :
+                                                                clinic.status === "new" ? "bg-blue-900/10" : ""
+                                                            }`}
+                                                        onClick={() => setExpandedClinic(expandedClinic === clinic.name ? null : clinic.name)}>
+                                                        <TableCell className="py-2 px-2">
+                                                            {expandedClinic === clinic.name
+                                                                ? <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+                                                                : <ChevronRight className="h-3.5 w-3.5 text-gray-500" />}
+                                                        </TableCell>
+                                                        <TableCell className="py-2">
+                                                            <div>
+                                                                <span className="text-xs font-medium text-gray-600 dark:text-gray-200 block truncate max-w-[200px]" title={clinic.name}>{clinic.name}</span>
+                                                                {clinic.email && <span className="text-[10px] text-gray-500 block truncate max-w-[200px]">{clinic.email}</span>}
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="py-2">
+                                                            <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-black text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">{clinic.region}</Badge>
+                                                        </TableCell>
+                                                        <TableCell className="py-2">
+                                                            <Badge variant="outline" className={`text-[10px] ${STATUS_BADGES[clinic.status]?.className || ""}`}>
+                                                                {STATUS_BADGES[clinic.status]?.label || clinic.status}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="py-2 text-right">
+                                                            <span className={`text-xs ${clinic.was_in_baseline ? "text-gray-600 dark:text-gray-300" : "text-gray-300 dark:text-gray-600"}`}>
+                                                                {clinic.was_in_baseline ? formatCurrency(clinic.baseline_mrr, "EUR") : "-"}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="py-2 text-right">
+                                                            <span className="text-xs font-medium text-gray-600 dark:text-gray-200">{formatCurrency(clinic.current_mrr, "EUR")}</span>
+                                                        </TableCell>
+                                                        <TableCell className="py-2 text-right">
+                                                            <MRRChangeCell change={clinic.mrr_change} pct={clinic.mrr_change_pct} />
+                                                        </TableCell>
+                                                        <TableCell className="py-2 text-right">
+                                                            <span className="text-xs text-gray-700 dark:text-gray-300">{formatCurrency(clinic.total_revenue_ytd, "EUR")}</span>
+                                                        </TableCell>
+                                                        <TableCell className="py-2 text-center">
+                                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                                {clinic.consecutive_months > 0 ? `${clinic.consecutive_months}/${clinic.months_active}` : clinic.months_active}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="py-2">
+                                                            <span className="text-xs text-gray-500 dark:text-gray-400">{clinic.last_date ? formatDate(clinic.last_date) : "-"}</span>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                    {expandedClinic === clinic.name && (
+                                                        <TableRow className="border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30">
+                                                            <TableCell colSpan={10} className="p-4">
+                                                                <ClinicDetail clinic={clinic} year={year} />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                </React.Fragment>
+                                            ))}
+                                            {filteredClinics.length === 0 && (
+                                                <TableRow>
+                                                    <TableCell colSpan={10} className="text-center py-8 text-gray-500 text-sm">No clinics found</TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                                {data.kpis && (
+                                    <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black px-4 py-2 flex items-center justify-between text-xs">
+                                        <span className="text-gray-500 dark:text-gray-400">Showing {filteredClinics.length} of {data.clinics.length} clinics</span>
+                                        <div className="flex items-center gap-4">
+                                            <span className="flex items-center gap-1 text-blue-400"><UserPlus className="h-3 w-3" /> {data.kpis.new_clinics} new</span>
+                                            <span className="flex items-center gap-1 text-red-400"><UserMinus className="h-3 w-3" /> {data.kpis.churned_clinics} churned</span>
+                                            <span className="flex items-center gap-1 text-yellow-400"><AlertCircle className="h-3 w-3" /> {data.kpis.paused_clinics} paused</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
-                )}
-                {mergeTarget && (
-                    <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-700 text-xs text-blue-700 dark:text-blue-400">
-                        <strong>&quot;{mergeTarget}&quot;</strong> will be merged into <strong>&quot;{mergeClinic?.name}&quot;</strong>.
-                        All transactions of the duplicate will be reassigned.
+                </>
+            )
+            }
+
+            {/* ══════════ Merge Dialog ══════════ */}
+            <Dialog open={mergeOpen} onOpenChange={setMergeOpen}>
+                <DialogContent className="sm:max-w-md bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
+                    <DialogHeader>
+                        <DialogTitle className="text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                            <Link2 className="h-4 w-4" /> Link Duplicate Clinic
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div>
+                            <p className="text-xs text-gray-500 mb-1">Primary clinic (will keep this name):</p>
+                            <div className="px-3 py-2 bg-gray-50 dark:bg-black rounded border border-gray-200 dark:border-gray-700">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{mergeClinic?.name}</span>
+                                {mergeClinic?.email && <span className="text-xs text-gray-400 block">{mergeClinic.email}</span>}
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 mb-1">Search for duplicate to merge into this clinic:</p>
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                                <input type="text" placeholder="Search by name..." value={mergeSearch}
+                                    onChange={e => { setMergeSearch(e.target.value); searchMergeClinics(e.target.value); }}
+                                    className="w-full pl-8 pr-3 py-2 text-xs bg-gray-100 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                            </div>
+                            {mergeLoading && <Loader2 className="h-4 w-4 animate-spin text-gray-400 mt-2" />}
+                            {mergeResults.length > 0 && (
+                                <div className="mt-2 max-h-40 overflow-auto border border-gray-200 dark:border-gray-700 rounded-md">
+                                    {mergeResults.filter(r => r.name !== mergeClinic?.name).map(r => (
+                                        <button key={r.name}
+                                            onClick={() => setMergeTarget(r.name)}
+                                            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-0 ${mergeTarget === r.name ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400" : "text-gray-600 dark:text-gray-300"
+                                                }`}>
+                                            {r.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {mergeTarget && (
+                                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-700 text-xs text-blue-700 dark:text-blue-400">
+                                    <strong>&quot;{mergeTarget}&quot;</strong> will be merged into <strong>&quot;{mergeClinic?.name}&quot;</strong>.
+                                    All transactions of the duplicate will be reassigned.
+                                </div>
+                            )}
+                        </div>
                     </div>
-                )}
-            </div>
-        </div>
-        <DialogFooter className="mt-4">
-            <Button variant="outline" size="sm" onClick={() => setMergeOpen(false)}
-                className="border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
-                Cancel
-            </Button>
-            <Button size="sm" disabled={!mergeTarget || mergeLoading}
-                onClick={executeMerge}
-                className="bg-blue-600 hover:bg-blue-700 text-white">
-                {mergeLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3 mr-1" />}
-                Merge
-            </Button>
-        </DialogFooter>
-    </DialogContent>
-</Dialog>
+                    <DialogFooter className="mt-4">
+                        <Button variant="outline" size="sm" onClick={() => setMergeOpen(false)}
+                            className="border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
+                            Cancel
+                        </Button>
+                        <Button size="sm" disabled={!mergeTarget || mergeLoading}
+                            onClick={executeMerge}
+                            className="bg-blue-600 hover:bg-blue-700 text-white">
+                            {mergeLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3 mr-1" />}
+                            Merge
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div >
     );
 }

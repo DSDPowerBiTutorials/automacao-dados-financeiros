@@ -331,7 +331,10 @@ export async function GET(request: NextRequest) {
 
             // Final status from last event
             const currentMRR = data.monthlyFeeRevenue.get(currentYM) || 0;
-            const prevMRR = data.monthlyFeeRevenue.get(prevYM) || 0;
+            // When effectiveMonth=1, prevYM is Dec(year-1) which is the baseline period
+            const prevMRR = effectiveMonth === 1 && wasInBaseline
+                ? baselineMRR
+                : (data.monthlyFeeRevenue.get(prevYM) || 0);
 
             let status: "active" | "paused" | "churned" | "new" = "active";
             if (autoEvents.length > 0) {
