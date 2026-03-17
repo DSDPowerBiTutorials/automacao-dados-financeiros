@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,18 +129,26 @@ export function LoginForm() {
                             </div>
                         </div>
 
-                        <div className="flex items-center space-x-2 py-2">
-                            <input
-                                id="remember"
-                                type="checkbox"
-                                checked={rememberMe}
-                                onChange={(e) => setRememberMe(e.target.checked)}
-                                className="h-4 w-4 text-[#243140] focus:ring-[#243140] border-gray-300 rounded cursor-pointer"
-                                disabled={loading}
-                            />
-                            <Label htmlFor="remember" className="text-sm font-medium text-gray-700 cursor-pointer">
-                                Keep me signed in for 30 days
-                            </Label>
+                        <div className="flex items-center justify-between py-2">
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    id="remember"
+                                    type="checkbox"
+                                    checked={rememberMe}
+                                    onChange={(e) => setRememberMe(e.target.checked)}
+                                    className="h-4 w-4 text-[#243140] focus:ring-[#243140] border-gray-300 rounded cursor-pointer"
+                                    disabled={loading}
+                                />
+                                <Label htmlFor="remember" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                    Keep me signed in for 30 days
+                                </Label>
+                            </div>
+                            <Link
+                                href="/forgot-password"
+                                className="text-sm font-medium text-[#243140] hover:underline"
+                            >
+                                Forgot password?
+                            </Link>
                         </div>
 
                         <Button
@@ -166,6 +175,15 @@ export function LoginForm() {
                         <p className="text-gray-500">
                             Contact your system administrator
                         </p>
+                    </div>
+
+                    <div className="mt-4 text-center">
+                        <Link
+                            href="/forgot-password"
+                            className="text-sm text-gray-500 hover:text-[#243140] hover:underline"
+                        >
+                            Forgot my password?
+                        </Link>
                     </div>
                 </CardContent>
             </Card>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/auth-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,17 +40,22 @@ import {
     UserX,
     UserCheck,
     Mail,
-    Shield
+    Shield,
+    Send,
+    Loader2,
+    Clock,
+    CheckCircle2,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { PageHeader } from '@/components/ui/page-header'
 
-interface SystemUser {
+interface AuthUser {
     id: string
     email: string
     name: string
     avatar_url?: string
-    role: 'admin' | 'manager' | 'editor' | 'viewer'
+    role: string
+    company_code?: string
     department?: string
     phone?: string
     is_active: boolean
@@ -59,27 +65,29 @@ interface SystemUser {
 
 const roleLabels: Record<string, { label: string; color: string }> = {
     admin: { label: 'Admin', color: 'bg-red-100 text-red-800' },
-    manager: { label: 'Gerente', color: 'bg-purple-100 text-purple-800' },
-    editor: { label: 'Editor', color: 'bg-blue-100 text-blue-800' },
-    viewer: { label: 'Visualizador', color: 'bg-gray-100 text-gray-800' },
+    finance_manager: { label: 'Finance Manager', color: 'bg-purple-100 text-purple-800' },
+    analyst: { label: 'Analyst', color: 'bg-blue-100 text-blue-800' },
+    viewer: { label: 'Viewer', color: 'bg-gray-100 text-gray-800' },
 }
 
 export default function UsersPage() {
-    const [users, setUsers] = useState<SystemUser[]>([])
+    const { session } = useAuth()
+    const [users, setUsers] = useState<AuthUser[]>([])
     const [loading, setLoading] = useState(true)
+    const [actionLoading, setActionLoading] = useState<string | null>(null)
     const [search, setSearch] = useState('')
     const [roleFilter, setRoleFilter] = useState<string>('all')
     const [isCreateOpen, setIsCreateOpen] = useState(false)
-    const [editingUser, setEditingUser] = useState<SystemUser | null>(null)
+    const [editingUser, setEditingUser] = useState<AuthUser | null>(null)
     const { toast } = useToast()
 
-    // Form state
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        role: 'viewer' as SystemUser['role'],
+        role: 'viewer',
         department: '',
-        phone: ''
+        phone: '',
+        company_code: 'GLOBAL',
     })
 
     useEffect(() => {
@@ -89,7 +97,7 @@ export default function UsersPage() {
     async function loadUsers() {
         setLoading(true)
         const { data, error } = await supabase
-            .from('system_users')
+            .from('users')
             .select('*')
             .order('name')
 
@@ -102,27 +110,53 @@ export default function UsersPage() {
     }
 
     async function handleCreateUser() {
-        const { error } = await supabase.from('system_users').insert({
-            ...formData,
-            avatar_url: `/avatars/${formData.name.toLowerCase()}.png`
-        })
+        if (!formData.name || !formData.email) {
+            toast({ title: 'Nome e email são obrigatórios', variant: 'destructive' })
+            return
+        }
 
-        if (error) {
-            toast({ title: 'Erro ao criar usuário', description: error.message, variant: 'destructive' })
-        } else {
-            toast({ title: 'Usuário criado com sucesso!' })
-            setIsCreateOpen(false)
-            resetForm()
-            loadUsers()
+        setActionLoading('create')
+
+        try {
+            const res = await fetch('/api/auth/invite-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify(formData),
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                toast({ title: 'Erro ao convidar usuário', description: data.error, variant: 'destructive' })
+            } else {
+                toast({ title: 'Convite enviado!', description: `Email de convite enviado para ${formData.email}` })
+                setIsCreateOpen(false)
+                resetForm()
+                loadUsers()
+            }
+        } catch {
+            toast({ title: 'Erro de conexão', variant: 'destructive' })
+        } finally {
+            setActionLoading(null)
         }
     }
 
     async function handleUpdateUser() {
         if (!editingUser) return
+        setActionLoading('update')
 
         const { error } = await supabase
-            .from('system_users')
-            .update(formData)
+            .from('users')
+            .update({
+                name: formData.name,
+                role: formData.role,
+                department: formData.department || null,
+                phone: formData.phone || null,
+                company_code: formData.company_code || 'GLOBAL',
+            })
             .eq('id', editingUser.id)
 
         if (error) {
@@ -133,11 +167,12 @@ export default function UsersPage() {
             resetForm()
             loadUsers()
         }
+        setActionLoading(null)
     }
 
-    async function handleToggleActive(user: SystemUser) {
+    async function handleToggleActive(user: AuthUser) {
         const { error } = await supabase
-            .from('system_users')
+            .from('users')
             .update({ is_active: !user.is_active })
             .eq('id', user.id)
 
@@ -149,33 +184,87 @@ export default function UsersPage() {
         }
     }
 
-    async function handleDeleteUser(user: SystemUser) {
-        if (!confirm(`Tem certeza que deseja excluir ${user.name}?`)) return
+    async function handleDeleteUser(user: AuthUser) {
+        if (!confirm(`Tem certeza que deseja excluir ${user.name}? Esta ação remove o acesso ao sistema permanentemente.`)) return
 
-        const { error } = await supabase
-            .from('system_users')
-            .delete()
-            .eq('id', user.id)
+        setActionLoading(user.id)
 
-        if (error) {
-            toast({ title: 'Erro ao excluir usuário', variant: 'destructive' })
-        } else {
-            toast({ title: 'Usuário excluído' })
-            loadUsers()
+        try {
+            const res = await fetch('/api/auth/delete-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify({ userId: user.id }),
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                toast({ title: 'Erro ao excluir', description: data.error, variant: 'destructive' })
+            } else {
+                toast({ title: 'Usuário excluído' })
+                loadUsers()
+            }
+        } catch {
+            toast({ title: 'Erro de conexão', variant: 'destructive' })
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    async function handleResendInvite(user: AuthUser) {
+        setActionLoading(user.id)
+
+        try {
+            const res = await fetch('/api/auth/invite-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify({
+                    email: user.email,
+                    name: user.name,
+                    role: user.role,
+                    department: user.department,
+                    phone: user.phone,
+                    company_code: user.company_code,
+                }),
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                // If user already exists (409), it means they're already invited
+                if (res.status === 409) {
+                    toast({ title: 'Usuário já existe', description: 'O convite já foi enviado anteriormente', variant: 'destructive' })
+                } else {
+                    toast({ title: 'Erro ao reenviar', description: data.error, variant: 'destructive' })
+                }
+            } else {
+                toast({ title: 'Convite reenviado!', description: `Novo email enviado para ${user.email}` })
+            }
+        } catch {
+            toast({ title: 'Erro de conexão', variant: 'destructive' })
+        } finally {
+            setActionLoading(null)
         }
     }
 
     function resetForm() {
-        setFormData({ name: '', email: '', role: 'viewer', department: '', phone: '' })
+        setFormData({ name: '', email: '', role: 'viewer', department: '', phone: '', company_code: 'GLOBAL' })
     }
 
-    function openEditDialog(user: SystemUser) {
+    function openEditDialog(user: AuthUser) {
         setFormData({
             name: user.name,
             email: user.email,
             role: user.role,
             department: user.department || '',
-            phone: user.phone || ''
+            phone: user.phone || '',
+            company_code: user.company_code || 'GLOBAL',
         })
         setEditingUser(user)
     }
@@ -188,35 +277,37 @@ export default function UsersPage() {
         return matchesSearch && matchesRole
     })
 
+    const hasLoggedIn = (user: AuthUser) => !!user.last_login_at
+
     return (
         <div className="space-y-6">
-            <PageHeader title="User Management" subtitle="Manage team members and access" />
+            <PageHeader title="User Management" subtitle="Manage team members, roles and authentication" />
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
                             <CardTitle>Gestão de Usuários</CardTitle>
                             <CardDescription>
-                                Gerencie os usuários do sistema e suas permissões
+                                Convide usuários, gerencie permissões e controle o acesso ao sistema
                             </CardDescription>
                         </div>
                         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                             <DialogTrigger asChild>
                                 <Button onClick={resetForm}>
                                     <Plus className="h-4 w-4 mr-2" />
-                                    Novo Usuário
+                                    Convidar Usuário
                                 </Button>
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>Criar Novo Usuário</DialogTitle>
+                                    <DialogTitle>Convidar Novo Usuário</DialogTitle>
                                     <DialogDescription>
-                                        Preencha os dados do novo usuário
+                                        O usuário receberá um email com link para criar a password e aceder ao sistema.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium">Nome</label>
+                                        <label className="text-sm font-medium">Nome *</label>
                                         <Input
                                             value={formData.name}
                                             onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -224,28 +315,28 @@ export default function UsersPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium">Email</label>
+                                        <label className="text-sm font-medium">Email *</label>
                                         <Input
                                             type="email"
                                             value={formData.email}
                                             onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                            placeholder="email@empresa.com"
+                                            placeholder="email@digitalsmiledesign.com"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium">Papel</label>
+                                        <label className="text-sm font-medium">Role</label>
                                         <Select
                                             value={formData.role}
-                                            onValueChange={v => setFormData({ ...formData, role: v as SystemUser['role'] })}
+                                            onValueChange={v => setFormData({ ...formData, role: v })}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="admin">Admin</SelectItem>
-                                                <SelectItem value="manager">Gerente</SelectItem>
-                                                <SelectItem value="editor">Editor</SelectItem>
-                                                <SelectItem value="viewer">Visualizador</SelectItem>
+                                                <SelectItem value="finance_manager">Finance Manager</SelectItem>
+                                                <SelectItem value="analyst">Analyst</SelectItem>
+                                                <SelectItem value="viewer">Viewer</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -254,7 +345,7 @@ export default function UsersPage() {
                                         <Input
                                             value={formData.department}
                                             onChange={e => setFormData({ ...formData, department: e.target.value })}
-                                            placeholder="Ex: Financeiro"
+                                            placeholder="Ex: Finance"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -265,13 +356,39 @@ export default function UsersPage() {
                                             placeholder="+34 600 000 000"
                                         />
                                     </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Company Code</label>
+                                        <Select
+                                            value={formData.company_code}
+                                            onValueChange={v => setFormData({ ...formData, company_code: v })}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="GLOBAL">Global</SelectItem>
+                                                <SelectItem value="ES">Spain (ES)</SelectItem>
+                                                <SelectItem value="US">United States (US)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                                 <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+                                    <Button variant="outline" onClick={() => setIsCreateOpen(false)} disabled={actionLoading === 'create'}>
                                         Cancelar
                                     </Button>
-                                    <Button onClick={handleCreateUser}>
-                                        Criar Usuário
+                                    <Button onClick={handleCreateUser} disabled={actionLoading === 'create'}>
+                                        {actionLoading === 'create' ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                Enviando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send className="h-4 w-4 mr-2" />
+                                                Enviar Convite
+                                            </>
+                                        )}
                                     </Button>
                                 </DialogFooter>
                             </DialogContent>
@@ -291,15 +408,15 @@ export default function UsersPage() {
                             />
                         </div>
                         <Select value={roleFilter} onValueChange={setRoleFilter}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Filtrar por papel" />
+                            <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="Filtrar por role" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">Todos os papéis</SelectItem>
+                                <SelectItem value="all">All Roles</SelectItem>
                                 <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="manager">Gerente</SelectItem>
-                                <SelectItem value="editor">Editor</SelectItem>
-                                <SelectItem value="viewer">Visualizador</SelectItem>
+                                <SelectItem value="finance_manager">Finance Manager</SelectItem>
+                                <SelectItem value="analyst">Analyst</SelectItem>
+                                <SelectItem value="viewer">Viewer</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -307,7 +424,8 @@ export default function UsersPage() {
                     {/* Lista de usuários */}
                     <div className="space-y-2">
                         {loading ? (
-                            <div className="text-center py-8 text-muted-foreground">
+                            <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
                                 Carregando...
                             </div>
                         ) : filteredUsers.length === 0 ? (
@@ -318,22 +436,27 @@ export default function UsersPage() {
                             filteredUsers.map(user => (
                                 <div
                                     key={user.id}
-                                    className={`flex items-center justify-between p-4 border rounded-lg ${!user.is_active ? 'opacity-50 bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-black'
-                                        }`}
+                                    className={`flex items-center justify-between p-4 border rounded-lg ${!user.is_active ? 'opacity-50 bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-black'}`}
                                 >
                                     <div className="flex items-center gap-4">
                                         <UserAvatar user={user} size="md" />
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <span className="font-medium">
-                                                    {user.email === 'botella@system.local' ? (
-                                                        <><strong>BOT</strong>ella</>
-                                                    ) : (
-                                                        user.name
-                                                    )}
-                                                </span>
+                                                <span className="font-medium">{user.name}</span>
                                                 {!user.is_active && (
                                                     <Badge variant="outline" className="text-xs">Inativo</Badge>
+                                                )}
+                                                {!hasLoggedIn(user) && user.is_active && (
+                                                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50">
+                                                        <Clock className="h-3 w-3 mr-1" />
+                                                        Convite Pendente
+                                                    </Badge>
+                                                )}
+                                                {hasLoggedIn(user) && user.is_active && (
+                                                    <Badge variant="outline" className="text-xs text-green-600 border-green-300 bg-green-50">
+                                                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                                                        Ativo
+                                                    </Badge>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -345,20 +468,30 @@ export default function UsersPage() {
                                                         {user.department}
                                                     </>
                                                 )}
+                                                {user.company_code && user.company_code !== 'GLOBAL' && (
+                                                    <>
+                                                        <span>•</span>
+                                                        {user.company_code}
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
 
                                     <div className="flex items-center gap-3">
-                                        <Badge className={roleLabels[user.role]?.color}>
+                                        <Badge className={roleLabels[user.role]?.color || 'bg-gray-100 text-gray-800'}>
                                             <Shield className="h-3 w-3 mr-1" />
-                                            {roleLabels[user.role]?.label}
+                                            {roleLabels[user.role]?.label || user.role}
                                         </Badge>
 
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="sm">
-                                                    <MoreHorizontal className="h-4 w-4" />
+                                                <Button variant="ghost" size="sm" disabled={actionLoading === user.id}>
+                                                    {actionLoading === user.id ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    )}
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
@@ -379,6 +512,12 @@ export default function UsersPage() {
                                                         </>
                                                     )}
                                                 </DropdownMenuItem>
+                                                {!hasLoggedIn(user) && (
+                                                    <DropdownMenuItem onClick={() => handleResendInvite(user)}>
+                                                        <Send className="h-4 w-4 mr-2" />
+                                                        Reenviar Convite
+                                                    </DropdownMenuItem>
+                                                )}
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem
                                                     className="text-red-600"
@@ -402,8 +541,20 @@ export default function UsersPage() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Editar Usuário</DialogTitle>
+                        <DialogDescription>
+                            Atualize os dados do usuário. O email não pode ser alterado.
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Email</label>
+                            <Input
+                                type="email"
+                                value={formData.email}
+                                disabled
+                                className="bg-gray-50"
+                            />
+                        </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Nome</label>
                             <Input
@@ -412,27 +563,19 @@ export default function UsersPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Email</label>
-                            <Input
-                                type="email"
-                                value={formData.email}
-                                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Papel</label>
+                            <label className="text-sm font-medium">Role</label>
                             <Select
                                 value={formData.role}
-                                onValueChange={v => setFormData({ ...formData, role: v as SystemUser['role'] })}
+                                onValueChange={v => setFormData({ ...formData, role: v })}
                             >
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="admin">Admin</SelectItem>
-                                    <SelectItem value="manager">Gerente</SelectItem>
-                                    <SelectItem value="editor">Editor</SelectItem>
-                                    <SelectItem value="viewer">Visualizador</SelectItem>
+                                    <SelectItem value="finance_manager">Finance Manager</SelectItem>
+                                    <SelectItem value="analyst">Analyst</SelectItem>
+                                    <SelectItem value="viewer">Viewer</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -443,13 +586,41 @@ export default function UsersPage() {
                                 onChange={e => setFormData({ ...formData, department: e.target.value })}
                             />
                         </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Telefone</label>
+                            <Input
+                                value={formData.phone}
+                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Company Code</label>
+                            <Select
+                                value={formData.company_code}
+                                onValueChange={v => setFormData({ ...formData, company_code: v })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="GLOBAL">Global</SelectItem>
+                                    <SelectItem value="ES">Spain (ES)</SelectItem>
+                                    <SelectItem value="US">United States (US)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditingUser(null)}>
+                        <Button variant="outline" onClick={() => setEditingUser(null)} disabled={actionLoading === 'update'}>
                             Cancelar
                         </Button>
-                        <Button onClick={handleUpdateUser}>
-                            Salvar
+                        <Button onClick={handleUpdateUser} disabled={actionLoading === 'update'}>
+                            {actionLoading === 'update' ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Salvando...
+                                </>
+                            ) : 'Salvar'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -12,7 +12,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const hasRedirectedRef = useRef(false);
 
     // Public routes that don't require authentication
-    const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password'];
+    const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/auth/callback'];
     const isPublicRoute = publicRoutes.some(route => pathname?.startsWith(route));
 
     useEffect(() => {
