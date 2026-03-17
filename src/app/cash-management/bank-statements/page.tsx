@@ -2269,7 +2269,9 @@ export default function BankStatementsPage() {
                 const invoiceNumbers = selectedInvs.map(inv => inv.invoice_number).filter(Boolean).join(", ");
                 const providers = [...new Set(selectedInvs.map(inv => inv.provider_code).filter(Boolean))].join(", ");
 
-                // Update each AP invoice
+                // Update each AP invoice — also fill payment fields from bank transaction
+                const bankAccountCode = BANK_ACCOUNT_CODE_MAP[reconTransaction.source] || null;
+                const bankTxDate = reconTransaction.date || null;
                 for (const inv of selectedInvs) {
                     const paidAmt = inv.paid_amount ?? inv.invoice_amount ?? 0;
                     const { error: invErr } = await supabase
@@ -2279,6 +2281,11 @@ export default function BankStatementsPage() {
                             reconciled_transaction_id: reconTransaction.id,
                             reconciled_at: now,
                             reconciled_amount: paidAmt,
+                            paid_amount: paidAmt,
+                            paid_currency: reconTransaction.currency || inv.currency || "EUR",
+                            payment_date: bankTxDate,
+                            bank_account_code: bankAccountCode,
+                            payment_method_code: "BANK_TRANSFER",
                         })
                         .eq("id", inv.id);
                     if (invErr) throw invErr;
@@ -3007,6 +3014,11 @@ export default function BankStatementsPage() {
                         reconciled_transaction_id: null,
                         reconciled_at: null,
                         reconciled_amount: null,
+                        paid_amount: null,
+                        paid_currency: null,
+                        payment_date: null,
+                        bank_account_code: null,
+                        payment_method_code: null,
                     })
                     .eq("id", invId);
             }
