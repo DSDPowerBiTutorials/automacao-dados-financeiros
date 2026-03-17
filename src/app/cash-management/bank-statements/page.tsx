@@ -2996,6 +2996,20 @@ export default function BankStatementsPage() {
                 await supabase.from("invoices").delete().eq("id", cd.fee_invoice_id);
             }
 
+            // 2.6) Revert linked AP expense invoices → is_reconciled=false
+            const matchedInvoiceIds: (string | number)[] = cd.matched_invoice_ids || [];
+            for (const invId of matchedInvoiceIds) {
+                await supabase
+                    .from("invoices")
+                    .update({
+                        is_reconciled: false,
+                        reconciled_transaction_id: null,
+                        reconciled_at: null,
+                        reconciled_amount: null,
+                    })
+                    .eq("id", invId);
+            }
+
             // 3) Clean bank transaction custom_data
             const cleanData = { ...cd };
             delete cleanData.paymentSource;
@@ -3029,9 +3043,12 @@ export default function BankStatementsPage() {
             delete cleanData.linked_gateway_total;
             // AP reconciliation fields
             delete cleanData.matched_invoices;
+            delete cleanData.matched_invoice_ids;
+            delete cleanData.matched_invoice_numbers;
             delete cleanData.matched_invoice_count;
             delete cleanData.matched_invoice_total;
             delete cleanData.matched_provider;
+            delete cleanData.matched_payment_date;
             delete cleanData.reconciled_bank_amount_total;
             delete cleanData.reconciled_bank_ids;
             delete cleanData.reconciled_with_bank_id;
@@ -3054,7 +3071,7 @@ export default function BankStatementsPage() {
                 setSelectedRow({ ...tx, isGatewayReconciled: false, isReconciled: false, reconciliationType: null, paymentSource: null, matchType: null, isOrderReconciled: false, orderReconciliationStatus: "none" as const, matchedOrderTotal: 0, matchedOrderCoverage: 0, matchedCustomerName: null, invoiceOrderId: null, invoiceNumber: null });
             }
 
-            const revertedCount = allArIds.size + linkedGatewayIds.length;
+            const revertedCount = allArIds.size + linkedGatewayIds.length + matchedInvoiceIds.length;
             toast({ title: "Reverted", description: `Reconciliation removed${revertedCount > 0 ? ` (${revertedCount} linked records also reverted)` : ""}` });
         } catch (err) {
             console.error("Error reverting:", err);
