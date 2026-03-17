@@ -89,6 +89,39 @@ export function Combobox({
                 <Command className="bg-white dark:bg-[#0a0a0a]">
                     <CommandInput placeholder={searchPlaceholder} className="text-gray-900 dark:text-white" />
                     <CommandList>
+                        {addNewLabel && (
+                            <CommandGroup forceMount>
+                                {!addingNew ? (
+                                    <CommandItem
+                                        value={`__add_new__${addNewLabel}`}
+                                        onSelect={() => setAddingNew(true)}
+                                        className="text-green-600 dark:text-green-400"
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        {addNewLabel}
+                                    </CommandItem>
+                                ) : (
+                                    <div className="flex items-center gap-2 p-2" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                                        <Input
+                                            value={newValue}
+                                            onChange={(e) => setNewValue(e.target.value)}
+                                            placeholder="Type new name..."
+                                            className="h-8 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                                e.stopPropagation();
+                                                if (e.key === "Enter") handleAddNew();
+                                                if (e.key === "Escape") { setAddingNew(false); setNewValue(""); }
+                                            }}
+                                        />
+                                        <Button size="sm" className="h-8 bg-green-600 hover:bg-green-700 text-white shrink-0" onClick={handleAddNew}>
+                                            Add
+                                        </Button>
+                                    </div>
+                                )}
+                                <CommandSeparator />
+                            </CommandGroup>
+                        )}
                         <CommandEmpty>{emptyText}</CommandEmpty>
                         <CommandGroup>
                             {options.map((option) => (
@@ -117,41 +150,6 @@ export function Combobox({
                                 </CommandItem>
                             ))}
                         </CommandGroup>
-                        {addNewLabel && (
-                            <>
-                                <CommandSeparator />
-                                <CommandGroup forceMount>
-                                    {!addingNew ? (
-                                        <CommandItem
-                                            value={`__add_new__${addNewLabel}`}
-                                            onSelect={() => setAddingNew(true)}
-                                            className="text-green-600 dark:text-green-400"
-                                        >
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            {addNewLabel}
-                                        </CommandItem>
-                                    ) : (
-                                        <div className="flex items-center gap-2 p-2" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                                            <Input
-                                                value={newValue}
-                                                onChange={(e) => setNewValue(e.target.value)}
-                                                placeholder="Type new name..."
-                                                className="h-8 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                                                autoFocus
-                                                onKeyDown={(e) => {
-                                                    e.stopPropagation();
-                                                    if (e.key === "Enter") handleAddNew();
-                                                    if (e.key === "Escape") { setAddingNew(false); setNewValue(""); }
-                                                }}
-                                            />
-                                            <Button size="sm" className="h-8 bg-green-600 hover:bg-green-700 text-white shrink-0" onClick={handleAddNew}>
-                                                Add
-                                            </Button>
-                                        </div>
-                                    )}
-                                </CommandGroup>
-                            </>
-                        )}
                     </CommandList>
                 </Command>
             </PopoverContent>
