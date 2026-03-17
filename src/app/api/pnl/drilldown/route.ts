@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const month = parseInt(searchParams.get("month") || "0"); // 0-indexed
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "100");
+    const scope = searchParams.get("scope"); // ES, US, or null (all)
 
     if (!faCode) {
         return NextResponse.json(
@@ -60,6 +61,10 @@ export async function GET(request: NextRequest) {
                 .neq("invoice_amount", 0)
                 .order("invoice_amount", { ascending: false })
                 .limit(500);
+
+            if (scope) {
+                query = query.eq("scope", scope);
+            }
 
             if (faCode === "210.0") {
                 // Balance Adjustments: include 210.x and unassigned "0000"
@@ -194,6 +199,10 @@ export async function GET(request: NextRequest) {
                 .order("amount", { ascending: false })
                 .range(startIndex, endIndex);
 
+            if (scope) {
+                revQuery = revQuery.contains("custom_data", { scope });
+            }
+
             if (isRevenueParent) {
                 revQuery = revQuery.ilike("custom_data->>financial_account_code", `${revenuePrefix}.%`);
             } else {
@@ -220,6 +229,10 @@ export async function GET(request: NextRequest) {
                 .lte("date", endStr)
                 .neq("amount", 0)
                 .not("custom_data->>order_status", "in", "(Cancelled,Refunded,Expired,cancelled,refunded,expired)");
+
+            if (scope) {
+                totalQuery = totalQuery.contains("custom_data", { scope });
+            }
 
             if (isRevenueParent) {
                 totalQuery = totalQuery.ilike("custom_data->>financial_account_code", `${revenuePrefix}.%`);

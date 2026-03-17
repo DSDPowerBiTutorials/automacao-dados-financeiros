@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const year = searchParams.get("year") || new Date().getFullYear().toString();
+        const scope = searchParams.get("scope"); // ES, US, or null (all)
 
         const startDate = `${year}-01-01`;
         const endDate = `${year}-12-31`;
@@ -67,13 +68,19 @@ export async function GET(request: NextRequest) {
         const pageSize = 1000;
 
         while (true) {
-            const { data, error } = await supabaseAdmin
+            let query = supabaseAdmin
                 .from("csv_rows")
                 .select("source, date, amount, custom_data")
                 .in("source", ["invoice-orders", "invoice-orders-usd"])
                 .gte("date", startDate)
                 .lte("date", endDate)
                 .range(offset, offset + pageSize - 1);
+
+            if (scope) {
+                query = query.contains("custom_data", { scope });
+            }
+
+            const { data, error } = await query;
 
             if (error) {
                 console.error("Error fetching data:", error);

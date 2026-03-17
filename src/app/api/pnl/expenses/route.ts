@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const year = searchParams.get("year") || new Date().getFullYear().toString();
+        const scope = searchParams.get("scope"); // ES, US, or null (all)
 
         const startDate = `${year}-01-01`;
         const endDate = `${year}-12-31`;
@@ -60,13 +61,19 @@ export async function GET(request: NextRequest) {
         const pageSize = 1000;
 
         while (true) {
-            const { data, error } = await supabaseAdmin
+            let query = supabaseAdmin
                 .from("invoices")
                 .select("benefit_date, invoice_amount, financial_account_code, invoice_type")
                 .eq("dre_impact", true)
                 .gte("benefit_date", startDate)
                 .lte("benefit_date", endDate)
                 .range(offset, offset + pageSize - 1);
+
+            if (scope) {
+                query = query.eq("scope", scope);
+            }
+
+            const { data, error } = await query;
 
             if (error) {
                 console.error("Error fetching invoices for P&L:", error);

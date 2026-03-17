@@ -1285,9 +1285,10 @@ export default function PnLReport() {
             try {
                 setLoading(true);
 
+                const scopeParam = selectedScope && selectedScope !== "GLOBAL" ? `&scope=${selectedScope}` : "";
                 const [revenueRes, expensesRes] = await Promise.all([
-                    fetch(`/api/pnl/revenue?year=${selectedYear}`),
-                    fetch(`/api/pnl/expenses?year=${selectedYear}`),
+                    fetch(`/api/pnl/revenue?year=${selectedYear}${scopeParam}`),
+                    fetch(`/api/pnl/expenses?year=${selectedYear}${scopeParam}`),
                 ]);
 
                 const revenueResult = await revenueRes.json();
@@ -1317,7 +1318,7 @@ export default function PnLReport() {
         }
 
         fetchPnLData();
-    }, [selectedYear]);
+    }, [selectedYear, selectedScope]);
 
     // Function to open drill-down
     const openDrilldown = useCallback(async (faCode: string, faName: string, monthIndex: number) => {
@@ -1336,7 +1337,7 @@ export default function PnLReport() {
 
         try {
             const response = await fetch(
-                `/api/pnl/drilldown?fa=${faCode}&month=${monthIndex}&year=${selectedYear}`
+                `/api/pnl/drilldown?fa=${faCode}&month=${monthIndex}&year=${selectedYear}${selectedScope && selectedScope !== "GLOBAL" ? `&scope=${selectedScope}` : ""}`
             );
             const result = await response.json();
 
