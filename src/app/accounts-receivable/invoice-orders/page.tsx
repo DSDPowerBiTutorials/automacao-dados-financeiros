@@ -68,6 +68,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 
 // Interface para Invoice Order (dados do CSV)
 interface InvoiceOrder {
@@ -259,7 +260,7 @@ export default function InvoiceOrdersPage() {
     // Add manual dialog
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [addForm, setAddForm] = useState({
-        date: "", order_date: "", description: "", amount: "", discount: "",
+        date: "", order_date: "", product: "", description: "", amount: "", discount: "",
         currency: "EUR", financial_account_code: "", scope: selectedScope || "GLOBAL",
         customer_name: "", customer_email: "", company: "",
         invoice_number: "", order_number: "",
@@ -267,7 +268,7 @@ export default function InvoiceOrdersPage() {
         order_status: "", charged: "",
     });
     const ADD_FORM_EMPTY = {
-        date: "", order_date: "", description: "", amount: "", discount: "",
+        date: "", order_date: "", product: "", description: "", amount: "", discount: "",
         currency: "EUR", financial_account_code: "", scope: selectedScope || "GLOBAL",
         customer_name: "", customer_email: "", company: "",
         invoice_number: "", order_number: "",
@@ -316,6 +317,10 @@ export default function InvoiceOrdersPage() {
     const [labPcDialogOpen, setLabPcDialogOpen] = useState(false);
     const [labPcReallocations, setLabPcReallocations] = useState<{ rowIndex: number; clientName: string; clientEmail: string; product: string; amount: number; date: string; originalCode: string; newCode: string; clientClass: string }[]>([]);
     const [pendingUpdatedCodes, setPendingUpdatedCodes] = useState<Record<number, string>>({});
+
+    // ── Combobox options for Products & Clients ──
+    const [productOptions, setProductOptions] = useState<ComboboxOption[]>([]);
+    const [clientOptions, setClientOptions] = useState<ComboboxOption[]>([]);
 
     // Load data
     const loadData = useCallback(async () => {
@@ -410,6 +415,43 @@ export default function InvoiceOrdersPage() {
     useEffect(() => {
         loadData();
     }, [page, selectedYear, selectedScope]);
+
+    // Load products and clients for combobox dropdowns
+    useEffect(() => {
+        const loadProductsAndClients = async () => {
+            // Load products from products table
+            const { data: products } = await supabase
+                .from("products")
+                .select("name, code, default_price, currency")
+                .eq("is_active", true)
+                .order("name");
+            if (products) {
+                setProductOptions(products.map((p) => ({
+                    value: p.name,
+                    label: p.name,
+                    sublabel: p.code ? `${p.code}${p.default_price ? ` · ${p.default_price} ${p.currency || "EUR"}` : ""}` : undefined,
+                })));
+            }
+
+            // Load distinct client names from csv_rows
+            const { data: rows } = await supabase
+                .from("csv_rows")
+                .select("custom_data")
+                .eq("source", "invoice-orders")
+                .not("custom_data->>customer_name", "is", null)
+                .limit(5000);
+            if (rows) {
+                const names = new Set<string>();
+                for (const r of rows) {
+                    const name = (r.custom_data as Record<string, unknown>)?.customer_name;
+                    if (typeof name === "string" && name.trim()) names.add(name.trim());
+                }
+                const sorted = Array.from(names).sort((a, b) => a.localeCompare(b));
+                setClientOptions(sorted.map((n) => ({ value: n, label: n })));
+            }
+        };
+        loadProductsAndClients();
+    }, []);
 
     // Handle file upload — now opens classification popup instead of directly inserting
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1196,15 +1238,20 @@ export default function InvoiceOrdersPage() {
 
     // Add manual invoice order
     const handleAddManual = async () => {
-        if (!addForm.date || !addForm.description || !addForm.amount || !addForm.financial_account_code) {
-            toast({ title: "Missing fields", description: "Date, description, amount and financial account are required.", variant: "destructive" });
+        if (!addForm.date || !addForm.product || !addForm.amount || !addForm.financial_account_code) {
+            toast({ title: "Missing fields", description: "Date, product, amount and financial account are required.", variant: "destructive" });
             return;
         }
         setSaving(true);
         try {
+            const fullDescription = addForm.description
+                ? `${addForm.product} - ${addForm.description}`
+                : addForm.product;
+
             const customData: Record<string, unknown> = {
                 financial_account_code: addForm.financial_account_code,
                 financial_account_name: FA_NAMES[addForm.financial_account_code] || "",
+                product: addForm.product,
                 customer_name: addForm.customer_name,
                 customer_email: addForm.customer_email,
                 company_name: addForm.company,
@@ -1225,7 +1272,7 @@ export default function InvoiceOrdersPage() {
                 source: "invoice-orders",
                 file_name: "manual-entry",
                 date: addForm.date,
-                description: addForm.description,
+                description: fullDescription,
                 amount: parseFloat(addForm.amount) || 0,
                 currency: addForm.currency || "EUR",
                 custom_data: customData,
@@ -2823,9 +2870,26 @@ export default function InvoiceOrdersPage() {
                             <div>
                                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Product & Amount</h3>
                                 <div className="space-y-4">
-                                    <div>
-                                        <Label className="text-xs text-gray-700 dark:text-gray-300">Products / Description *</Label>
-                                        <Input value={addForm.description} onChange={(e) => setAddForm({ ...addForm, description: e.target.value })} placeholder="Product name or invoice description" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <Label className="text-xs text-gray-700 dark:text-gray-300">Product *</Label>
+                                            <div className="mt-1">
+                                                <Combobox
+                                                    options={productOptions}
+                                                    value={addForm.product}
+                                                    onValueChange={(v) => setAddForm({ ...addForm, product: v })}
+                                                    placeholder="Select product..."
+                                                    searchPlaceholder="Search products..."
+                                                    emptyText="No products found."
+                                                    addNewLabel="Add New Product"
+                                                    className="bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs text-gray-700 dark:text-gray-300">Description</Label>
+                                            <Input value={addForm.description} onChange={(e) => setAddForm({ ...addForm, description: e.target.value })} placeholder="Additional description or notes" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-3 gap-4">
                                         <div>
@@ -2857,7 +2921,18 @@ export default function InvoiceOrdersPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <Label className="text-xs text-gray-700 dark:text-gray-300">Client Name</Label>
-                                        <Input value={addForm.customer_name} onChange={(e) => setAddForm({ ...addForm, customer_name: e.target.value })} placeholder="Customer / Clinic name" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                        <div className="mt-1">
+                                            <Combobox
+                                                options={clientOptions}
+                                                value={addForm.customer_name}
+                                                onValueChange={(v) => setAddForm({ ...addForm, customer_name: v })}
+                                                placeholder="Select client..."
+                                                searchPlaceholder="Search clients..."
+                                                emptyText="No clients found."
+                                                addNewLabel="Add New Client"
+                                                className="bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                            />
+                                        </div>
                                     </div>
                                     <div>
                                         <Label className="text-xs text-gray-700 dark:text-gray-300">Email</Label>
