@@ -472,6 +472,7 @@ const normalizeText = (value: string | null | undefined): string =>
         .toLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[-_]/g, " ")
         .trim();
 
 const toNumeric = (value: unknown): number | null => {
