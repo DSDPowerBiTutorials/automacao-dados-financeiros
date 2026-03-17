@@ -196,6 +196,7 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
     { key: "discount", label: "Discount", visible: true, width: "90px" },
     { key: "amount", label: "Total", visible: true, width: "100px" },
     { key: "currency", label: "Currency", visible: true, width: "70px" },
+    { key: "scope", label: "Scope", visible: true, width: "80px" },
     { key: "financial_account", label: "Fin. Account", visible: false, width: "120px" },
     { key: "reconciled", label: "Status", visible: false, width: "100px" }
 ];
@@ -242,6 +243,7 @@ export default function InvoiceOrdersPage() {
     const [filterEmail, setFilterEmail] = useState("");
     const [filterFA, setFilterFA] = useState("");
     const [filterCurrency, setFilterCurrency] = useState("");
+    const [filterScope, setFilterScope] = useState("");
     const [filterOrderStatus, setFilterOrderStatus] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
 
@@ -250,15 +252,15 @@ export default function InvoiceOrdersPage() {
     const [editingRow, setEditingRow] = useState<InvoiceOrder | null>(null);
     const [editForm, setEditForm] = useState<{
         date: string; description: string; amount: string;
-        financial_account_code: string; customer_name: string; customer_email: string;
-    }>({ date: "", description: "", amount: "", financial_account_code: "", customer_name: "", customer_email: "" });
+        financial_account_code: string; customer_name: string; customer_email: string; scope: string;
+    }>({ date: "", description: "", amount: "", financial_account_code: "", customer_name: "", customer_email: "", scope: "" });
     const [saving, setSaving] = useState(false);
 
     // Add manual dialog
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [addForm, setAddForm] = useState({
         date: "", order_date: "", description: "", amount: "", discount: "",
-        currency: "EUR", financial_account_code: "",
+        currency: "EUR", financial_account_code: "", scope: selectedScope || "GLOBAL",
         customer_name: "", customer_email: "", company: "",
         invoice_number: "", order_number: "",
         country: "", payment_method: "", billing_entity: "",
@@ -266,7 +268,7 @@ export default function InvoiceOrdersPage() {
     });
     const ADD_FORM_EMPTY = {
         date: "", order_date: "", description: "", amount: "", discount: "",
-        currency: "EUR", financial_account_code: "",
+        currency: "EUR", financial_account_code: "", scope: selectedScope || "GLOBAL",
         customer_name: "", customer_email: "", company: "",
         invoice_number: "", order_number: "",
         country: "", payment_method: "", billing_entity: "",
@@ -332,6 +334,10 @@ export default function InvoiceOrdersPage() {
                     .lte("date", `${selectedYear}-12-31`);
             }
 
+            if (selectedScope && selectedScope !== "GLOBAL") {
+                countQuery = countQuery.contains("custom_data", { scope: selectedScope });
+            }
+
             const { count } = await countQuery;
             setTotalRows(count || 0);
 
@@ -350,6 +356,10 @@ export default function InvoiceOrdersPage() {
                 query = query
                     .gte("date", `${selectedYear}-01-01`)
                     .lte("date", `${selectedYear}-12-31`);
+            }
+
+            if (selectedScope && selectedScope !== "GLOBAL") {
+                query = query.contains("custom_data", { scope: selectedScope });
             }
 
             const { data, error: fetchError } = await query;
@@ -395,11 +405,11 @@ export default function InvoiceOrdersPage() {
         } finally {
             setLoading(false);
         }
-    }, [page, selectedYear]);
+    }, [page, selectedYear, selectedScope]);
 
     useEffect(() => {
         loadData();
-    }, [page, selectedYear]);
+    }, [page, selectedYear, selectedScope]);
 
     // Handle file upload — now opens classification popup instead of directly inserting
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -896,7 +906,7 @@ export default function InvoiceOrdersPage() {
                 date: row.date,
                 description: row.description,
                 amount: row.amount,
-                customData: row.customData,
+                customData: { ...row.customData, scope: selectedScope || "GLOBAL" },
                 financialAccountCode: codes[i] || "",
                 existingId: dupeMap.get(row.invoiceNumber) || undefined
             }));
@@ -1034,6 +1044,9 @@ export default function InvoiceOrdersPage() {
         if (filterCurrency) {
             filtered = filtered.filter((inv) => inv.currency === filterCurrency);
         }
+        if (filterScope) {
+            filtered = filtered.filter((inv) => (inv.custom_data?.scope as string || "") === filterScope);
+        }
         if (filterStatus) {
             if (filterStatus === "reconciled") filtered = filtered.filter((inv) => inv.reconciled);
             if (filterStatus === "pending") filtered = filtered.filter((inv) => !inv.reconciled);
@@ -1093,7 +1106,7 @@ export default function InvoiceOrdersPage() {
         });
 
         return filtered;
-    }, [invoiceOrders, showReconciled, searchTerm, sortField, sortDirection, filterDateFrom, filterDateTo, filterInvoice, filterOrder, filterDescription, filterClient, filterEmail, filterFA, filterCurrency, filterOrderStatus, filterStatus]);
+    }, [invoiceOrders, showReconciled, searchTerm, sortField, sortDirection, filterDateFrom, filterDateTo, filterInvoice, filterOrder, filterDescription, filterClient, filterEmail, filterFA, filterCurrency, filterScope, filterOrderStatus, filterStatus]);
 
     // Stats
     const stats = useMemo(() => {
@@ -1144,6 +1157,7 @@ export default function InvoiceOrdersPage() {
             financial_account_code: (row.custom_data?.financial_account_code as string) || "",
             customer_name: (row.custom_data?.customer_name as string) || "",
             customer_email: (row.custom_data?.customer_email as string) || "",
+            scope: (row.custom_data?.scope as string) || "",
         });
         setEditDialogOpen(true);
     };
@@ -1159,6 +1173,7 @@ export default function InvoiceOrdersPage() {
             }
             updatedCustomData.customer_name = editForm.customer_name;
             updatedCustomData.customer_email = editForm.customer_email;
+            if (editForm.scope) updatedCustomData.scope = editForm.scope;
 
             const { error } = await supabase.from("csv_rows").update({
                 date: editForm.date,
@@ -1202,6 +1217,7 @@ export default function InvoiceOrdersPage() {
                 billing_entity: addForm.billing_entity,
                 order_status: addForm.order_status,
                 charged: addForm.charged,
+                scope: addForm.scope || selectedScope || "GLOBAL",
                 manual_entry: true,
             };
 
@@ -1334,6 +1350,13 @@ export default function InvoiceOrdersPage() {
                 </span>
             );
         if (colKey === "currency") return row.currency;
+        if (colKey === "scope") {
+            const scope = (row.custom_data?.scope as string) || "";
+            if (!scope) return <span className="text-gray-400">—</span>;
+            if (scope === "ES") return <Badge className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-300 dark:border-orange-700 text-xs">🇪🇸 ES</Badge>;
+            if (scope === "US") return <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 text-xs">🇺🇸 US</Badge>;
+            return <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700 text-xs">🌍 {scope}</Badge>;
+        }
         if (colKey === "financial_account") {
             const code = row.custom_data?.financial_account_code as string | null;
             const name = row.custom_data?.financial_account_name as string | null;
@@ -1755,6 +1778,18 @@ export default function InvoiceOrdersPage() {
                                                             <option value="GBP">GBP</option>
                                                         </select>
                                                     )}
+                                                    {col.key === "scope" && (
+                                                        <select
+                                                            value={filterScope}
+                                                            onChange={(e) => setFilterScope(e.target.value)}
+                                                            className="h-7 w-full text-xs rounded-md bg-white dark:bg-[#0a0a0a] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white px-1"
+                                                        >
+                                                            <option value="">All</option>
+                                                            <option value="ES">🇪🇸 ES</option>
+                                                            <option value="US">🇺🇸 US</option>
+                                                            <option value="GLOBAL">🌍 GLOBAL</option>
+                                                        </select>
+                                                    )}
                                                     {col.key === "order_status" && (
                                                         <select
                                                             value={filterOrderStatus}
@@ -2006,6 +2041,19 @@ export default function InvoiceOrdersPage() {
                                 placeholder="e.g. 102.0"
                                 className="bg-white dark:bg-[#111] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                             />
+                        </div>
+                        <div>
+                            <Label className="text-gray-500 dark:text-gray-400 text-xs">Scope</Label>
+                            <Select value={editForm.scope} onValueChange={(v) => setEditForm((f) => ({ ...f, scope: v }))}>
+                                <SelectTrigger className="bg-white dark:bg-[#111] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                    <SelectValue placeholder="Select scope" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
+                                    <SelectItem value="ES">🇪🇸 ES</SelectItem>
+                                    <SelectItem value="US">🇺🇸 US</SelectItem>
+                                    <SelectItem value="GLOBAL">🌍 GLOBAL</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div>
                             <Label className="text-gray-500 dark:text-gray-400 text-xs">Customer Name</Label>
@@ -2697,32 +2745,43 @@ export default function InvoiceOrdersPage() {
 
             {/* Manual Add Dialog */}
             <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 sm:max-w-3xl">
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 max-w-none max-h-[90vh] overflow-y-auto p-8" style={{ width: '80vw' }}>
                     <DialogHeader>
-                        <DialogTitle className="text-gray-900 dark:text-white text-lg">Add Invoice Order Manually</DialogTitle>
+                        <DialogTitle className="text-gray-900 dark:text-white text-2xl">Add Invoice Order Manually</DialogTitle>
                         <DialogDescription className="text-gray-500 dark:text-gray-400">Fill in the fields below to create a new invoice order entry. Fields marked with * are required.</DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-3 max-h-[70vh] overflow-y-auto pr-1">
-                        {/* ── Section: Dates & Currency ── */}
+                    <form className="space-y-8 pt-6" onSubmit={(e) => { e.preventDefault(); handleAddManual(); }}>
+                        {/* ── Section: Dates & Scope ── */}
                         <div>
-                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Dates & Currency</p>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="space-y-1">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Dates & Scope</h3>
+                            <div className="grid grid-cols-4 gap-6">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Invoice Date *</Label>
-                                    <Input type="date" value={addForm.date} onChange={(e) => setAddForm({ ...addForm, date: e.target.value })} className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    <Input type="date" value={addForm.date} onChange={(e) => setAddForm({ ...addForm, date: e.target.value })} className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                 </div>
-                                <div className="space-y-1">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Order Date</Label>
-                                    <Input type="date" value={addForm.order_date} onChange={(e) => setAddForm({ ...addForm, order_date: e.target.value })} className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    <Input type="date" value={addForm.order_date} onChange={(e) => setAddForm({ ...addForm, order_date: e.target.value })} className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                 </div>
-                                <div className="space-y-1">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Currency</Label>
                                     <Select value={addForm.currency} onValueChange={(v) => setAddForm({ ...addForm, currency: v })}>
-                                        <SelectTrigger className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
+                                        <SelectTrigger className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
                                         <SelectContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
                                             <SelectItem value="EUR">EUR</SelectItem>
                                             <SelectItem value="USD">USD</SelectItem>
                                             <SelectItem value="GBP">GBP</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label className="text-xs text-gray-700 dark:text-gray-300">Scope</Label>
+                                    <Select value={addForm.scope} onValueChange={(v: string) => setAddForm({ ...addForm, scope: v as typeof addForm.scope })}>
+                                        <SelectTrigger className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
+                                        <SelectContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
+                                            <SelectItem value="ES">🇪🇸 ES</SelectItem>
+                                            <SelectItem value="US">🇺🇸 US</SelectItem>
+                                            <SelectItem value="GLOBAL">🌍 GLOBAL</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -2731,20 +2790,20 @@ export default function InvoiceOrdersPage() {
 
                         {/* ── Section: Invoice & Order ── */}
                         <div>
-                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Invoice & Order</p>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="space-y-1">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Invoice & Order</h3>
+                            <div className="grid grid-cols-3 gap-6">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Invoice Number</Label>
-                                    <Input value={addForm.invoice_number} onChange={(e) => setAddForm({ ...addForm, invoice_number: e.target.value })} placeholder="INV-001" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    <Input value={addForm.invoice_number} onChange={(e) => setAddForm({ ...addForm, invoice_number: e.target.value })} placeholder="INV-001" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                 </div>
-                                <div className="space-y-1">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Order Number</Label>
-                                    <Input value={addForm.order_number} onChange={(e) => setAddForm({ ...addForm, order_number: e.target.value })} placeholder="ORD-001" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    <Input value={addForm.order_number} onChange={(e) => setAddForm({ ...addForm, order_number: e.target.value })} placeholder="ORD-001" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                 </div>
-                                <div className="space-y-1">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Order Status</Label>
                                     <Select value={addForm.order_status} onValueChange={(v) => setAddForm({ ...addForm, order_status: v })}>
-                                        <SelectTrigger className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue placeholder="Select status" /></SelectTrigger>
+                                        <SelectTrigger className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue placeholder="Select status" /></SelectTrigger>
                                         <SelectContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
                                             <SelectItem value="Completed">Completed</SelectItem>
                                             <SelectItem value="Processing">Processing</SelectItem>
@@ -2759,25 +2818,25 @@ export default function InvoiceOrdersPage() {
 
                         {/* ── Section: Product & Amount ── */}
                         <div>
-                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Product & Amount</p>
-                            <div className="space-y-3">
-                                <div className="space-y-1">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Product & Amount</h3>
+                            <div className="space-y-4">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Products / Description *</Label>
-                                    <Input value={addForm.description} onChange={(e) => setAddForm({ ...addForm, description: e.target.value })} placeholder="Product name or invoice description" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    <Input value={addForm.description} onChange={(e) => setAddForm({ ...addForm, description: e.target.value })} placeholder="Product name or invoice description" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                 </div>
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div className="space-y-1">
+                                <div className="grid grid-cols-3 gap-6">
+                                    <div>
                                         <Label className="text-xs text-gray-700 dark:text-gray-300">Total / Amount *</Label>
-                                        <Input type="number" step="0.01" value={addForm.amount} onChange={(e) => setAddForm({ ...addForm, amount: e.target.value })} placeholder="0.00" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                        <Input type="number" step="0.01" value={addForm.amount} onChange={(e) => setAddForm({ ...addForm, amount: e.target.value })} placeholder="0.00" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                     </div>
-                                    <div className="space-y-1">
+                                    <div>
                                         <Label className="text-xs text-gray-700 dark:text-gray-300">Discount</Label>
-                                        <Input type="number" step="0.01" value={addForm.discount} onChange={(e) => setAddForm({ ...addForm, discount: e.target.value })} placeholder="0.00" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                        <Input type="number" step="0.01" value={addForm.discount} onChange={(e) => setAddForm({ ...addForm, discount: e.target.value })} placeholder="0.00" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                     </div>
-                                    <div className="space-y-1">
+                                    <div>
                                         <Label className="text-xs text-gray-700 dark:text-gray-300">Financial Account *</Label>
                                         <Select value={addForm.financial_account_code} onValueChange={(v) => setAddForm({ ...addForm, financial_account_code: v })}>
-                                            <SelectTrigger className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue placeholder="Select FA" /></SelectTrigger>
+                                            <SelectTrigger className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue placeholder="Select FA" /></SelectTrigger>
                                             <SelectContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 max-h-60">
                                                 {FA_OPTIONS_POPUP1.map(fa => (
                                                     <SelectItem key={fa.code} value={fa.code} className="text-xs">{fa.label}</SelectItem>
@@ -2791,47 +2850,47 @@ export default function InvoiceOrdersPage() {
 
                         {/* ── Section: Customer ── */}
                         <div>
-                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Customer</p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Customer</h3>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Client Name</Label>
-                                    <Input value={addForm.customer_name} onChange={(e) => setAddForm({ ...addForm, customer_name: e.target.value })} placeholder="Customer / Clinic name" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    <Input value={addForm.customer_name} onChange={(e) => setAddForm({ ...addForm, customer_name: e.target.value })} placeholder="Customer / Clinic name" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                 </div>
-                                <div className="space-y-1">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Email</Label>
-                                    <Input type="email" value={addForm.customer_email} onChange={(e) => setAddForm({ ...addForm, customer_email: e.target.value })} placeholder="email@example.com" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    <Input type="email" value={addForm.customer_email} onChange={(e) => setAddForm({ ...addForm, customer_email: e.target.value })} placeholder="email@example.com" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                 </div>
-                                <div className="space-y-1">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Company</Label>
-                                    <Input value={addForm.company} onChange={(e) => setAddForm({ ...addForm, company: e.target.value })} placeholder="Company name" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    <Input value={addForm.company} onChange={(e) => setAddForm({ ...addForm, company: e.target.value })} placeholder="Company name" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                 </div>
-                                <div className="space-y-1">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Country</Label>
-                                    <Input value={addForm.country} onChange={(e) => setAddForm({ ...addForm, country: e.target.value })} placeholder="e.g. Spain" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    <Input value={addForm.country} onChange={(e) => setAddForm({ ...addForm, country: e.target.value })} placeholder="e.g. Spain" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                 </div>
                             </div>
                         </div>
 
                         {/* ── Section: Payment & Billing ── */}
                         <div>
-                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Payment & Billing</p>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="space-y-1">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Payment & Billing</h3>
+                            <div className="grid grid-cols-3 gap-6">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Payment Method</Label>
-                                    <Input value={addForm.payment_method} onChange={(e) => setAddForm({ ...addForm, payment_method: e.target.value })} placeholder="e.g. Credit Card, Bank Transfer" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    <Input value={addForm.payment_method} onChange={(e) => setAddForm({ ...addForm, payment_method: e.target.value })} placeholder="e.g. Credit Card, Bank Transfer" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                 </div>
-                                <div className="space-y-1">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Billing Entity</Label>
-                                    <Input value={addForm.billing_entity} onChange={(e) => setAddForm({ ...addForm, billing_entity: e.target.value })} placeholder="e.g. DSD ES, DSD US" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    <Input value={addForm.billing_entity} onChange={(e) => setAddForm({ ...addForm, billing_entity: e.target.value })} placeholder="e.g. DSD ES, DSD US" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                 </div>
-                                <div className="space-y-1">
+                                <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Charged</Label>
-                                    <Input value={addForm.charged} onChange={(e) => setAddForm({ ...addForm, charged: e.target.value })} placeholder="e.g. Yes, No, Partial" className="h-9 text-sm bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+                                    <Input value={addForm.charged} onChange={(e) => setAddForm({ ...addForm, charged: e.target.value })} placeholder="e.g. Yes, No, Partial" className="mt-1 h-10 bg-white dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <DialogFooter className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    </form>
+                    <DialogFooter className="border-t border-gray-200 dark:border-gray-700 pt-6">
                         <Button variant="outline" onClick={() => setAddDialogOpen(false)} className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">Cancel</Button>
                         <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleAddManual} disabled={saving}>
                             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
