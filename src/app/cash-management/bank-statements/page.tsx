@@ -3017,6 +3017,7 @@ export default function BankStatementsPage() {
                         paid_amount: null,
                         paid_currency: null,
                         payment_date: null,
+                        payment_status: null,
                         bank_account_code: null,
                         payment_method_code: null,
                     })
