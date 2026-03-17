@@ -318,6 +318,23 @@ export default function InvoiceOrdersPage() {
     const [labPcReallocations, setLabPcReallocations] = useState<{ rowIndex: number; clientName: string; clientEmail: string; product: string; amount: number; date: string; originalCode: string; newCode: string; clientClass: string }[]>([]);
     const [pendingUpdatedCodes, setPendingUpdatedCodes] = useState<Record<number, string>>({});
 
+    // ── Popup 5: Cross-Scope LAB/PC Reclassification ──
+    interface ReclassProposal {
+        rowId: string;
+        clientName: string;
+        clientEmail: string;
+        product: string;
+        amount: number;
+        date: string;
+        currentCode: string;
+        proposedCode: string;
+        subscriberCode: string; // the 102.x/101.4/105.1 that triggered this
+        selected: boolean;
+    }
+    const [reclassDialogOpen, setReclassDialogOpen] = useState(false);
+    const [reclassProposals, setReclassProposals] = useState<ReclassProposal[]>([]);
+    const [reclassifying, setReclassifying] = useState(false);
+
     // ── Combobox options for Products & Clients ──
     const [productOptions, setProductOptions] = useState<ComboboxOption[]>([]);
     const [clientOptions, setClientOptions] = useState<ComboboxOption[]>([]);
@@ -854,47 +871,321 @@ export default function InvoiceOrdersPage() {
         return clientClassMap;
     };
 
-    // ── Compute LAB/PC reallocations and open Popup 4 ──
-    const openLabPcReview = (updatedCodes: Record<number, string>) => {
-        const clientClassMap = buildClientClassMap(updatedCodes);
+    // ── Cross-scope reclassification engine ──
+    // Finds existing 103.x/104.x rows in DB whose classification should change
+    // based on 102.x subscriptions being added or removed.
+    const findReclassifications = async (
+        clientInfos: { email?: string; name?: string }[],
+        months: string[] // "YYYY-MM" format
+    ): Promise<ReclassProposal[]> => {
+        if (clientInfos.length === 0 || months.length === 0) return [];
+
+        const emails = [...new Set(clientInfos.map(c => c.email?.toLowerCase()).filter(Boolean))] as string[];
+        const names = [...new Set(clientInfos.map(c => c.name?.toLowerCase()).filter(Boolean))] as string[];
+        if (emails.length === 0 && names.length === 0) return [];
+
+        // Build date ranges for each month
+        const monthRanges = months.map(m => {
+            const [y, mo] = m.split("-").map(Number);
+            const lastDay = new Date(y, mo, 0).getDate();
+            return { start: `${m}-01`, end: `${m}-${String(lastDay).padStart(2, "0")}` };
+        });
+        const globalStart = monthRanges.reduce((min, r) => r.start < min ? r.start : min, monthRanges[0].start);
+        const globalEnd = monthRanges.reduce((max, r) => r.end > max ? r.end : max, monthRanges[0].end);
+
+        // 1. Fetch subscriber rows (102.x, 101.4, 105.1) for these clients in these months
+        const subscriberMap = new Map<string, string>(); // "email|YYYY-MM" or "name|YYYY-MM" → FA code
+
+        const fetchSubscribers = async (field: string, keys: string[]) => {
+            for (let i = 0; i < keys.length; i += 50) {
+                const batch = keys.slice(i, i + 50);
+                const { data } = await supabase
+                    .from("csv_rows")
+                    .select("date, custom_data")
+                    .eq("source", "invoice-orders")
+                    .gte("date", globalStart)
+                    .lte("date", globalEnd)
+                    .in(`custom_data->>${field}`, batch);
+
+                if (data) {
+                    for (const row of data) {
+                        const cd = row.custom_data as Record<string, unknown>;
+                        const faCode = String(cd.financial_account_code || "");
+                        // Only subscriber codes
+                        if (!faCode.startsWith("102.") && faCode !== "101.4" && faCode !== "105.1") continue;
+                        if (faCode === "102.0") continue;
+
+                        const key = String(cd[field] || "").toLowerCase();
+                        const ym = (row.date || "").substring(0, 7); // YYYY-MM
+                        if (!key || !months.includes(ym)) continue;
+
+                        const mapKey = `${field}:${key}|${ym}`;
+                        const existing = subscriberMap.get(mapKey);
+                        // Priority: 102.x > 101.4 > 105.1
+                        if (!existing || (faCode.startsWith("102.") && !existing.startsWith("102."))) {
+                            subscriberMap.set(mapKey, faCode);
+                        }
+                    }
+                }
+            }
+        };
+
+        await Promise.all([
+            emails.length > 0 ? fetchSubscribers("customer_email", emails) : Promise.resolve(),
+            names.length > 0 ? fetchSubscribers("customer_name", names) : Promise.resolve(),
+        ]);
+
+        // 2. Fetch existing 103.x/104.x rows for these clients in these months
+        const proposals: ReclassProposal[] = [];
+
+        const fetchLabPcRows = async (field: string, keys: string[]) => {
+            for (let i = 0; i < keys.length; i += 50) {
+                const batch = keys.slice(i, i + 50);
+                const { data } = await supabase
+                    .from("csv_rows")
+                    .select("id, date, description, amount, custom_data")
+                    .eq("source", "invoice-orders")
+                    .gte("date", globalStart)
+                    .lte("date", globalEnd)
+                    .in(`custom_data->>${field}`, batch);
+
+                if (data) {
+                    for (const row of data) {
+                        const cd = row.custom_data as Record<string, unknown>;
+                        const currentCode = String(cd.financial_account_code || "");
+                        if (!currentCode.startsWith("103.") && !currentCode.startsWith("104.")) continue;
+
+                        const key = String(cd[field] || "").toLowerCase();
+                        const ym = (row.date || "").substring(0, 7);
+                        if (!key || !months.includes(ym)) continue;
+
+                        // Look up subscriber status for this client in this month
+                        const emailKey = cd.customer_email ? `customer_email:${String(cd.customer_email).toLowerCase()}|${ym}` : "";
+                        const nameKey = cd.customer_name ? `customer_name:${String(cd.customer_name).toLowerCase()}|${ym}` : "";
+                        const subCode = (emailKey && subscriberMap.get(emailKey)) || (nameKey && subscriberMap.get(nameKey)) || null;
+
+                        let proposedCode: string;
+                        if (subCode && CLIENT_TO_LAB_PC[subCode]) {
+                            proposedCode = currentCode.startsWith("104.") ? CLIENT_TO_LAB_PC[subCode].lab : CLIENT_TO_LAB_PC[subCode].pc;
+                        } else {
+                            proposedCode = currentCode.startsWith("104.") ? "104.7" : "103.7";
+                        }
+
+                        if (proposedCode !== currentCode) {
+                            // Avoid duplicate proposals for same row
+                            if (!proposals.some(p => p.rowId === row.id)) {
+                                proposals.push({
+                                    rowId: row.id,
+                                    clientName: String(cd.customer_name || "-"),
+                                    clientEmail: String(cd.customer_email || ""),
+                                    product: row.description || "-",
+                                    amount: parseFloat(row.amount) || 0,
+                                    date: row.date || "",
+                                    currentCode,
+                                    proposedCode,
+                                    subscriberCode: subCode || "none",
+                                    selected: true,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        await Promise.all([
+            emails.length > 0 ? fetchLabPcRows("customer_email", emails) : Promise.resolve(),
+            names.length > 0 ? fetchLabPcRows("customer_name", names) : Promise.resolve(),
+        ]);
+
+        return proposals;
+    };
+
+    // ── Apply reclassification proposals ──
+    const applyReclassifications = async () => {
+        const selected = reclassProposals.filter(p => p.selected);
+        if (selected.length === 0) {
+            setReclassDialogOpen(false);
+            return;
+        }
+
+        setReclassifying(true);
+        try {
+            const response = await fetch("/api/invoice-orders/reclassify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    changes: selected.map(p => ({ rowId: p.rowId, newCode: p.proposedCode }))
+                })
+            });
+
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error);
+
+            toast({
+                title: "Reclassification complete",
+                description: `${result.updated} LAB/PC row(s) updated based on subscription data.`
+            });
+
+            setReclassDialogOpen(false);
+            loadData();
+        } catch (err) {
+            console.error("Reclassification error:", err);
+            toast({
+                title: "Reclassification error",
+                description: String(err),
+                variant: "destructive"
+            });
+        } finally {
+            setReclassifying(false);
+        }
+    };
+
+    // ── Compute LAB/PC reallocations and open Popup 4 (DB-aware, monthly) ──
+    const openLabPcReview = async (updatedCodes: Record<number, string>) => {
+        // Build local map from current upload (keyed by clientKey|YYYY-MM)
+        const localMonthlyMap = new Map<string, string>(); // "email|YYYY-MM" → FA code
+
+        // 1. Delight sub-codes (102.x) from upload
+        for (let i = 0; i < uploadedRows.length; i++) {
+            const code = updatedCodes[i];
+            if (code?.startsWith("102.") && code !== "102.0") {
+                const row = uploadedRows[i];
+                const ym = (row.date || "").substring(0, 7);
+                if (ym) {
+                    if (row.customerEmail) localMonthlyMap.set(`email:${row.customerEmail.toLowerCase()}|${ym}`, code);
+                    if (row.customerName) localMonthlyMap.set(`name:${row.customerName.toLowerCase()}|${ym}`, code);
+                }
+            }
+        }
+        // 2. Level 1 (105.1) and PC Membership (101.4) — only if no Delight
+        for (let i = 0; i < uploadedRows.length; i++) {
+            const code = updatedCodes[i];
+            if (code === "105.1" || code === "101.4") {
+                const row = uploadedRows[i];
+                const ym = (row.date || "").substring(0, 7);
+                if (ym) {
+                    const emailKey = row.customerEmail ? `email:${row.customerEmail.toLowerCase()}|${ym}` : "";
+                    const nameKey = row.customerName ? `name:${row.customerName.toLowerCase()}|${ym}` : "";
+                    if (emailKey && !localMonthlyMap.has(emailKey)) localMonthlyMap.set(emailKey, code);
+                    if (nameKey && !localMonthlyMap.has(nameKey)) localMonthlyMap.set(nameKey, code);
+                }
+            }
+        }
+
+        // Find LAB/PC rows and their months
+        const labPcIndices: number[] = [];
+        const labPcMonths = new Set<string>();
+        const labPcClients: { email?: string; name?: string }[] = [];
+
+        for (let i = 0; i < uploadedRows.length; i++) {
+            if (updatedCodes[i] === "103.0" || updatedCodes[i] === "104.0") {
+                labPcIndices.push(i);
+                const row = uploadedRows[i];
+                const ym = (row.date || "").substring(0, 7);
+                if (ym) labPcMonths.add(ym);
+                labPcClients.push({ email: row.customerEmail, name: row.customerName });
+            }
+        }
+
+        // 3. Fetch DB subscribers for months where we have LAB/PC rows
+        const dbMonthlyMap = new Map<string, string>();
+        if (labPcMonths.size > 0 && labPcClients.length > 0) {
+            const emails = [...new Set(labPcClients.map(c => c.email?.toLowerCase()).filter(Boolean))] as string[];
+            const names = [...new Set(labPcClients.map(c => c.name?.toLowerCase()).filter(Boolean))] as string[];
+            const monthsArr = [...labPcMonths];
+            const monthRanges = monthsArr.map(m => {
+                const [y, mo] = m.split("-").map(Number);
+                const lastDay = new Date(y, mo, 0).getDate();
+                return { start: `${m}-01`, end: `${m}-${String(lastDay).padStart(2, "0")}` };
+            });
+            const globalStart = monthRanges.reduce((min, r) => r.start < min ? r.start : min, monthRanges[0].start);
+            const globalEnd = monthRanges.reduce((max, r) => r.end > max ? r.end : max, monthRanges[0].end);
+
+            const fetchDbSubs = async (field: string, keys: string[]) => {
+                for (let i = 0; i < keys.length; i += 50) {
+                    const batch = keys.slice(i, i + 50);
+                    const { data } = await supabase
+                        .from("csv_rows")
+                        .select("date, custom_data")
+                        .eq("source", "invoice-orders")
+                        .gte("date", globalStart)
+                        .lte("date", globalEnd)
+                        .in(`custom_data->>${field}`, batch);
+
+                    if (data) {
+                        for (const row of data) {
+                            const cd = row.custom_data as Record<string, unknown>;
+                            const faCode = String(cd.financial_account_code || "");
+                            if (!faCode.startsWith("102.") && faCode !== "101.4" && faCode !== "105.1") continue;
+                            if (faCode === "102.0") continue;
+
+                            const key = String(cd[field] || "").toLowerCase();
+                            const ym = (row.date || "").substring(0, 7);
+                            if (!key || !monthsArr.includes(ym)) continue;
+
+                            const mapKey = `${field === "customer_email" ? "email" : "name"}:${key}|${ym}`;
+                            const existing = dbMonthlyMap.get(mapKey);
+                            if (!existing || (faCode.startsWith("102.") && !existing.startsWith("102."))) {
+                                dbMonthlyMap.set(mapKey, faCode);
+                            }
+                        }
+                    }
+                }
+            };
+
+            await Promise.all([
+                emails.length > 0 ? fetchDbSubs("customer_email", emails) : Promise.resolve(),
+                names.length > 0 ? fetchDbSubs("customer_name", names) : Promise.resolve(),
+            ]);
+        }
+
+        // 4. Merge: local takes priority over DB
+        const mergedMap = new Map(dbMonthlyMap);
+        for (const [key, code] of localMonthlyMap) {
+            mergedMap.set(key, code);
+        }
+
+        // 5. Build reallocations
         const reallocations: typeof labPcReallocations = [];
         const finalCodes = { ...updatedCodes };
 
-        for (let i = 0; i < uploadedRows.length; i++) {
+        for (const i of labPcIndices) {
             const currentCode = finalCodes[i];
-            if (currentCode === "103.0" || currentCode === "104.0") {
-                const row = uploadedRows[i];
-                const clientKey = row.customerEmail?.toLowerCase() || row.customerName?.toLowerCase();
-                let newCode: string;
-                let clientClass = "";
+            const row = uploadedRows[i];
+            const ym = (row.date || "").substring(0, 7);
+            let newCode: string;
+            let clientClass = "";
 
-                if (clientKey) {
-                    const cls = clientClassMap.get(clientKey);
-                    if (cls && CLIENT_TO_LAB_PC[cls]) {
-                        newCode = currentCode === "104.0" ? CLIENT_TO_LAB_PC[cls].lab : CLIENT_TO_LAB_PC[cls].pc;
-                        clientClass = cls;
-                    } else {
-                        newCode = currentCode === "104.0" ? "104.7" : "103.7";
-                        clientClass = "none";
-                    }
+            if (ym) {
+                const emailKey = row.customerEmail ? `email:${row.customerEmail.toLowerCase()}|${ym}` : "";
+                const nameKey = row.customerName ? `name:${row.customerName.toLowerCase()}|${ym}` : "";
+                const cls = (emailKey && mergedMap.get(emailKey)) || (nameKey && mergedMap.get(nameKey)) || null;
+
+                if (cls && CLIENT_TO_LAB_PC[cls]) {
+                    newCode = currentCode === "104.0" ? CLIENT_TO_LAB_PC[cls].lab : CLIENT_TO_LAB_PC[cls].pc;
+                    clientClass = cls;
                 } else {
                     newCode = currentCode === "104.0" ? "104.7" : "103.7";
-                    clientClass = "none";
+                    clientClass = cls || "none";
                 }
-
-                finalCodes[i] = newCode;
-                reallocations.push({
-                    rowIndex: i,
-                    clientName: row.customerName || "-",
-                    clientEmail: row.customerEmail || "",
-                    product: row.description,
-                    amount: row.amount,
-                    date: row.date,
-                    originalCode: currentCode,
-                    newCode,
-                    clientClass,
-                });
+            } else {
+                newCode = currentCode === "104.0" ? "104.7" : "103.7";
+                clientClass = "none";
             }
+
+            finalCodes[i] = newCode;
+            reallocations.push({
+                rowIndex: i,
+                clientName: row.customerName || "-",
+                clientEmail: row.customerEmail || "",
+                product: row.description,
+                amount: row.amount,
+                date: row.date,
+                originalCode: currentCode,
+                newCode,
+                clientClass,
+            });
         }
 
         if (reallocations.length > 0) {
@@ -1030,6 +1321,37 @@ export default function InvoiceOrdersPage() {
             });
 
             loadData();
+
+            // ── Trigger cross-scope reclassification if upload has subscriber rows ──
+            const subscriberCodes = new Set<string>();
+            const subscriberClients: { email?: string; name?: string }[] = [];
+            const subscriberMonths = new Set<string>();
+
+            for (let i = 0; i < uploadedRows.length; i++) {
+                const code = codes[i];
+                if (!code) continue;
+                const isSubscriber = (code.startsWith("102.") && code !== "102.0") || code === "101.4" || code === "105.1";
+                if (isSubscriber) {
+                    subscriberCodes.add(code);
+                    const row = uploadedRows[i];
+                    subscriberClients.push({ email: row.customerEmail, name: row.customerName });
+                    const ym = (row.date || "").substring(0, 7);
+                    if (ym) subscriberMonths.add(ym);
+                }
+            }
+
+            if (subscriberClients.length > 0 && subscriberMonths.size > 0) {
+                try {
+                    const proposals = await findReclassifications(subscriberClients, [...subscriberMonths]);
+                    if (proposals.length > 0) {
+                        setReclassProposals(proposals);
+                        setPopupSortField(""); setPopupSortDir("asc");
+                        setReclassDialogOpen(true);
+                    }
+                } catch (reclassErr) {
+                    console.error("Cross-scope reclassification check failed:", reclassErr);
+                }
+            }
         } catch (err) {
             console.error("Classification error:", err);
             toast({
@@ -1314,6 +1636,11 @@ export default function InvoiceOrdersPage() {
     const deleteRow = async (id: string) => {
         if (!confirm("Are you sure you want to delete this record?")) return;
 
+        // Capture row data before deletion for reclassification check
+        const rowData = invoiceOrders.find(r => r.id === id);
+        const faCode = rowData ? String(rowData.custom_data?.financial_account_code || "") : "";
+        const isSubscriber = (faCode.startsWith("102.") && faCode !== "102.0") || faCode === "101.4" || faCode === "105.1";
+
         try {
             const { error } = await supabase.from("csv_rows").delete().eq("id", id);
 
@@ -1321,6 +1648,28 @@ export default function InvoiceOrdersPage() {
 
             toast({ title: "Record deleted" });
             loadData();
+
+            // If deleted row was a subscriber, check if LAB/PC rows need reclassification
+            if (isSubscriber && rowData) {
+                const ym = (rowData.date || "").substring(0, 7);
+                const email = String(rowData.custom_data?.customer_email || "");
+                const name = String(rowData.custom_data?.customer_name || "");
+                if (ym && (email || name)) {
+                    try {
+                        const proposals = await findReclassifications(
+                            [{ email, name }],
+                            [ym]
+                        );
+                        if (proposals.length > 0) {
+                            setReclassProposals(proposals);
+                            setPopupSortField(""); setPopupSortDir("asc");
+                            setReclassDialogOpen(true);
+                        }
+                    } catch (reclassErr) {
+                        console.error("Post-delete reclassification check failed:", reclassErr);
+                    }
+                }
+            }
         } catch (err) {
             console.error("Delete error:", err);
             toast({
@@ -2801,6 +3150,165 @@ export default function InvoiceOrdersPage() {
                                 >
                                     {classifying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                                     Confirm & Save
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ═══════════════════════════════════════════════════════════════
+                POPUP 5 — Cross-Scope LAB/PC Reclassification
+            ═══════════════════════════════════════════════════════════════ */}
+            <Dialog open={reclassDialogOpen} onOpenChange={(open) => { if (!reclassifying) setReclassDialogOpen(open); }}>
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-5xl max-h-[85vh] overflow-hidden" style={{ display: 'flex', flexDirection: 'column' }}>
+                    <DialogHeader className="shrink-0">
+                        <DialogTitle className="flex items-center gap-2">
+                            <ArrowRightLeft className="h-5 w-5 text-blue-500" />
+                            Cross-Scope Reclassification
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-500 dark:text-gray-400">
+                            {reclassProposals.length} existing LAB/PC row(s) need reclassification based on updated subscription data.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                        <table className="w-full text-sm">
+                            <thead className="sticky top-0 z-10">
+                                <tr className="bg-gray-100 dark:bg-[#111111] border-b border-gray-200 dark:border-gray-700">
+                                    <th className="px-2 py-2 text-center w-[30px]">
+                                        <input
+                                            type="checkbox"
+                                            checked={reclassProposals.length > 0 && reclassProposals.every(p => p.selected)}
+                                            onChange={(e) => setReclassProposals(prev => prev.map(p => ({ ...p, selected: e.target.checked })))}
+                                            className="rounded"
+                                        />
+                                    </th>
+                                    {[
+                                        { key: "date", label: "Date", align: "text-left", w: "w-[80px]" },
+                                        { key: "client", label: "Client", align: "text-left", w: "w-[150px]" },
+                                        { key: "product", label: "Product", align: "text-left", w: "" },
+                                        { key: "amount", label: "Amount", align: "text-right", w: "w-[80px]" },
+                                        { key: "current", label: "Current", align: "text-center", w: "w-[120px]" },
+                                    ].map(c => (
+                                        <th key={c.key} className={`px-2 py-2 ${c.align} text-xs text-gray-500 dark:text-gray-400 ${c.w} cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`} onClick={() => handlePopupSort(c.key)}>
+                                            <div className={`flex items-center gap-1 ${c.align === "text-right" ? "justify-end" : c.align === "text-center" ? "justify-center" : ""}`}>
+                                                {c.label}
+                                                {popupSortField === c.key ? (popupSortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                                            </div>
+                                        </th>
+                                    ))}
+                                    <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[20px]"></th>
+                                    <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[120px] cursor-pointer hover:text-gray-700 dark:hover:text-gray-200" onClick={() => handlePopupSort("proposed")}>
+                                        <div className="flex items-center gap-1 justify-center">
+                                            New
+                                            {popupSortField === "proposed" ? (popupSortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                                        </div>
+                                    </th>
+                                    <th className="px-2 py-2 text-center text-xs text-gray-500 dark:text-gray-400 w-[110px] cursor-pointer hover:text-gray-700 dark:hover:text-gray-200" onClick={() => handlePopupSort("subscriber")}>
+                                        <div className="flex items-center gap-1 justify-center">
+                                            Based On
+                                            {popupSortField === "subscriber" ? (popupSortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                                        </div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[...reclassProposals].sort((a, b) => {
+                                    if (!popupSortField) return 0;
+                                    let va: string | number = "", vb: string | number = "";
+                                    if (popupSortField === "date") { va = a.date; vb = b.date; }
+                                    else if (popupSortField === "client") { va = a.clientName.toLowerCase(); vb = b.clientName.toLowerCase(); }
+                                    else if (popupSortField === "product") { va = a.product.toLowerCase(); vb = b.product.toLowerCase(); }
+                                    else if (popupSortField === "amount") { va = a.amount; vb = b.amount; }
+                                    else if (popupSortField === "current") { va = a.currentCode; vb = b.currentCode; }
+                                    else if (popupSortField === "proposed") { va = a.proposedCode; vb = b.proposedCode; }
+                                    else if (popupSortField === "subscriber") { va = a.subscriberCode; vb = b.subscriberCode; }
+                                    if (va < vb) return popupSortDir === "asc" ? -1 : 1;
+                                    if (va > vb) return popupSortDir === "asc" ? 1 : -1;
+                                    return 0;
+                                }).map((p, idx) => (
+                                    <tr key={p.rowId} className={`border-b border-gray-100 dark:border-gray-800 ${!p.selected ? "opacity-40" : ""}`}>
+                                        <td className="px-2 py-1.5 text-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={p.selected}
+                                                onChange={() => setReclassProposals(prev => prev.map((pr, i) => i === idx ? { ...pr, selected: !pr.selected } : pr))}
+                                                className="rounded"
+                                            />
+                                        </td>
+                                        <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs">{formatDate(p.date)}</td>
+                                        <td className="px-2 py-1.5 text-xs">
+                                            <div className="text-gray-700 dark:text-gray-300 truncate max-w-[150px]" title={p.clientName}>
+                                                {p.clientName}
+                                            </div>
+                                            {p.clientEmail && (
+                                                <div className="text-gray-400 text-[10px] truncate" title={p.clientEmail}>
+                                                    {p.clientEmail}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 text-xs truncate max-w-[200px]" title={p.product}>
+                                            {p.product}
+                                        </td>
+                                        <td className="px-2 py-1.5 text-right text-xs font-mono text-green-500">
+                                            {formatEuropeanNumber(p.amount)}
+                                        </td>
+                                        <td className="px-2 py-1.5 text-center">
+                                            <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 text-[10px]">
+                                                {p.currentCode} {FA_NAMES[p.currentCode] || ""}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-2 py-1.5 text-center text-gray-400">→</td>
+                                        <td className="px-2 py-1.5 text-center">
+                                            <Badge className={`text-[10px] border ${p.proposedCode.endsWith(".7")
+                                                ? "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700"
+                                                : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
+                                                }`}>
+                                                {p.proposedCode} {FA_NAMES[p.proposedCode] || ""}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-2 py-1.5 text-center">
+                                            {p.subscriberCode === "none" ? (
+                                                <span className="text-[10px] text-red-400">No subscription</span>
+                                            ) : (
+                                                <Badge className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 text-[10px]">
+                                                    {p.subscriberCode} {FA_NAMES[p.subscriberCode] || ""}
+                                                </Badge>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="shrink-0 pt-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] relative z-20">
+                        <div className="flex items-center gap-2 w-full justify-between">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {reclassProposals.filter(p => p.selected).length} of {reclassProposals.length} selected
+                                <span className="text-green-500 ml-2">
+                                    {reclassProposals.filter(p => p.selected && !p.proposedCode.endsWith(".7")).length} upgrades
+                                </span>
+                                <span className="text-amber-500 ml-2">
+                                    {reclassProposals.filter(p => p.selected && p.proposedCode.endsWith(".7")).length} downgrades
+                                </span>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setReclassDialogOpen(false)}
+                                    disabled={reclassifying}
+                                >
+                                    Skip
+                                </Button>
+                                <Button
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    onClick={applyReclassifications}
+                                    disabled={reclassifying || reclassProposals.filter(p => p.selected).length === 0}
+                                >
+                                    {reclassifying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                                    Apply {reclassProposals.filter(p => p.selected).length} Change(s)
                                 </Button>
                             </div>
                         </div>
