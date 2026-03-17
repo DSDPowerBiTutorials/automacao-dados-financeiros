@@ -1072,7 +1072,6 @@ export default function BankStatementsPage() {
                     .select("*")
                     .eq("is_reconciled", false)
                     .eq("invoice_type", "INCURRED")
-                    .or("entry_type.eq.invoice,entry_type.is.null")
                     .order("schedule_date", { ascending: false })
                     .limit(1500),
                 supabase
