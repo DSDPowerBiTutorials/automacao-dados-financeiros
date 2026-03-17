@@ -1,209 +1,196 @@
 /**
- * Date utilities with Madrid timezone (Europe/Madrid)
- * All date operations in the system use Madrid timezone as reference
+ * Date utilities — TIMEZONE-FREE
+ * All date operations treat dates as plain YYYY-MM-DD strings.
+ * No timezone conversion is ever applied to date-only values.
+ * The date the user picks is the date that gets stored and displayed.
  */
-
-const MADRID_TIMEZONE = 'Europe/Madrid';
 
 /**
- * Get current date/time in Madrid timezone
+ * Helper: extract YYYY-MM-DD from a string (strips time/timezone part)
  */
-export function getMadridDate(): Date {
-    const now = new Date();
-    const madridTime = new Date(now.toLocaleString('en-US', { timeZone: MADRID_TIMEZONE }));
-    return madridTime;
+function extractDatePart(s: string): string {
+    return s.split('T')[0];
 }
 
 /**
- * Format date for database (YYYY-MM-DD) using Madrid timezone
- * Ensures dates are stored consistently regardless of user's local timezone
+ * Helper: format a Date object as YYYY-MM-DD using LOCAL getters (no timezone conversion)
+ */
+function dateToYMD(d: Date): string {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
+ * Get current date as a Date object (local time, no timezone conversion)
+ */
+export function getMadridDate(): Date {
+    return new Date();
+}
+
+/**
+ * Format date for database (YYYY-MM-DD).
+ * If the input is already a YYYY-MM-DD string, return it as-is — NO Date object, NO timezone.
  */
 export function formatDateForDB(dateString: string | Date | null | undefined): string {
     if (!dateString) return "";
 
-    let date: Date;
-
     if (typeof dateString === 'string') {
-        // If already in YYYY-MM-DD format, parse it as Madrid timezone
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-            // Parse as Madrid noon to avoid any timezone shift
-            date = new Date(dateString + 'T12:00:00');
-        } else {
-            date = new Date(dateString);
+        const datePart = extractDatePart(dateString);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+            return datePart;
         }
-    } else {
-        date = dateString;
+        // Try to extract YYYY-MM-DD from any format
+        const match = dateString.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+        return dateString;
     }
 
-    // Format using Madrid timezone
-    const madridDateStr = date.toLocaleDateString('en-CA', {
-        timeZone: MADRID_TIMEZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
-
-    return madridDateStr; // Returns YYYY-MM-DD
+    return dateToYMD(dateString);
 }
 
 /**
  * Format date from database for input[type="date"] (YYYY-MM-DD)
- * Ensures dates are displayed consistently in Madrid timezone
  */
 export function formatDateForInput(dateString: string | null | undefined): string {
     if (!dateString) return "";
-
-    // Remove time part if present
-    const datePart = dateString.split('T')[0];
-
-    // Validate YYYY-MM-DD format
+    const datePart = extractDatePart(dateString);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
         console.warn('Invalid date format:', dateString);
         return "";
     }
-
     return datePart;
 }
 
 /**
- * Format date for display (localized format)
- * Uses Madrid timezone for consistent display
+ * Format date for display (DD/MM/YYYY) — pure string manipulation, no Date objects
  */
-export function formatDateForDisplay(dateString: string | Date | null | undefined, locale: string = 'es-ES'): string {
+export function formatDateForDisplay(dateString: string | Date | null | undefined, _locale: string = 'es-ES'): string {
     if (!dateString) return "";
 
-    let date: Date;
-
+    let datePart: string;
     if (typeof dateString === 'string') {
-        // Parse with noon time to avoid timezone shifts
-        date = new Date(dateString.split('T')[0] + 'T12:00:00');
+        datePart = extractDatePart(dateString);
     } else {
-        date = dateString;
+        datePart = dateToYMD(dateString);
     }
 
-    return date.toLocaleDateString(locale, {
-        timeZone: MADRID_TIMEZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return "";
+    const [year, month, day] = datePart.split('-');
+    return `${day}/${month}/${year}`;
 }
 
 /**
- * Format datetime for display with time
+ * Format datetime for display with time (DD/MM/YYYY HH:MM)
  */
-export function formatDateTimeForDisplay(dateString: string | Date | null | undefined, locale: string = 'es-ES'): string {
+export function formatDateTimeForDisplay(dateString: string | Date | null | undefined, _locale: string = 'es-ES'): string {
     if (!dateString) return "";
 
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    if (typeof dateString === 'string') {
+        const datePart = extractDatePart(dateString);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return dateString;
+        const [year, month, day] = datePart.split('-');
+        const timePart = dateString.includes('T') ? dateString.split('T')[1]?.substring(0, 5) : '';
+        return timePart ? `${day}/${month}/${year} ${timePart}` : `${day}/${month}/${year}`;
+    }
 
-    return date.toLocaleString(locale, {
-        timeZone: MADRID_TIMEZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    const dp = dateToYMD(dateString);
+    const [year, month, day] = dp.split('-');
+    const hours = String(dateString.getHours()).padStart(2, '0');
+    const minutes = String(dateString.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
 
 /**
- * Get current date in YYYY-MM-DD format (Madrid timezone)
+ * Get current date in YYYY-MM-DD format (local time)
  */
 export function getCurrentDateForDB(): string {
-    const madridDate = getMadridDate();
-    return madridDate.toLocaleDateString('en-CA', {
-        timeZone: MADRID_TIMEZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
+    return dateToYMD(new Date());
 }
 
 /**
- * Get current timestamp in ISO format (Madrid timezone)
+ * Get current timestamp in ISO format
  */
 export function getCurrentTimestamp(): string {
-    const now = new Date();
-    // Convert to Madrid timezone and return ISO string
-    const madridTime = new Date(now.toLocaleString('en-US', { timeZone: MADRID_TIMEZONE }));
-    return madridTime.toISOString();
+    return new Date().toISOString();
 }
 
 /**
- * Parse date string to Date object using Madrid timezone
+ * Parse date string to Date object — uses UTC noon to avoid any midnight timezone shift
  */
 export function parseMadridDate(dateString: string): Date {
     if (!dateString) return new Date();
 
-    // If YYYY-MM-DD format, parse as Madrid noon
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-        return new Date(dateString + 'T12:00:00');
+    const datePart = extractDatePart(dateString);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+        // Parse as UTC noon — safe from any timezone shift
+        const [y, m, d] = datePart.split('-').map(Number);
+        return new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
     }
 
     return new Date(dateString);
 }
 
 /**
- * Compare two dates (returns -1, 0, or 1)
+ * Compare two dates (returns -1, 0, or 1) — string comparison for YYYY-MM-DD
  */
 export function compareDates(date1: string | Date, date2: string | Date): number {
-    const d1 = typeof date1 === 'string' ? parseMadridDate(date1) : date1;
-    const d2 = typeof date2 === 'string' ? parseMadridDate(date2) : date2;
+    const s1 = typeof date1 === 'string' ? extractDatePart(date1) : dateToYMD(date1);
+    const s2 = typeof date2 === 'string' ? extractDatePart(date2) : dateToYMD(date2);
 
-    if (d1 < d2) return -1;
-    if (d1 > d2) return 1;
+    if (s1 < s2) return -1;
+    if (s1 > s2) return 1;
     return 0;
 }
 
 /**
- * Check if date is in the past (Madrid timezone)
+ * Check if date is in the past
  */
 export function isPastDate(dateString: string): boolean {
-    const date = parseMadridDate(dateString);
-    const today = getMadridDate();
-    today.setHours(0, 0, 0, 0);
-
-    return date < today;
+    const datePart = extractDatePart(dateString);
+    const today = dateToYMD(new Date());
+    return datePart < today;
 }
 
 /**
- * Check if date is today (Madrid timezone)
+ * Check if date is today
  */
 export function isToday(dateString: string): boolean {
-    const date = parseMadridDate(dateString);
-    const today = getMadridDate();
-
-    return date.toLocaleDateString('en-CA', { timeZone: MADRID_TIMEZONE }) ===
-        today.toLocaleDateString('en-CA', { timeZone: MADRID_TIMEZONE });
+    const datePart = extractDatePart(dateString);
+    const today = dateToYMD(new Date());
+    return datePart === today;
 }
 
 /**
- * Add days to a date (Madrid timezone)
+ * Add days to a date
  */
 export function addDays(dateString: string | Date, days: number): string {
-    const date = typeof dateString === 'string' ? parseMadridDate(dateString) : dateString;
-    const newDate = new Date(date);
-    newDate.setDate(newDate.getDate() + days);
-
-    return formatDateForDB(newDate);
+    const datePart = typeof dateString === 'string' ? extractDatePart(dateString) : dateToYMD(dateString);
+    const [y, m, d] = datePart.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    date.setDate(date.getDate() + days);
+    return dateToYMD(date);
 }
 
 /**
  * Get difference in days between two dates
  */
 export function getDaysDifference(date1: string | Date, date2: string | Date): number {
-    const d1 = typeof date1 === 'string' ? parseMadridDate(date1) : date1;
-    const d2 = typeof date2 === 'string' ? parseMadridDate(date2) : date2;
+    const s1 = typeof date1 === 'string' ? extractDatePart(date1) : dateToYMD(date1);
+    const s2 = typeof date2 === 'string' ? extractDatePart(date2) : dateToYMD(date2);
 
-    const diffTime = Math.abs(d2.getTime() - d1.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const [y1, m1, d1] = s1.split('-').map(Number);
+    const [y2, m2, d2] = s2.split('-').map(Number);
 
-    return diffDays;
+    const dt1 = Date.UTC(y1, m1 - 1, d1);
+    const dt2 = Date.UTC(y2, m2 - 1, d2);
+
+    return Math.ceil(Math.abs(dt2 - dt1) / (1000 * 60 * 60 * 24));
 }
 
 /**
- * Format relative time (always Madrid timezone)
+ * Format relative time
  * Shows "Just now", "X min ago", "Xh ago", "Yesterday", etc.
  */
 export function formatRelativeTime(
@@ -214,11 +201,7 @@ export function formatRelativeTime(
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
     const now = new Date();
 
-    // Convert both to Madrid timezone for comparison
-    const dateInMadrid = new Date(date.toLocaleString('en-US', { timeZone: MADRID_TIMEZONE }));
-    const nowInMadrid = new Date(now.toLocaleString('en-US', { timeZone: MADRID_TIMEZONE }));
-
-    const diffMs = nowInMadrid.getTime() - dateInMadrid.getTime();
+    const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);

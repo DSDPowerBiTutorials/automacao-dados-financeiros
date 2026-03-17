@@ -341,8 +341,7 @@ export function InvoiceSidePanel({
 
             let finalInvoiceNumber = formData.invoice_number?.trim() || null;
             if (!editingInvoice && !finalInvoiceNumber) {
-                const year = new Date(formData.invoice_date).getFullYear();
-                const month = String(new Date(formData.invoice_date).getMonth() + 1).padStart(2, '0');
+                const [year, month] = formData.invoice_date.split('-');
                 const { data: maxInvoiceData } = await supabase
                     .from("invoices")
                     .select("invoice_number")

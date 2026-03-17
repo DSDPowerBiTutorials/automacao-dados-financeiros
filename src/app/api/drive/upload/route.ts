@@ -8,10 +8,10 @@ export const maxDuration = 30;
 const verifiedBuckets = new Set<string>();
 
 const BUCKET_CONFIG: Record<string, { public: boolean; fileSizeLimit: number; allowedMimeTypes?: string[] }> = {
-    "csv_files":       { public: false, fileSizeLimit: 52428800 },
-    "attachments":     { public: false, fileSizeLimit: 52428800 },
-    "ws-attachments":  { public: false, fileSizeLimit: 52428800 },
-    "tutorial-videos": { public: true,  fileSizeLimit: 209715200, allowedMimeTypes: ["video/mp4", "video/webm"] },
+    "csv_files": { public: false, fileSizeLimit: 52428800 },
+    "attachments": { public: false, fileSizeLimit: 52428800 },
+    "ws-attachments": { public: false, fileSizeLimit: 52428800 },
+    "tutorial-videos": { public: true, fileSizeLimit: 209715200, allowedMimeTypes: ["video/mp4", "video/webm"] },
 };
 
 async function ensureBucket(name: string) {

@@ -16,6 +16,7 @@ import {
   getCurrentDateForDB,
   getCurrentTimestamp
 } from "@/lib/date-utils";
+import { formatDate } from "@/lib/formatters";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -445,8 +446,7 @@ export default function InvoicesPage() {
       let finalInvoiceNumber = formData.invoice_number?.trim() || null;
 
       if (!editingInvoice && !finalInvoiceNumber) {
-        const year = new Date(formData.invoice_date).getFullYear();
-        const month = String(new Date(formData.invoice_date).getMonth() + 1).padStart(2, '0');
+        const [year, month] = formData.invoice_date.split('-');
 
         const { data: maxInvoiceData } = await supabase
           .from("invoices")
@@ -652,18 +652,19 @@ export default function InvoicesPage() {
       if (splitConfig.type === 'installments') {
         // Split by installments
         const installmentAmount = splitInvoice.invoice_amount / splitConfig.installments;
-        const baseDueDate = new Date(splitInvoice.due_date || splitInvoice.invoice_date);
+        const baseStr = splitInvoice.due_date || splitInvoice.invoice_date;
+        const [baseY, baseM, baseD] = baseStr.split('-').map(Number);
 
         const splits = [];
         for (let i = 0; i < splitConfig.installments; i++) {
-          const dueDate = new Date(baseDueDate);
-          dueDate.setMonth(dueDate.getMonth() + i);
+          const dueDate = new Date(baseY, baseM - 1 + i, baseD);
+          const dueDateStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
 
           splits.push({
             ...baseSplitData,
             invoice_amount: installmentAmount,
-            due_date: dueDate.toISOString().split('T')[0],
-            schedule_date: dueDate.toISOString().split('T')[0],
+            due_date: dueDateStr,
+            schedule_date: dueDateStr,
             is_split: true,
             parent_invoice_id: splitInvoice.id,
             split_number: i + 1,
@@ -1009,6 +1010,8 @@ export default function InvoicesPage() {
     const start = new Date();
     const end = new Date();
 
+    const toYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
     switch (preset) {
       case "This Week":
         start.setDate(now.getDate() - now.getDay());
@@ -1035,12 +1038,12 @@ export default function InvoicesPage() {
         end.setFullYear(now.getFullYear() + 1, 11, 31);
         break;
       default:
-        return { start: now.toISOString().split('T')[0], end: now.toISOString().split('T')[0] };
+        return { start: toYMD(now), end: toYMD(now) };
     }
 
     return {
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
+      start: toYMD(start),
+      end: toYMD(end)
     };
   }
 
@@ -2528,7 +2531,7 @@ export default function InvoicesPage() {
                     <div><span className="text-muted-foreground">Invoice:</span> {splitInvoice.invoice_number}</div>
                     <div><span className="text-muted-foreground">Provider:</span> {providers.find(p => p.code === splitInvoice.provider_code)?.name}</div>
                     <div><span className="text-muted-foreground">Amount:</span> {formatEuropeanNumber(splitInvoice.amount)}</div>
-                    <div><span className="text-muted-foreground">Due Date:</span> {splitInvoice.due_date ? new Date(splitInvoice.due_date).toLocaleDateString('pt-BR') : '-'}</div>
+                    <div><span className="text-muted-foreground">Due Date:</span> {splitInvoice.due_date ? formatDate(splitInvoice.due_date) : '-'}</div>
                   </div>
                 </div>
 
@@ -2625,12 +2628,14 @@ export default function InvoicesPage() {
                         <div className="space-y-1 text-sm">
                           {Array.from({ length: splitConfig.installments }, (_, i) => {
                             const installmentAmount = splitInvoice.invoice_amount / splitConfig.installments;
-                            const dueDate = new Date(splitInvoice.due_date || new Date());
-                            dueDate.setMonth(dueDate.getMonth() + i);
+                            const baseStr = splitInvoice.due_date || getCurrentDateForDB();
+                            const [bY, bM, bD] = baseStr.split('-').map(Number);
+                            const dueDate = new Date(bY, bM - 1 + i, bD);
+                            const dueDateStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
                             return (
                               <div key={i} className="flex justify-between">
                                 <span>Installment {i + 1}/{splitConfig.installments}:</span>
-                                <span className="font-mono">{formatEuropeanNumber(installmentAmount)} - Due: {dueDate.toLocaleDateString('pt-BR')}</span>
+                                <span className="font-mono">{formatEuropeanNumber(installmentAmount)} - Due: {formatDate(dueDateStr)}</span>
                               </div>
                             );
                           })}
@@ -2887,7 +2892,7 @@ export default function InvoicesPage() {
                               </div>
                               <div className="grid grid-cols-3 gap-2 text-sm text-muted-foreground">
                                 <div>Amount: {formatEuropeanNumber(splitPart.amount)}</div>
-                                <div>Due: {splitPart.due_date ? new Date(splitPart.due_date).toLocaleDateString('pt-BR') : '-'}</div>
+                                <div>Due: {splitPart.due_date ? formatDate(splitPart.due_date) : '-'}</div>
                                 <div>Status: {splitPart.is_reconciled ? 'Reconciled' : 'Pending'}</div>
                               </div>
                               {splitPart.financial_account_code !== viewingSplitInvoice.financial_account_code && (
@@ -3686,25 +3691,25 @@ export default function InvoicesPage() {
 
                               {/* Input Date */}
                               {visibleColumns.has('input_date') && (
-                                <td className="px-2 py-1 text-[11px]">{new Date(invoice.input_date).toLocaleDateString('pt-BR')}</td>
+                                <td className="px-2 py-1 text-[11px]">{formatDate(invoice.input_date)}</td>
                               )}
 
                               {/* Invoice Date */}
                               {visibleColumns.has('invoice_date') && (
-                                <td className="px-2 py-1 text-[11px] font-medium">{new Date(invoice.invoice_date).toLocaleDateString('pt-BR')}</td>
+                                <td className="px-2 py-1 text-[11px] font-medium">{formatDate(invoice.invoice_date)}</td>
                               )}
 
                               {/* Benefit Date */}
                               {visibleColumns.has('benefit_date') && (
-                                <td className="px-2 py-1 text-[11px]">{new Date(invoice.benefit_date).toLocaleDateString('pt-BR')}</td>
+                                <td className="px-2 py-1 text-[11px]">{formatDate(invoice.benefit_date)}</td>
                               )}
 
                               {/* Due Date */}
                               {visibleColumns.has('due_date') && (
                                 <td className="px-2 py-1 text-[11px]">
                                   {invoice.due_date ? (
-                                    <Badge variant={new Date(invoice.due_date) < new Date() ? "destructive" : "outline"} className="text-[10px] px-1.5 py-0">
-                                      {new Date(invoice.due_date).toLocaleDateString('pt-BR')}
+                                    <Badge variant={invoice.due_date < getCurrentDateForDB() ? "destructive" : "outline"} className="text-[10px] px-1.5 py-0">
+                                      {formatDate(invoice.due_date)}
                                     </Badge>
                                   ) : '-'}
                                 </td>
@@ -3713,7 +3718,7 @@ export default function InvoicesPage() {
                               {/* Schedule Date */}
                               {visibleColumns.has('schedule_date') && (
                                 <td className="px-2 py-1 text-[11px]">
-                                  {invoice.schedule_date ? new Date(invoice.schedule_date).toLocaleDateString('pt-BR') : '-'}
+                                  {invoice.schedule_date ? formatDate(invoice.schedule_date) : '-'}
                                 </td>
                               )}
 
@@ -4307,7 +4312,7 @@ export default function InvoicesPage() {
                               {visibleColumns.has('is_reconciled') && (
                                 <td className="px-2 py-1 text-center">
                                   {invoice.is_reconciled ? (
-                                    <span title={`Reconciled${invoice.reconciled_at ? ' on ' + new Date(invoice.reconciled_at).toLocaleDateString('pt-BR') : ''}`}>
+                                    <span title={`Reconciled${invoice.reconciled_at ? ' on ' + formatDate(invoice.reconciled_at) : ''}`}>
                                       <CheckCircle2 className="h-3.5 w-3.5 text-green-400 inline" />
                                     </span>
                                   ) : (
@@ -4341,7 +4346,7 @@ export default function InvoicesPage() {
                               {/* Payment Date - NO INLINE EDIT (set by reconciliation) */}
                               {visibleColumns.has('payment_date') && (
                                 <td className="px-2 py-1 text-[11px]">
-                                  {invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}
+                                  {invoice.payment_date ? formatDate(invoice.payment_date) : <span className="text-gray-500 dark:text-gray-400">-</span>}
                                 </td>
                               )}
                             </tr>
@@ -4416,23 +4421,23 @@ export default function InvoicesPage() {
                           )}
 
                           {visibleColumns.has('input_date') && (
-                            <td className="px-2 py-1 text-[11px]">{invoice.input_date ? new Date(invoice.input_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
+                            <td className="px-2 py-1 text-[11px]">{invoice.input_date ? formatDate(invoice.input_date) : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
                           )}
 
                           {visibleColumns.has('invoice_date') && (
-                            <td className="px-2 py-1 text-[11px]">{invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
+                            <td className="px-2 py-1 text-[11px]">{invoice.invoice_date ? formatDate(invoice.invoice_date) : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
                           )}
 
                           {visibleColumns.has('benefit_date') && (
-                            <td className="px-2 py-1 text-[11px]">{invoice.benefit_date ? new Date(invoice.benefit_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
+                            <td className="px-2 py-1 text-[11px]">{invoice.benefit_date ? formatDate(invoice.benefit_date) : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
                           )}
 
                           {visibleColumns.has('due_date') && (
-                            <td className="px-2 py-1 text-[11px]">{invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
+                            <td className="px-2 py-1 text-[11px]">{invoice.due_date ? formatDate(invoice.due_date) : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
                           )}
 
                           {visibleColumns.has('schedule_date') && (
-                            <td className="px-2 py-1 text-[11px]">{invoice.schedule_date ? new Date(invoice.schedule_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
+                            <td className="px-2 py-1 text-[11px]">{invoice.schedule_date ? formatDate(invoice.schedule_date) : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
                           )}
 
                           {visibleColumns.has('provider') && (
@@ -4551,7 +4556,7 @@ export default function InvoicesPage() {
 
                           {visibleColumns.has('payment_date') && (
                             <td className="px-2 py-1 text-[11px]">
-                              {invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}
+                              {invoice.payment_date ? formatDate(invoice.payment_date) : <span className="text-gray-500 dark:text-gray-400">-</span>}
                             </td>
                           )}
                         </tr>

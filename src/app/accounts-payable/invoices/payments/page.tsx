@@ -26,7 +26,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { getMadridDate, parseMadridDate } from "@/lib/date-utils";
+import { getCurrentDateForDB, addDays } from "@/lib/date-utils";
 import { PageHeader } from "@/components/ui/page-header";
 
 interface BankAccount {
@@ -71,13 +71,11 @@ export default function PaymentsPage() {
     const { toast } = useToast();
 
     // Date range filter
-    const today = useMemo(() => getMadridDate(), []);
+    const todayStr = useMemo(() => getCurrentDateForDB(), []);
     const [startDate, setStartDate] = useState(() => {
-        const d = new Date(today);
-        d.setDate(d.getDate() - 30); // Last 30 days by default
-        return d.toISOString().split('T')[0];
+        return addDays(getCurrentDateForDB(), -30);
     });
-    const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
+    const [endDate, setEndDate] = useState(getCurrentDateForDB());
     const [dateFilterType, setDateFilterType] = useState<"due_date" | "schedule_date" | "invoice_date" | "payment_date">("due_date");
 
     useEffect(() => {
@@ -121,11 +119,8 @@ export default function PaymentsPage() {
 
             if (!dateToCompare) return false;
 
-            const compareDate = parseMadridDate(dateToCompare);
-            const startD = parseMadridDate(startDate);
-            const endD = parseMadridDate(endDate);
-
-            return compareDate >= startD && compareDate <= endD;
+            const compareDateStr = dateToCompare.split('T')[0];
+            return compareDateStr >= startDate && compareDateStr <= endDate;
         });
     }, [allInvoices, selectedScope, startDate, endDate, dateFilterType]);
 
@@ -157,18 +152,15 @@ export default function PaymentsPage() {
         const paid = paidInPeriod.reduce((sum, inv) => sum + inv.invoice_amount, 0);
 
         // Count invoices with due dates inside/outside period
-        const todayDate = parseMadridDate(today.toISOString().split('T')[0]);
-        const startD = parseMadridDate(startDate);
-        const endD = parseMadridDate(endDate);
-        const isPastPeriod = endD < todayDate;
+        const isPastPeriod = endDate < todayStr;
 
         let duingInsidePeriod = 0;
         let dueOutsidePeriod = 0;
 
         [...pendingPayments, ...scheduledPayments].forEach((inv) => {
             if (inv.due_date) {
-                const dueDate = parseMadridDate(inv.due_date);
-                const isInPeriod = dueDate >= startD && dueDate <= endD;
+                const dueDateStr = inv.due_date.split('T')[0];
+                const isInPeriod = dueDateStr >= startDate && dueDateStr <= endDate;
 
                 // If past period and invoice is paid, don't count it in due calculations
                 if (isPastPeriod && (inv.payment_date || inv.is_reconciled)) {
@@ -190,7 +182,7 @@ export default function PaymentsPage() {
             dueInsidePeriod: duingInsidePeriod,
             dueOutsidePeriod: dueOutsidePeriod
         };
-    }, [pendingPayments, scheduledPayments, paidInPeriod, startDate, endDate, today]);
+    }, [pendingPayments, scheduledPayments, paidInPeriod, startDate, endDate, todayStr]);
 
     // Account balances
     const accountBalances: AccountBalance[] = useMemo(() => {
@@ -397,40 +389,28 @@ export default function PaymentsPage() {
                                 <p className="text-sm font-medium text-gray-700 mb-2">Past Periods</p>
                                 <div className="flex flex-wrap gap-2">
                                     <Button variant="outline" size="sm" onClick={() => {
-                                        const d = new Date(today);
-                                        d.setDate(d.getDate() - 30);
-                                        setStartDate(d.toISOString().split('T')[0]);
-                                        setEndDate(today.toISOString().split('T')[0]);
+                                        setStartDate(addDays(todayStr, -30));
+                                        setEndDate(todayStr);
                                     }}>Last 30 Days</Button>
                                     <Button variant="outline" size="sm" onClick={() => {
-                                        const d = new Date(today);
-                                        d.setDate(d.getDate() - 25);
-                                        setStartDate(d.toISOString().split('T')[0]);
-                                        setEndDate(today.toISOString().split('T')[0]);
+                                        setStartDate(addDays(todayStr, -25));
+                                        setEndDate(todayStr);
                                     }}>Last 25 Days</Button>
                                     <Button variant="outline" size="sm" onClick={() => {
-                                        const d = new Date(today);
-                                        d.setDate(d.getDate() - 20);
-                                        setStartDate(d.toISOString().split('T')[0]);
-                                        setEndDate(today.toISOString().split('T')[0]);
+                                        setStartDate(addDays(todayStr, -20));
+                                        setEndDate(todayStr);
                                     }}>Last 20 Days</Button>
                                     <Button variant="outline" size="sm" onClick={() => {
-                                        const d = new Date(today);
-                                        d.setDate(d.getDate() - 15);
-                                        setStartDate(d.toISOString().split('T')[0]);
-                                        setEndDate(today.toISOString().split('T')[0]);
+                                        setStartDate(addDays(todayStr, -15));
+                                        setEndDate(todayStr);
                                     }}>Last 15 Days</Button>
                                     <Button variant="outline" size="sm" onClick={() => {
-                                        const d = new Date(today);
-                                        d.setDate(d.getDate() - 10);
-                                        setStartDate(d.toISOString().split('T')[0]);
-                                        setEndDate(today.toISOString().split('T')[0]);
+                                        setStartDate(addDays(todayStr, -10));
+                                        setEndDate(todayStr);
                                     }}>Last 10 Days</Button>
                                     <Button variant="outline" size="sm" onClick={() => {
-                                        const d = new Date(today);
-                                        d.setDate(d.getDate() - 7);
-                                        setStartDate(d.toISOString().split('T')[0]);
-                                        setEndDate(today.toISOString().split('T')[0]);
+                                        setStartDate(addDays(todayStr, -7));
+                                        setEndDate(todayStr);
                                     }}>Past Week</Button>
                                 </div>
                             </div>
@@ -438,40 +418,28 @@ export default function PaymentsPage() {
                                 <p className="text-sm font-medium text-gray-700 mb-2">Future Periods</p>
                                 <div className="flex flex-wrap gap-2">
                                     <Button variant="outline" size="sm" onClick={() => {
-                                        const d = new Date(today);
-                                        d.setDate(d.getDate() + 7);
-                                        setStartDate(today.toISOString().split('T')[0]);
-                                        setEndDate(d.toISOString().split('T')[0]);
+                                        setStartDate(todayStr);
+                                        setEndDate(addDays(todayStr, 7));
                                     }}>Next Week</Button>
                                     <Button variant="outline" size="sm" onClick={() => {
-                                        const d = new Date(today);
-                                        d.setDate(d.getDate() + 10);
-                                        setStartDate(today.toISOString().split('T')[0]);
-                                        setEndDate(d.toISOString().split('T')[0]);
+                                        setStartDate(todayStr);
+                                        setEndDate(addDays(todayStr, 10));
                                     }}>Next 10 Days</Button>
                                     <Button variant="outline" size="sm" onClick={() => {
-                                        const d = new Date(today);
-                                        d.setDate(d.getDate() + 15);
-                                        setStartDate(today.toISOString().split('T')[0]);
-                                        setEndDate(d.toISOString().split('T')[0]);
+                                        setStartDate(todayStr);
+                                        setEndDate(addDays(todayStr, 15));
                                     }}>Next 15 Days</Button>
                                     <Button variant="outline" size="sm" onClick={() => {
-                                        const d = new Date(today);
-                                        d.setDate(d.getDate() + 20);
-                                        setStartDate(today.toISOString().split('T')[0]);
-                                        setEndDate(d.toISOString().split('T')[0]);
+                                        setStartDate(todayStr);
+                                        setEndDate(addDays(todayStr, 20));
                                     }}>Next 20 Days</Button>
                                     <Button variant="outline" size="sm" onClick={() => {
-                                        const d = new Date(today);
-                                        d.setDate(d.getDate() + 25);
-                                        setStartDate(today.toISOString().split('T')[0]);
-                                        setEndDate(d.toISOString().split('T')[0]);
+                                        setStartDate(todayStr);
+                                        setEndDate(addDays(todayStr, 25));
                                     }}>Next 25 Days</Button>
                                     <Button variant="outline" size="sm" onClick={() => {
-                                        const d = new Date(today);
-                                        d.setDate(d.getDate() + 30);
-                                        setStartDate(today.toISOString().split('T')[0]);
-                                        setEndDate(d.toISOString().split('T')[0]);
+                                        setStartDate(todayStr);
+                                        setEndDate(addDays(todayStr, 30));
                                     }}>Next 30 Days</Button>
                                 </div>
                             </div>
