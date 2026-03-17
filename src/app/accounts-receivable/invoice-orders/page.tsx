@@ -321,6 +321,7 @@ export default function InvoiceOrdersPage() {
     // ── Combobox options for Products & Clients ──
     const [productOptions, setProductOptions] = useState<ComboboxOption[]>([]);
     const [clientOptions, setClientOptions] = useState<ComboboxOption[]>([]);
+    const [clientEmailMap, setClientEmailMap] = useState<Record<string, string>>({});
 
     // Load data
     const loadData = useCallback(async () => {
@@ -433,7 +434,7 @@ export default function InvoiceOrdersPage() {
                 })));
             }
 
-            // Load distinct client names from csv_rows
+            // Load distinct client names + emails from csv_rows
             const { data: rows } = await supabase
                 .from("csv_rows")
                 .select("custom_data")
@@ -441,13 +442,30 @@ export default function InvoiceOrdersPage() {
                 .not("custom_data->>customer_name", "is", null)
                 .limit(5000);
             if (rows) {
-                const names = new Set<string>();
+                const emailMap: Record<string, string> = {};
                 for (const r of rows) {
-                    const name = (r.custom_data as Record<string, unknown>)?.customer_name;
-                    if (typeof name === "string" && name.trim()) names.add(name.trim());
+                    const cd = r.custom_data as Record<string, unknown>;
+                    const name = cd?.customer_name;
+                    const email = cd?.customer_email;
+                    if (typeof name === "string" && name.trim()) {
+                        const n = name.trim();
+                        if (typeof email === "string" && email.trim() && !emailMap[n]) {
+                            emailMap[n] = email.trim();
+                        }
+                    }
                 }
-                const sorted = Array.from(names).sort((a, b) => a.localeCompare(b));
-                setClientOptions(sorted.map((n) => ({ value: n, label: n })));
+                const sorted = Object.keys(emailMap).length > 0
+                    ? [...new Set(rows.map(r => {
+                        const n = (r.custom_data as Record<string, unknown>)?.customer_name;
+                        return typeof n === "string" ? n.trim() : "";
+                    }).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+                    : [];
+                setClientOptions(sorted.map((n) => ({
+                    value: n,
+                    label: n,
+                    sublabel: emailMap[n] || undefined,
+                })));
+                setClientEmailMap(emailMap);
             }
         };
         loadProductsAndClients();
@@ -2925,7 +2943,10 @@ export default function InvoiceOrdersPage() {
                                             <Combobox
                                                 options={clientOptions}
                                                 value={addForm.customer_name}
-                                                onValueChange={(v) => setAddForm({ ...addForm, customer_name: v })}
+                                                onValueChange={(v) => {
+                                                    const email = clientEmailMap[v] || "";
+                                                    setAddForm({ ...addForm, customer_name: v, customer_email: email });
+                                                }}
                                                 placeholder="Select client..."
                                                 searchPlaceholder="Search clients..."
                                                 emptyText="No clients found."

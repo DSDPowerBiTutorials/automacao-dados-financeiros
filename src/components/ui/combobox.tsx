@@ -120,7 +120,7 @@ export function Combobox({
                         {addNewLabel && (
                             <>
                                 <CommandSeparator />
-                                <CommandGroup>
+                                <CommandGroup forceMount>
                                     {!addingNew ? (
                                         <CommandItem
                                             value={`__add_new__${addNewLabel}`}
