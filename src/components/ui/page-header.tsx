@@ -2,7 +2,7 @@
 
 import { type ReactNode, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Info, Database, ArrowRight, BookOpen } from "lucide-react";
+import { Info, Database, ArrowRight, BookOpen, Play } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getDataSheetByRoute, type DataSheetEntry } from "@/lib/page-data-sheets";
 
@@ -23,6 +23,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, children, dataSheet }: PageHeaderProps) {
     const pathname = usePathname();
     const [lang, setLang] = useState<"en" | "es">("en");
+    const [videoOpen, setVideoOpen] = useState(false);
     const t = (obj: { en: string; es: string }) => obj[lang];
 
     // Auto-detect data sheet from route, unless explicitly overridden
@@ -46,6 +47,39 @@ export function PageHeader({ title, subtitle, children, dataSheet }: PageHeaderP
                             </p>
                         )}
                     </div>
+
+                    {/* Video tutorial popover */}
+                    {sheet?.videoUrl && (
+                        <Popover open={videoOpen} onOpenChange={setVideoOpen}>
+                            <PopoverTrigger asChild>
+                                <button
+                                    className="flex-shrink-0 p-1 rounded-md text-gray-400 hover:text-emerald-500 dark:text-gray-500 dark:hover:text-emerald-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                    title={lang === "en" ? "Video Tutorial" : "Tutorial en Vídeo"}
+                                >
+                                    <Play className="h-4 w-4" />
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                                align="start"
+                                className="w-[520px] p-0 bg-white dark:bg-black border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl"
+                            >
+                                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                                    <Play className="h-4 w-4 text-emerald-500" />
+                                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                        {lang === "en" ? "Video Tutorial" : "Tutorial en Vídeo"}
+                                    </span>
+                                </div>
+                                <div className="p-3">
+                                    <video
+                                        src={sheet.videoUrl}
+                                        controls
+                                        className="w-full rounded-lg"
+                                        preload="metadata"
+                                    />
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    )}
 
                     {/* Ficha Técnica popover */}
                     {sheet && (

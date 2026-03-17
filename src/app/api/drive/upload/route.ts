@@ -7,15 +7,20 @@ export const maxDuration = 30;
 // Cache de buckets já verificados (evita chamadas repetidas)
 const verifiedBuckets = new Set<string>();
 
+const BUCKET_CONFIG: Record<string, { public: boolean; fileSizeLimit: number; allowedMimeTypes?: string[] }> = {
+    "csv_files":       { public: false, fileSizeLimit: 52428800 },
+    "attachments":     { public: false, fileSizeLimit: 52428800 },
+    "ws-attachments":  { public: false, fileSizeLimit: 52428800 },
+    "tutorial-videos": { public: true,  fileSizeLimit: 209715200, allowedMimeTypes: ["video/mp4", "video/webm"] },
+};
+
 async function ensureBucket(name: string) {
     if (verifiedBuckets.has(name)) return;
     const { data: buckets } = await supabaseAdmin.storage.listBuckets();
     const exists = buckets?.some((b) => b.name === name);
     if (!exists) {
-        await supabaseAdmin.storage.createBucket(name, {
-            public: false,
-            fileSizeLimit: 52428800, // 50MB
-        });
+        const cfg = BUCKET_CONFIG[name] || { public: false, fileSizeLimit: 52428800 };
+        await supabaseAdmin.storage.createBucket(name, cfg);
     }
     verifiedBuckets.add(name);
 }
@@ -39,7 +44,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const allowedBuckets = ["csv_files", "attachments", "ws-attachments"];
+        const allowedBuckets = ["csv_files", "attachments", "ws-attachments", "tutorial-videos"];
         if (!allowedBuckets.includes(bucket)) {
             return NextResponse.json(
                 { success: false, error: "Bucket não permitido" },
@@ -50,11 +55,11 @@ export async function POST(request: NextRequest) {
         // Garantir que o bucket existe
         await ensureBucket(bucket);
 
-        // Validar tamanho (50MB máx)
-        const maxSize = 50 * 1024 * 1024;
+        // Validar tamanho (depende do bucket)
+        const maxSize = bucket === "tutorial-videos" ? 200 * 1024 * 1024 : 50 * 1024 * 1024;
         if (file.size > maxSize) {
             return NextResponse.json(
-                { success: false, error: "Ficheiro demasiado grande. Máximo 50MB." },
+                { success: false, error: `Ficheiro demasiado grande. Máximo ${maxSize / (1024 * 1024)}MB.` },
                 { status: 400 }
             );
         }

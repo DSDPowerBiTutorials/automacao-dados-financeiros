@@ -290,6 +290,16 @@ function BankStatements({ lang }: { lang: Lang }) {
                 <Badge color="blue">{t(lang, "📊 Feeds Into", "📊 Alimenta")}</Badge>
             </h4>
             <p>{t(lang, "Bank report pages, Dashboard (cash flow), Cash Management (bank position), Reconciliation Center", "Páginas de informes bancarios, Dashboard (flujo de caja), Cash Management (posición bancaria), Centro de Conciliación")}</p>
+
+            <h4 className="font-semibold mt-4 mb-2">
+                <Badge color="purple">{t(lang, "🎬 Video Tutorial", "🎬 Tutorial en Vídeo")}</Badge>
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+                {t(lang, "Watch how to download, upload, and review bank statements step-by-step.", "Mira cómo descargar, subir y revisar extractos bancarios paso a paso.")}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+                {t(lang, "Tip: Look for the ▶ icon in the page header for quick access to this video.", "Consejo: Busca el icono ▶ en el encabezado de la página para acceso rápido al vídeo.")}
+            </p>
         </>
     );
 }
@@ -421,6 +431,16 @@ function InvoiceOrders({ lang }: { lang: Lang }) {
                 <Badge color="blue">{t(lang, "📊 Feeds Into", "📊 Alimenta")}</Badge>
             </h4>
             <p>{t(lang, "AR Invoice Orders page, Braintree reports (cross-reference), Reconciliation Center, Sales Insights (Lab, Clinics), P&L revenue lines", "Página de Pedidos de Factura CC, informes Braintree (referencia cruzada), Centro de Conciliación, Análisis de Ventas (Lab, Clínicas), líneas de ingresos P&L")}</p>
+
+            <h4 className="font-semibold mt-4 mb-2">
+                <Badge color="purple">{t(lang, "🎬 Video Tutorial", "🎬 Tutorial en Vídeo")}</Badge>
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+                {t(lang, "Watch how to upload invoice orders, review column mapping, and classify products by Financial Account.", "Mira cómo subir pedidos de factura, revisar el mapeo de columnas y clasificar productos por Cuenta Financiera.")}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+                {t(lang, "Tip: Look for the ▶ icon in the page header for quick access to this video.", "Consejo: Busca el icono ▶ en el encabezado de la página para acceso rápido al vídeo.")}
+            </p>
         </>
     );
 }
@@ -497,6 +517,16 @@ function AccountsPayable({ lang }: { lang: Lang }) {
                 <li>{t(lang, "Cost Centers (at least one department)", "Centros de Coste (al menos un departamento)")}</li>
                 <li>{t(lang, "Bank Accounts (at least one for payment recording)", "Cuentas Bancarias (al menos una para registro de pagos)")}</li>
             </ul>
+
+            <h4 className="font-semibold mt-4 mb-2">
+                <Badge color="purple">{t(lang, "🎬 Video Tutorial", "🎬 Tutorial en Vídeo")}</Badge>
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+                {t(lang, "Watch how to enter an AP invoice, set up master data (providers, cost centers), and process payments.", "Mira cómo ingresar una factura de CP, configurar datos maestros (proveedores, centros de coste) y procesar pagos.")}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+                {t(lang, "Tip: Look for the ▶ icon in the page header for quick access to this video.", "Consejo: Busca el icono ▶ en el encabezado de la página para acceso rápido al vídeo.")}
+            </p>
         </>
     );
 }

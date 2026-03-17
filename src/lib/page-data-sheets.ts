@@ -13,6 +13,8 @@ export interface DataSheetEntry {
     }>;
     feedInstructions: { en: string; es: string };
     enrichmentChain: { en: string; es: string };
+    /** Optional URL to a tutorial video (Supabase Storage or external) */
+    videoUrl?: string;
 }
 
 const sheets: Record<string, DataSheetEntry> = {
