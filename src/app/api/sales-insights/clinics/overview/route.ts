@@ -351,8 +351,9 @@ export async function GET(request: NextRequest) {
                 else status = "churned"; // inactive with no revenue
             }
 
-            // Skip clinics that were never in baseline AND never had any year transactions
-            if (!wasInBaseline && data.txCount === 0) continue;
+            // Skip clinics that were never in baseline AND never had a monthly fee (102.x)
+            // These are one-time product buyers (103/104) — not subscription clients
+            if (!wasInBaseline && data.totalMonthlyFee <= 0) continue;
 
             const mrrChange = currentMRR - prevMRR;
             const mrrChangePct = prevMRR > 0 ? (mrrChange / prevMRR) * 100 : (currentMRR > 0 ? 100 : 0);
