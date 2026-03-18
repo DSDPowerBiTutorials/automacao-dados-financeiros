@@ -2232,7 +2232,7 @@ export default function BankStatementsPage() {
             // ── EXPENSE PARTIAL POPUP INTERCEPT ──
             // If expense + invoices selected + total doesn't match bank amount, show popup to allocate amounts
             if (isExpense && selectedInvoices.size > 0 && !showExpensePartialPopup) {
-                const allInvoiceLists = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults];
+                const allInvoiceLists = Array.from(new Map([...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults].map(inv => [inv.id, inv])).values());
                 const selectedInvs = allInvoiceLists.filter(inv => selectedInvoices.has(inv.id));
                 if (selectedInvs.length > 0) {
                     const totalInvoiceAmount = selectedInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
@@ -2327,7 +2327,7 @@ export default function BankStatementsPage() {
         try {
             // CASE 1: Expense → AP Invoice match (supports multiple invoices + partial payments)
             if (isExpense && selectedInvoices.size > 0) {
-                const allInvoiceLists = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults];
+                const allInvoiceLists = Array.from(new Map([...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults].map(inv => [inv.id, inv])).values());
                 const selectedInvs = allInvoiceLists.filter(inv => selectedInvoices.has(inv.id));
                 if (selectedInvs.length === 0) throw new Error("No invoices found");
 
@@ -5145,7 +5145,7 @@ export default function BankStatementsPage() {
                             <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
                                 {/* Expense invoice summary with remaining amount */}
                                 {selectedInvoices.size > 0 && reconTransaction && reconTransaction.amount < 0 && (() => {
-                                    const allInvLists = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults];
+                                    const allInvLists = Array.from(new Map([...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults].map(inv => [inv.id, inv])).values());
                                     const selInvs = allInvLists.filter(inv => selectedInvoices.has(inv.id));
                                     const tot = selInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
                                     const bankAmt = Math.abs(reconTransaction.amount);
@@ -5174,7 +5174,7 @@ export default function BankStatementsPage() {
                                 <div className="flex items-center justify-between">
                                 <div className="text-[10px] text-gray-500">
                                     {selectedInvoices.size > 0 && reconTransaction && reconTransaction.amount >= 0 && (() => {
-                                        const allInvLists = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults];
+                                        const allInvLists = Array.from(new Map([...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults].map(inv => [inv.id, inv])).values());
                                         const selInvs = allInvLists.filter(inv => selectedInvoices.has(inv.id));
                                         const tot = selInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
                                         return <span className="text-cyan-700 dark:text-cyan-400">{selectedInvoices.size} invoice(s) = {formatCurrency(tot, reconTransaction?.currency || "EUR")}</span>;
