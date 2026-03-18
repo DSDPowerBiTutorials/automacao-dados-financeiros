@@ -1487,8 +1487,8 @@ export default function PnLReport() {
         },
         {
             code: "202.0", name: "Labour", type: "expense", level: 0,
-            monthly: sumExpFA("202.1", "202.2", "202.3", "202.4", "202.5", "202.6", "202.7"),
-            budget: sumExpBudgetFA("202.1", "202.2", "202.3", "202.4", "202.5", "202.6", "202.7"),
+            monthly: sumExpFA("202.1", "202.2", "202.3", "202.4", "202.5", "202.6", "202.7", "202.8"),
+            budget: sumExpBudgetFA("202.1", "202.2", "202.3", "202.4", "202.5", "202.6", "202.7", "202.8"),
             children: [
                 { code: "202.1", name: "Labour Growth", type: "expense", level: 1, monthly: getExpFA("202.1"), budget: getExpBudgetFA("202.1") },
                 { code: "202.2", name: "Labour Marketing", type: "expense", level: 1, monthly: getExpFA("202.2"), budget: getExpBudgetFA("202.2") },
@@ -1497,6 +1497,7 @@ export default function PnLReport() {
                 { code: "202.5", name: "Labour Corporate", type: "expense", level: 1, monthly: getExpFA("202.5"), budget: getExpBudgetFA("202.5") },
                 { code: "202.6", name: "Labour Delight ROW", type: "expense", level: 1, monthly: getExpFA("202.6"), budget: getExpBudgetFA("202.6") },
                 { code: "202.7", name: "Labour AMEX", type: "expense", level: 1, monthly: getExpFA("202.7"), budget: getExpBudgetFA("202.7") },
+                { code: "202.8", name: "Social Security", type: "expense", level: 1, monthly: getExpFA("202.8"), budget: getExpBudgetFA("202.8") },
             ],
         },
         {
@@ -1518,37 +1519,33 @@ export default function PnLReport() {
             monthly: sumExpFA("204.1", "204.2"),
             budget: sumExpBudgetFA("204.1", "204.2"),
             children: [
-                { code: "204.1", name: "Professional Fees - General", type: "expense", level: 1, monthly: getExpFA("204.1"), budget: getExpBudgetFA("204.1") },
-                { code: "204.2", name: "Professional Fees - Consulting", type: "expense", level: 1, monthly: getExpFA("204.2"), budget: getExpBudgetFA("204.2") },
+                { code: "204.1", name: "Professional Fees SPAIN", type: "expense", level: 1, monthly: getExpFA("204.1"), budget: getExpBudgetFA("204.1") },
+                { code: "204.2", name: "Professional Fees USA", type: "expense", level: 1, monthly: getExpFA("204.2"), budget: getExpBudgetFA("204.2") },
             ],
         },
         { code: "205.0", name: "Marketing and Advertising", type: "expense", level: 0, monthly: getExpFA("205.0"), budget: getExpBudgetFA("205.0"), children: [] },
         {
             code: "206.0", name: "Office", type: "expense", level: 0,
-            monthly: sumExpFA("206.1", "206.1.1", "206.2"),
-            budget: sumExpBudgetFA("206.1", "206.1.1", "206.2"),
+            monthly: sumExpFA("206.1", "206.1.1", "206.2", "206.2.2"),
+            budget: sumExpBudgetFA("206.1", "206.1.1", "206.2", "206.2.2"),
             children: [
-                { code: "206.1", name: "Office - Rent & Facilities", type: "expense", level: 1, monthly: getExpFA("206.1"), budget: getExpBudgetFA("206.1") },
-                { code: "206.1.1", name: "Office - Supplies", type: "expense", level: 1, monthly: getExpFA("206.1.1"), budget: getExpBudgetFA("206.1.1") },
-                { code: "206.2", name: "Office - Other", type: "expense", level: 1, monthly: getExpFA("206.2"), budget: getExpBudgetFA("206.2") },
+                ...(!selectedScope || selectedScope === "GLOBAL" || selectedScope === "ES" ? [
+                    { code: "206.1", name: "Office SPAIN", type: "expense" as const, level: 1, monthly: getExpFA("206.1"), budget: getExpBudgetFA("206.1") },
+                    { code: "206.1.1", name: "Office SPAIN RH", type: "expense" as const, level: 1, monthly: getExpFA("206.1.1"), budget: getExpBudgetFA("206.1.1") },
+                ] : []),
+                ...(!selectedScope || selectedScope === "GLOBAL" || selectedScope === "US" ? [
+                    { code: "206.2", name: "Office USA", type: "expense" as const, level: 1, monthly: getExpFA("206.2"), budget: getExpBudgetFA("206.2") },
+                    { code: "206.2.2", name: "Office USA RH", type: "expense" as const, level: 1, monthly: getExpFA("206.2.2"), budget: getExpBudgetFA("206.2.2") },
+                ] : []),
             ],
         },
         { code: "207.0", name: "Information Technology", type: "expense", level: 0, monthly: getExpFA("207.0"), budget: getExpBudgetFA("207.0"), children: [] },
         { code: "208.0", name: "Research and Development", type: "expense", level: 0, monthly: getExpFA("208.0"), budget: getExpBudgetFA("208.0"), children: [] },
-        {
-            code: "209.0", name: "Bank and Financial Fees", type: "expense", level: 0,
-            monthly: sumExpFA("209.1", "209.2"),
-            budget: sumExpBudgetFA("209.1", "209.2"),
-            children: [
-                { code: "209.1", name: "Bank Fees", type: "expense", level: 1, monthly: getExpFA("209.1"), budget: getExpBudgetFA("209.1") },
-                { code: "209.2", name: "Financial Fees", type: "expense", level: 1, monthly: getExpFA("209.2"), budget: getExpBudgetFA("209.2") },
-            ],
-        },
-        { code: "210.0", name: "Balance Adjustments", type: "expense", level: 0, monthly: getExpFA("210.0"), budget: getExpBudgetFA("210.0"), children: [] },
+        { code: "209.0", name: "Bank and Financial Fees", type: "expense", level: 0, monthly: getExpFA("209.0"), budget: getExpBudgetFA("209.0"), children: [] },
+        { code: "210.0", name: "Miscellanous", type: "expense", level: 0, monthly: getExpFA("210.0"), budget: getExpBudgetFA("210.0"), children: [] },
         { code: "211.0", name: "Amortization & Depreciation", type: "expense", level: 0, monthly: getExpFA("211.0"), budget: getExpBudgetFA("211.0"), children: [] },
         { code: "300.0", name: "FX Variation", type: "expense", level: 0, monthly: getExpFA("300.0"), budget: getExpBudgetFA("300.0"), children: [] },
-        { code: "400.0", name: "Taxes & Other", type: "expense", level: 0, monthly: getExpFA("400.0"), budget: getExpBudgetFA("400.0"), children: [] },
-    ], [byExpenseAccount, byExpenseBudget]);
+    ], [byExpenseAccount, byExpenseBudget, selectedScope]);
 
     // Calculate monthly totals
     const monthlyTotals = useMemo(() => {

@@ -18,7 +18,7 @@ const ALL_EXPENSE_FA_CODES = [
     // 201 - COGS
     "201.1", "201.2", "201.3", "201.4", "201.5",
     // 202 - Labour
-    "202.1", "202.2", "202.3", "202.4", "202.5", "202.6", "202.7",
+    "202.1", "202.2", "202.3", "202.4", "202.5", "202.6", "202.7", "202.8",
     // 203 - Travels & Meals
     "203.1", "203.2", "203.3", "203.4", "203.5", "203.6", "203.7",
     // 204 - Professional Fees
@@ -26,23 +26,19 @@ const ALL_EXPENSE_FA_CODES = [
     // 205 - Marketing and Advertising
     "205.0",
     // 206 - Office
-    "206.1", "206.1.1", "206.2",
+    "206.1", "206.1.1", "206.2", "206.2.2",
     // 207 - Information Technology
     "207.0",
     // 208 - Research and Development
     "208.0",
     // 209 - Bank and Financial Fees
-    "209.1", "209.2",
-    // 210 - Balance Adjustments
+    "209.0",
+    // 210 - Miscellanous
     "210.0",
     // 211 - Amortization & Depreciation
     "211.0",
     // 300 - FX Variation
     "300.0",
-    // 400 - Taxes & Other
-    "400.0",
-    // 0000 - Unassigned
-    "0000",
 ];
 
 export async function GET(request: NextRequest) {
@@ -119,8 +115,10 @@ export async function GET(request: NextRequest) {
             const rawFA = row.financial_account_code;
             const fa = rawFA.includes(" - ") ? rawFA.split(" - ")[0].trim() : rawFA;
 
-            // Map unassigned FA code "0000" → "210.0" (Balance Adjustments)
-            const mappedFA = fa === "0000" ? "210.0" : fa;
+            // Map legacy/removed FA codes to current chart of accounts
+            let mappedFA = fa;
+            if (fa === "0000" || fa === "400.0") mappedFA = "210.0";
+            else if (fa === "209.1" || fa === "209.2") mappedFA = "209.0";
 
             if (row.invoice_type === "BUDGET") {
                 // Budget data
