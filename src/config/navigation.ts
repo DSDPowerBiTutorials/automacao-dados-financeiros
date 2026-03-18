@@ -228,24 +228,7 @@ export const NAV: NavGroup[] = withUnderConstruction([
         href: "/accounts-receivable/invoices",
         icon: FileText
       },
-      {
-        title: "Transactions",
-        href: "/accounts-receivable/transactions",
-        icon: Receipt,
-        children: [
-          {
-            title: "Credit Notes",
-            href: "/accounts-receivable/transactions/credit-notes",
-            icon: FileText,
-            underConstruction: true
-          },
-        ]
-      },
-      {
-        title: "Insights",
-        href: "/accounts-receivable/insights",
-        icon: BarChart3
-      },
+
       {
         title: "Master Data",
         href: "/accounts-receivable/master-data",

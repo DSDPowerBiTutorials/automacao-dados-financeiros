@@ -956,9 +956,10 @@ export default function ARInvoicesPage() {
       const result = await response.json();
       if (result.success) {
         const s = result.summary;
+        const dupMsg = s.duplicatesSkipped ? ` | ${s.duplicatesSkipped} duplicadas ignoradas` : "";
         toast({
           title: "Upload concluído",
-          description: `${s.total} orders importadas (EUR: ${s.eur}, USD: ${s.usd}) — ${s.paid} pagas, ${s.unpaid} pendentes${s.coupon ? `, ${s.coupon} cupão` : ""}${s.credit ? `, ${s.credit} crédito` : ""}${s.subscription ? `, ${s.subscription} subscrição` : ""}`,
+          description: `${s.inserted} novas orders inseridas de ${s.total} no CSV (EUR: ${s.eur}, USD: ${s.usd})${dupMsg}${s.coupon ? ` | ${s.coupon} cupão` : ""}${s.credit ? ` | ${s.credit} crédito` : ""}`,
         });
         loadInvoices();
       } else {

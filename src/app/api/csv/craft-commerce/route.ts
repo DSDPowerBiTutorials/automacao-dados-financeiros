@@ -377,18 +377,64 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Batch upsert into ar_invoices
+        // ============================================================
+        // DEDUP: Buscar invoice_numbers já existentes para upload incremental
+        // ============================================================
+        const existingKeys = new Set<string>();
+        const allInvoiceNumbers = records.map((r: any) => r.invoice_number);
+
+        for (let i = 0; i < allInvoiceNumbers.length; i += 500) {
+            const batch = allInvoiceNumbers.slice(i, i + 500);
+            const { data } = await supabaseAdmin
+                .from("ar_invoices")
+                .select("invoice_number, scope")
+                .in("invoice_number", batch)
+                .eq("source", "craft-commerce");
+            if (data) {
+                for (const row of data) {
+                    existingKeys.add(`${row.invoice_number}||${row.scope}`);
+                }
+            }
+        }
+
+        const newRecords = records.filter(
+            (r: any) => !existingKeys.has(`${r.invoice_number}||${r.scope}`)
+        );
+        const duplicatesSkipped = records.length - newRecords.length;
+
+        if (newRecords.length === 0) {
+            return NextResponse.json({
+                success: true,
+                summary: {
+                    total: stats.total,
+                    inserted: 0,
+                    duplicatesSkipped,
+                    errors: 0,
+                    skipped: stats.skipped,
+                    eur: stats.eur,
+                    usd: stats.usd,
+                    paid: stats.paid,
+                    unpaid: stats.unpaid,
+                    coupon: stats.coupon,
+                    credit: stats.credit,
+                    subscription: stats.subscription,
+                    freeProduct: stats.freeProduct,
+                },
+            });
+        }
+
+        // Batch insert only new records
         let inserted = 0;
         let errors = 0;
 
-        for (let i = 0; i < records.length; i += BATCH_SIZE) {
-            const batch = records.slice(i, i + BATCH_SIZE);
+        for (let i = 0; i < newRecords.length; i += BATCH_SIZE) {
+            const batch = newRecords.slice(i, i + BATCH_SIZE);
 
             const { error } = await supabaseAdmin
                 .from("ar_invoices")
                 .upsert(batch, {
                     onConflict: "invoice_number,scope",
-                    ignoreDuplicates: false,
+                    ignoreDuplicates: true,
                 });
 
             if (error) {
@@ -400,6 +446,10 @@ export async function POST(request: NextRequest) {
             } else {
                 inserted += batch.length;
             }
+        }
+
+        if (duplicatesSkipped > 0) {
+            console.log(`[craft-commerce] Upload incremental: ${inserted} novos, ${duplicatesSkipped} duplicados ignorados`);
         }
 
         // Store raw CSV in storage bucket
@@ -421,6 +471,7 @@ export async function POST(request: NextRequest) {
             summary: {
                 total: stats.total,
                 inserted,
+                duplicatesSkipped,
                 errors,
                 skipped: stats.skipped,
                 eur: stats.eur,
