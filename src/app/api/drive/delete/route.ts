@@ -18,7 +18,7 @@ export async function DELETE(request: NextRequest) {
             );
         }
 
-        const allowedBuckets = ["csv_files", "attachments", "ws-attachments"];
+        const allowedBuckets = ["csv_files", "attachments", "ws-attachments", "tutorial-videos"];
         if (!allowedBuckets.includes(bucket)) {
             return NextResponse.json(
                 { success: false, error: "Bucket não permitido" },

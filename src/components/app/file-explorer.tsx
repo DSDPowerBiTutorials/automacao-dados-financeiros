@@ -10,6 +10,7 @@ import {
     FileSpreadsheet,
     Image,
     File,
+    Video,
     Loader2,
     ChevronRight,
     ArrowLeft,
@@ -61,7 +62,22 @@ const BUCKETS: BucketConfig[] = [
         label: "Workstream",
         description: "Anexos de tarefas e projetos",
     },
+    {
+        id: "tutorial-videos",
+        label: "Vídeos Tutoriais",
+        description: "Vídeos de instrução da aplicação (.mp4, .webm)",
+    },
 ];
+
+function getMaxSizeForBucket(bucket: string): number {
+    return bucket === "tutorial-videos" ? 200 * 1024 * 1024 : 50 * 1024 * 1024;
+}
+
+function getAcceptForBucket(bucket: string): string {
+    return bucket === "tutorial-videos"
+        ? "video/mp4,video/webm,.mp4,.webm"
+        : ".csv,.xlsx,.xls,.pdf,.jpg,.jpeg,.png,.doc,.docx,.txt";
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -92,6 +108,8 @@ function getFileIcon(name: string, mimeType: string) {
     const ext = name.split(".").pop()?.toLowerCase();
     if (ext === "csv" || ext === "xlsx" || ext === "xls")
         return FileSpreadsheet;
+    if (ext === "mp4" || ext === "webm" || mimeType.startsWith("video/"))
+        return Video;
     if (mimeType.startsWith("image/")) return Image;
     if (ext === "pdf" || mimeType === "application/pdf") return FileText;
     return File;
@@ -101,6 +119,8 @@ function getFileColor(name: string, mimeType: string) {
     const ext = name.split(".").pop()?.toLowerCase();
     if (ext === "csv" || ext === "xlsx" || ext === "xls")
         return "text-green-600 dark:text-green-400";
+    if (ext === "mp4" || ext === "webm" || mimeType.startsWith("video/"))
+        return "text-blue-600 dark:text-blue-400";
     if (mimeType.startsWith("image/"))
         return "text-purple-600 dark:text-purple-400";
     if (ext === "pdf" || mimeType === "application/pdf")
@@ -118,6 +138,7 @@ export function FileExplorer() {
     const [files, setFiles] = useState<DriveFile[]>([]);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
 
@@ -210,45 +231,110 @@ export function FileExplorer() {
     };
 
     // ---------------------------------------------------------------------------
-    // Upload
+    // Upload — direct to Supabase via signed URL (bypasses Vercel body limit)
     // ---------------------------------------------------------------------------
+    const uploadViaSignedUrl = (file: globalThis.File, bucket: string, folder: string): Promise<boolean> => {
+        return new Promise(async (resolve) => {
+            try {
+                // 1. Get signed upload URL from our API
+                const res = await fetch("/api/drive/upload-url", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        bucket,
+                        folder: folder || undefined,
+                        fileName: file.name,
+                        contentType: file.type || "application/octet-stream",
+                    }),
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    toast({ title: `Erro: ${file.name}`, description: data.error, variant: "destructive" });
+                    resolve(false);
+                    return;
+                }
+
+                // 2. Upload directly to Supabase Storage with progress tracking
+                const xhr = new XMLHttpRequest();
+                xhr.upload.addEventListener("progress", (evt) => {
+                    if (evt.lengthComputable) {
+                        setUploadProgress(Math.round((evt.loaded / evt.total) * 100));
+                    }
+                });
+                xhr.addEventListener("load", () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(true);
+                    } else {
+                        toast({ title: `Erro: ${file.name}`, description: `Upload falhou (${xhr.status})`, variant: "destructive" });
+                        resolve(false);
+                    }
+                });
+                xhr.addEventListener("error", () => {
+                    toast({ title: `Erro: ${file.name}`, description: "Erro de rede durante o upload.", variant: "destructive" });
+                    resolve(false);
+                });
+
+                xhr.open("PUT", data.signedUrl);
+                xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+                xhr.send(file);
+            } catch {
+                toast({ title: `Erro: ${file.name}`, description: "Não foi possível iniciar o upload.", variant: "destructive" });
+                resolve(false);
+            }
+        });
+    };
+
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const fileList = e.target.files;
         if (!fileList || fileList.length === 0) return;
 
         setUploading(true);
+        setUploadProgress(null);
         let successCount = 0;
+        const maxSize = getMaxSizeForBucket(activeBucket);
+        const maxSizeMB = Math.round(maxSize / (1024 * 1024));
 
         try {
             for (const file of Array.from(fileList)) {
-                if (file.size > 50 * 1024 * 1024) {
+                if (file.size > maxSize) {
                     toast({
                         title: "Ficheiro muito grande",
-                        description: `${file.name}: Máximo 50MB.`,
+                        description: `${file.name}: Máximo ${maxSizeMB}MB.`,
                         variant: "destructive",
                     });
                     continue;
                 }
 
-                const formData = new FormData();
-                formData.append("file", file);
-                formData.append("bucket", activeBucket);
-                if (currentFolder) formData.append("folder", currentFolder);
+                setUploadProgress(0);
 
-                const res = await fetch("/api/drive/upload", {
-                    method: "POST",
-                    body: formData,
-                });
-                const result = await res.json();
+                // Use signed URL upload for tutorial-videos or large files (>4MB)
+                // to bypass Vercel's serverless body size limit
+                const useDirectUpload = activeBucket === "tutorial-videos" || file.size > 4 * 1024 * 1024;
 
-                if (result.success) {
-                    successCount++;
+                if (useDirectUpload) {
+                    const ok = await uploadViaSignedUrl(file, activeBucket, currentFolder);
+                    if (ok) successCount++;
                 } else {
-                    toast({
-                        title: `Erro: ${file.name}`,
-                        description: result.error,
-                        variant: "destructive",
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    formData.append("bucket", activeBucket);
+                    if (currentFolder) formData.append("folder", currentFolder);
+
+                    const res = await fetch("/api/drive/upload", {
+                        method: "POST",
+                        body: formData,
                     });
+                    const result = await res.json();
+
+                    if (result.success) {
+                        successCount++;
+                    } else {
+                        toast({
+                            title: `Erro: ${file.name}`,
+                            description: result.error,
+                            variant: "destructive",
+                        });
+                    }
                 }
             }
 
@@ -267,6 +353,7 @@ export function FileExplorer() {
             });
         } finally {
             setUploading(false);
+            setUploadProgress(null);
             e.target.value = "";
         }
     };
@@ -359,8 +446,8 @@ export function FileExplorer() {
                             setSearchTerm("");
                         }}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeBucket === b.id
-                                ? "bg-blue-600 text-white shadow-sm"
-                                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                            ? "bg-blue-600 text-white shadow-sm"
+                            : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                             }`}
                     >
                         {b.label}
@@ -435,7 +522,7 @@ export function FileExplorer() {
                             onChange={handleUpload}
                             disabled={uploading}
                             className="hidden"
-                            accept=".csv,.xlsx,.xls,.pdf,.jpg,.jpeg,.png,.doc,.docx,.txt"
+                            accept={getAcceptForBucket(activeBucket)}
                         />
                         <Button
                             variant="default"
@@ -466,6 +553,22 @@ export function FileExplorer() {
                     )}
                 </div>
             </div>
+
+            {/* Upload progress bar */}
+            {uploading && uploadProgress !== null && (
+                <div className="px-1 space-y-1">
+                    <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+                        <span>A enviar ficheiro…</span>
+                        <span className="font-medium">{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-blue-600 rounded-full transition-all duration-200"
+                            style={{ width: `${uploadProgress}%` }}
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* Stats bar */}
             <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 px-1">
