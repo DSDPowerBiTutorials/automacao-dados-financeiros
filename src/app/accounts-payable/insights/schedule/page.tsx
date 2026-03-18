@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
     ChevronDown,
     ChevronRight,
@@ -220,6 +220,7 @@ export default function PaymentSchedulePage() {
     const [loading, setLoading] = useState(true);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
     const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+    const initialExpandDone = useRef(false);
     const [updatingInvoice, setUpdatingInvoice] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [showCompleted, setShowCompleted] = useState(true);
@@ -348,22 +349,25 @@ export default function PaymentSchedulePage() {
 
     useEffect(() => {
         if (invoices.length > 0) {
-            const allDates = new Set<string>();
-            invoices.forEach((inv) => {
-                if (inv.schedule_date) allDates.add(getMonthKey(inv.schedule_date));
-            });
-            allDates.add("unscheduled");
-            setExpandedGroups(allDates);
+            // Auto-expand all groups/days only on initial load
+            if (!initialExpandDone.current) {
+                const allDates = new Set<string>();
+                invoices.forEach((inv) => {
+                    if (inv.schedule_date) allDates.add(getMonthKey(inv.schedule_date));
+                });
+                allDates.add("unscheduled");
+                setExpandedGroups(allDates);
 
-            // Auto-expand all days too
-            const allDays = new Set<string>();
-            invoices.forEach((inv) => {
-                if (inv.schedule_date) allDays.add(inv.schedule_date);
-            });
-            allDays.add("no-date");
-            setExpandedDays(allDays);
+                const allDays = new Set<string>();
+                invoices.forEach((inv) => {
+                    if (inv.schedule_date) allDays.add(inv.schedule_date);
+                });
+                allDays.add("no-date");
+                setExpandedDays(allDays);
+                initialExpandDone.current = true;
+            }
 
-            // Calculate reconciliation balances
+            // Reconciliation balances always recalculate
             calculateReconciliationBalances(invoices);
         }
     }, [invoices]);
