@@ -76,10 +76,20 @@ function parseAmount(str: string | null | undefined): number {
     return parseFloat(cleaned) || 0;
 }
 
-/** Parse data Craft Commerce: "2025-01-19 15:38:51" → "2025-01-19" */
+/** Parse data Craft Commerce:
+ *  - ISO: "2025-01-19 15:38:51" → "2025-01-19"
+ *  - JSON: {"date":"3/10/2026","time":"1:05 AM"} → "2026-03-10"
+ */
 function parseCraftDate(dateStr: string | null | undefined): string | null {
     if (!dateStr || dateStr.trim() === "" || dateStr.trim() === "-") return null;
     const trimmed = dateStr.replace(/["\t]/g, "").trim();
+
+    // JSON format: {date:M/D/YYYY,time:...}
+    const jsonMatch = trimmed.match(/date\s*:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (jsonMatch) {
+        const [, month, day, year] = jsonMatch;
+        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
 
     // ISO or Craft format: YYYY-MM-DD HH:MM:SS or YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
@@ -201,8 +211,8 @@ export async function POST(request: NextRequest) {
         const colCustomerId = findCol(headers, "customerid");
         const colGatewayId = findCol(headers, "gatewayid");
         const colNumber = findCol(headers, "number");
-        const colOrderType = findCol(headers, "field_ordertype");
-        const colHubspotCompanyId = findCol(headers, "field_hubspotcompanyid");
+        const colOrderType = findCol(headers, "field_ordertype", "ordertype");
+        const colHubspotCompanyId = findCol(headers, "field_hubspotcompanyid", "hubspotcompanyid", "hubspotVid");
         const colUid = findCol(headers, "uid");
         const colPaymentCurrency = findCol(headers, "paymentcurrency");
         const colLastIp = findCol(headers, "lastip");
