@@ -5,18 +5,23 @@ const BUCKET_CONFIG: Record<string, { public: boolean; fileSizeLimit: number; al
     "csv_files": { public: false, fileSizeLimit: 52428800 },
     "attachments": { public: false, fileSizeLimit: 52428800 },
     "ws-attachments": { public: false, fileSizeLimit: 52428800 },
-    "tutorial-videos": { public: true, fileSizeLimit: 209715200, allowedMimeTypes: ["video/mp4", "video/webm"] },
+    "tutorial-videos": { public: true, fileSizeLimit: 52428800, allowedMimeTypes: ["video/mp4", "video/webm"] },
 };
 
 const verifiedBuckets = new Set<string>();
 
 async function ensureBucket(name: string) {
     if (verifiedBuckets.has(name)) return;
+    const cfg = BUCKET_CONFIG[name] || { public: false, fileSizeLimit: 52428800 };
     const { data: buckets } = await supabaseAdmin.storage.listBuckets();
-    const exists = buckets?.some((b) => b.name === name);
-    if (!exists) {
-        const cfg = BUCKET_CONFIG[name] || { public: false, fileSizeLimit: 52428800 };
+    const existing = buckets?.find((b) => b.name === name);
+    if (!existing) {
         await supabaseAdmin.storage.createBucket(name, cfg);
+    } else if (existing.public !== cfg.public) {
+        await supabaseAdmin.storage.updateBucket(name, {
+            public: cfg.public,
+            allowedMimeTypes: cfg.allowedMimeTypes,
+        });
     }
     verifiedBuckets.add(name);
 }

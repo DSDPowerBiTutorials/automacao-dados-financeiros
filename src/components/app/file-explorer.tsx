@@ -70,7 +70,7 @@ const BUCKETS: BucketConfig[] = [
 ];
 
 function getMaxSizeForBucket(bucket: string): number {
-    return bucket === "tutorial-videos" ? 200 * 1024 * 1024 : 50 * 1024 * 1024;
+    return bucket === "tutorial-videos" ? 50 * 1024 * 1024 : 50 * 1024 * 1024;
 }
 
 function getAcceptForBucket(bucket: string): string {
