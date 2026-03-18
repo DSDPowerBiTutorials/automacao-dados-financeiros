@@ -654,104 +654,106 @@ export function InvoiceSidePanel({
 
                         {/* Other Currency Conversion Dialog */}
                         <Dialog open={showOtherCurrencyPopup} onOpenChange={setShowOtherCurrencyPopup}>
-                            <DialogContent className="!max-w-2xl !w-[680px] p-0 overflow-hidden">
-                                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-5">
-                                    <DialogTitle className="flex items-center gap-3 text-white text-xl font-semibold">
-                                        <Globe className="h-6 w-6" />
-                                        Currency Conversion
-                                    </DialogTitle>
-                                    <p className="text-blue-100 text-sm mt-1">Convert a foreign currency amount to EUR or USD</p>
-                                </div>
-
-                                <div className="px-8 py-6 space-y-6">
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Original Currency</h3>
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div>
-                                                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Currency Code *</Label>
-                                                <Input
-                                                    value={otherCurrency.originalCurrency}
-                                                    onChange={(e) => setOtherCurrency({ ...otherCurrency, originalCurrency: e.target.value.toUpperCase() })}
-                                                    placeholder="e.g. RSD, CHF, BRL"
-                                                    maxLength={5}
-                                                    className="h-11 text-base uppercase"
-                                                />
-                                            </div>
-                                            <div>
-                                                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Amount *</Label>
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={otherCurrency.originalAmount}
-                                                    onChange={(e) => setOtherCurrency({ ...otherCurrency, originalAmount: e.target.value })}
-                                                    placeholder="0.00"
-                                                    className="h-11 text-base"
-                                                />
-                                            </div>
-                                        </div>
+                            <DialogContent className="!block !max-w-2xl !w-[680px] !p-0 !gap-0 overflow-hidden">
+                                <div className="flex flex-col">
+                                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-5">
+                                        <DialogTitle className="flex items-center gap-3 text-white text-xl font-semibold">
+                                            <Globe className="h-6 w-6" />
+                                            Currency Conversion
+                                        </DialogTitle>
+                                        <p className="text-blue-100 text-sm mt-1">Convert a foreign currency amount to EUR or USD</p>
                                     </div>
 
-                                    <hr className="border-gray-200 dark:border-gray-700" />
-
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Conversion Settings</h3>
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div>
-                                                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Payment Currency *</Label>
-                                                <Select value={otherCurrency.paymentCurrency} onValueChange={(val) => setOtherCurrency({ ...otherCurrency, paymentCurrency: val })}>
-                                                    <SelectTrigger className="h-11 text-base"><SelectValue /></SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="EUR">€ EUR</SelectItem>
-                                                        <SelectItem value="USD">$ USD</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div>
-                                                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Exchange Rate *</Label>
-                                                <Input
-                                                    type="number"
-                                                    step="any"
-                                                    value={otherCurrency.exchangeRate}
-                                                    onChange={(e) => setOtherCurrency({ ...otherCurrency, exchangeRate: e.target.value })}
-                                                    placeholder="e.g. 0.0085"
-                                                    className="h-11 text-base"
-                                                />
+                                    <div className="px-8 py-6 space-y-6">
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Original Currency</h3>
+                                            <div className="grid grid-cols-2 gap-6">
+                                                <div>
+                                                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Currency Code *</Label>
+                                                    <Input
+                                                        value={otherCurrency.originalCurrency}
+                                                        onChange={(e) => setOtherCurrency({ ...otherCurrency, originalCurrency: e.target.value.toUpperCase() })}
+                                                        placeholder="e.g. RSD, CHF, BRL"
+                                                        maxLength={5}
+                                                        className="h-11 text-base uppercase"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Amount *</Label>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={otherCurrency.originalAmount}
+                                                        onChange={(e) => setOtherCurrency({ ...otherCurrency, originalAmount: e.target.value })}
+                                                        placeholder="0.00"
+                                                        className="h-11 text-base"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
+
+                                        <hr className="border-gray-200 dark:border-gray-700" />
+
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Conversion Settings</h3>
+                                            <div className="grid grid-cols-2 gap-6">
+                                                <div>
+                                                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Payment Currency *</Label>
+                                                    <Select value={otherCurrency.paymentCurrency} onValueChange={(val) => setOtherCurrency({ ...otherCurrency, paymentCurrency: val })}>
+                                                        <SelectTrigger className="h-11 text-base"><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="EUR">€ EUR</SelectItem>
+                                                            <SelectItem value="USD">$ USD</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div>
+                                                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Exchange Rate *</Label>
+                                                    <Input
+                                                        type="number"
+                                                        step="any"
+                                                        value={otherCurrency.exchangeRate}
+                                                        onChange={(e) => setOtherCurrency({ ...otherCurrency, exchangeRate: e.target.value })}
+                                                        placeholder="e.g. 0.0085"
+                                                        className="h-11 text-base"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {otherCurrency.originalAmount && otherCurrency.exchangeRate && (
+                                            <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                                                <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">Conversion Result</p>
+                                                <p className="text-lg text-blue-900 dark:text-blue-100">
+                                                    {otherCurrency.originalAmount} {otherCurrency.originalCurrency || "???"} × {otherCurrency.exchangeRate} ={" "}
+                                                    <span className="font-bold text-xl">
+                                                        {(parseFloat(otherCurrency.originalAmount) * parseFloat(otherCurrency.exchangeRate)).toFixed(2)} {otherCurrency.paymentCurrency}
+                                                    </span>
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {otherCurrency.originalAmount && otherCurrency.exchangeRate && (
-                                        <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                                            <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">Conversion Result</p>
-                                            <p className="text-lg text-blue-900 dark:text-blue-100">
-                                                {otherCurrency.originalAmount} {otherCurrency.originalCurrency || "???"} × {otherCurrency.exchangeRate} ={" "}
-                                                <span className="font-bold text-xl">
-                                                    {(parseFloat(otherCurrency.originalAmount) * parseFloat(otherCurrency.exchangeRate)).toFixed(2)} {otherCurrency.paymentCurrency}
-                                                </span>
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="border-t border-gray-200 dark:border-gray-700 px-8 py-4 flex justify-end gap-3 bg-gray-50 dark:bg-gray-900">
-                                    <Button variant="outline" size="lg" onClick={() => setShowOtherCurrencyPopup(false)}>Cancel</Button>
-                                    <Button size="lg" onClick={() => {
-                                        if (!otherCurrency.originalCurrency || !otherCurrency.originalAmount || !otherCurrency.exchangeRate) {
-                                            toast({ title: "Error", description: "All fields are required", variant: "destructive" });
-                                            return;
-                                        }
-                                        const converted = parseFloat(otherCurrency.originalAmount) * parseFloat(otherCurrency.exchangeRate);
-                                        const convNote = `Converted from ${otherCurrency.originalCurrency}: ${otherCurrency.originalAmount} ${otherCurrency.originalCurrency} × ${otherCurrency.exchangeRate} = ${converted.toFixed(2)} ${otherCurrency.paymentCurrency}`;
-                                        setFormData(prev => ({
-                                            ...prev,
-                                            currency: otherCurrency.paymentCurrency,
-                                            invoice_amount: converted.toFixed(2),
-                                            eur_exchange: otherCurrency.paymentCurrency === "EUR" ? "1.00" : otherCurrency.exchangeRate,
-                                            notes: prev.notes ? `${prev.notes}\n${convNote}` : convNote
-                                        }));
-                                        setShowOtherCurrencyPopup(false);
-                                        toast({ title: "Currency converted", description: `${converted.toFixed(2)} ${otherCurrency.paymentCurrency}` });
-                                    }}>Confirm Conversion</Button>
+                                    <div className="border-t border-gray-200 dark:border-gray-700 px-8 py-4 flex justify-end gap-3 bg-gray-50 dark:bg-gray-900">
+                                        <Button variant="outline" size="lg" onClick={() => setShowOtherCurrencyPopup(false)}>Cancel</Button>
+                                        <Button size="lg" onClick={() => {
+                                            if (!otherCurrency.originalCurrency || !otherCurrency.originalAmount || !otherCurrency.exchangeRate) {
+                                                toast({ title: "Error", description: "All fields are required", variant: "destructive" });
+                                                return;
+                                            }
+                                            const converted = parseFloat(otherCurrency.originalAmount) * parseFloat(otherCurrency.exchangeRate);
+                                            const convNote = `Converted from ${otherCurrency.originalCurrency}: ${otherCurrency.originalAmount} ${otherCurrency.originalCurrency} × ${otherCurrency.exchangeRate} = ${converted.toFixed(2)} ${otherCurrency.paymentCurrency}`;
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                currency: otherCurrency.paymentCurrency,
+                                                invoice_amount: converted.toFixed(2),
+                                                eur_exchange: otherCurrency.paymentCurrency === "EUR" ? "1.00" : otherCurrency.exchangeRate,
+                                                notes: prev.notes ? `${prev.notes}\n${convNote}` : convNote
+                                            }));
+                                            setShowOtherCurrencyPopup(false);
+                                            toast({ title: "Currency converted", description: `${converted.toFixed(2)} ${otherCurrency.paymentCurrency}` });
+                                        }}>Confirm Conversion</Button>
+                                    </div>
                                 </div>
                             </DialogContent>
                         </Dialog>
