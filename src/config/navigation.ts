@@ -19,7 +19,6 @@ import {
   DollarSign,
   Calendar,
   Clock,
-  CheckCircle2,
   AlertCircle,
   Building,
   UserCircle,
@@ -32,7 +31,6 @@ import {
   BarChart4,
   Settings2,
   Package,
-  Bot,
   Plug,
   UserCheck,
   GraduationCap,
@@ -287,11 +285,6 @@ export const NAV: NavGroup[] = withUnderConstruction([
         icon: Building2
       },
       {
-        title: "Bank Accounts",
-        href: "/cash-management/bank-accounts",
-        icon: Building2
-      },
-      {
         title: "💳 Payment Channels",
         href: "/cash-management/payment-channels",
         icon: Wallet
@@ -302,14 +295,16 @@ export const NAV: NavGroup[] = withUnderConstruction([
         icon: Receipt
       },
       {
-        title: "Braintree ↔ Orders",
-        href: "/actions/braintree-reconciliation",
-        icon: CheckCircle2
-      },
-      {
-        title: "🤖 BOTella Logs",
-        href: "/actions/bot-logs",
-        icon: Bot
+        title: "Master Data",
+        href: "/cash-management/master-data",
+        icon: Boxes,
+        children: [
+          {
+            title: "Bank Accounts",
+            href: "/cash-management/bank-accounts",
+            icon: Building2
+          }
+        ]
       }
     ]
   },
