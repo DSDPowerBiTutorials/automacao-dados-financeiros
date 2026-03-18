@@ -332,8 +332,23 @@ export default function InvoicesPage() {
         bankAccountsQuery = bankAccountsQuery.or(`country.eq.${selectedScope},applies_to_all_countries.eq.true`);
       }
 
-      const [providersRes, bankAccountsRes, paymentMethodsRes, costTypesRes, depCostTypesRes, costCentersRes, subDepartmentsRes, entryTypesRes, financialAccountsRes, coursesRes, dsdCoursesRes] = await Promise.all([
-        supabase.from("providers").select("*").eq("is_active", true),
+      // Providers can exceed 1000 rows — paginate to load all
+      async function fetchAllProviders() {
+        const all: any[] = [];
+        let offset = 0;
+        const pageSize = 1000;
+        while (true) {
+          const { data } = await supabase.from("providers").select("*").eq("is_active", true).order("code", { ascending: true }).range(offset, offset + pageSize - 1);
+          if (!data || data.length === 0) break;
+          all.push(...data);
+          if (data.length < pageSize) break;
+          offset += pageSize;
+        }
+        return all;
+      }
+
+      const [allProviders, bankAccountsRes, paymentMethodsRes, costTypesRes, depCostTypesRes, costCentersRes, subDepartmentsRes, entryTypesRes, financialAccountsRes, coursesRes, dsdCoursesRes] = await Promise.all([
+        fetchAllProviders(),
         bankAccountsQuery,
         supabase.from("payment_methods").select("*").eq("is_active", true),
         supabase.from("cost_types").select("*").eq("is_active", true),
@@ -346,7 +361,7 @@ export default function InvoicesPage() {
         supabase.from("dsd_courses").select("*").eq("is_active", true).order("start_date", { ascending: true })
       ]);
 
-      setProviders(providersRes.data || []);
+      setProviders(allProviders);
       setBankAccounts(bankAccountsRes.data || []);
       setPaymentMethods(paymentMethodsRes.data || []);
       setCostTypes(costTypesRes.data || []);
