@@ -71,13 +71,17 @@ export async function GET(request: NextRequest) {
             let query = supabaseAdmin
                 .from("csv_rows")
                 .select("source, date, amount, custom_data")
-                .in("source", ["invoice-orders", "invoice-orders-usd"])
                 .gte("date", startDate)
                 .lte("date", endDate)
                 .range(offset, offset + pageSize - 1);
 
-            if (scope) {
-                query = query.contains("custom_data", { scope });
+            // Scope filtering via source field: invoice-orders = EUR (ES), invoice-orders-usd = USD (US)
+            if (scope === "ES") {
+                query = query.eq("source", "invoice-orders");
+            } else if (scope === "US") {
+                query = query.eq("source", "invoice-orders-usd");
+            } else {
+                query = query.in("source", ["invoice-orders", "invoice-orders-usd"]);
             }
 
             const { data, error } = await query;

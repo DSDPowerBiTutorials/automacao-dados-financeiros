@@ -98,7 +98,6 @@ async function getUsdRevenue(year: number, month: number, scope: string): Promis
             .eq('source', 'invoice-orders-usd')
             .gte('date', startDate)
             .lte('date', endDate)
-            .contains('custom_data', { scope })
             .range(offset, offset + pageSize - 1)
 
         if (error) throw new Error(`Revenue query error: ${error.message}`)

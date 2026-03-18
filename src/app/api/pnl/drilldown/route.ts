@@ -191,7 +191,6 @@ export async function GET(request: NextRequest) {
             let revQuery = supabaseAdmin
                 .from("csv_rows")
                 .select("id, date, description, amount, custom_data, source", { count: "exact" })
-                .in("source", ["invoice-orders", "invoice-orders-usd"])
                 .gte("date", startStr)
                 .lte("date", endStr)
                 .neq("amount", 0)
@@ -199,8 +198,13 @@ export async function GET(request: NextRequest) {
                 .order("amount", { ascending: false })
                 .range(startIndex, endIndex);
 
-            if (scope) {
-                revQuery = revQuery.contains("custom_data", { scope });
+            // Scope filtering via source field
+            if (scope === "ES") {
+                revQuery = revQuery.eq("source", "invoice-orders");
+            } else if (scope === "US") {
+                revQuery = revQuery.eq("source", "invoice-orders-usd");
+            } else {
+                revQuery = revQuery.in("source", ["invoice-orders", "invoice-orders-usd"]);
             }
 
             if (isRevenueParent) {
@@ -224,14 +228,18 @@ export async function GET(request: NextRequest) {
             let totalQuery = supabaseAdmin
                 .from("csv_rows")
                 .select("amount")
-                .in("source", ["invoice-orders", "invoice-orders-usd"])
                 .gte("date", startStr)
                 .lte("date", endStr)
                 .neq("amount", 0)
                 .not("custom_data->>order_status", "in", "(Cancelled,Refunded,Expired,cancelled,refunded,expired)");
 
-            if (scope) {
-                totalQuery = totalQuery.contains("custom_data", { scope });
+            // Scope filtering via source field
+            if (scope === "ES") {
+                totalQuery = totalQuery.eq("source", "invoice-orders");
+            } else if (scope === "US") {
+                totalQuery = totalQuery.eq("source", "invoice-orders-usd");
+            } else {
+                totalQuery = totalQuery.in("source", ["invoice-orders", "invoice-orders-usd"]);
             }
 
             if (isRevenueParent) {
