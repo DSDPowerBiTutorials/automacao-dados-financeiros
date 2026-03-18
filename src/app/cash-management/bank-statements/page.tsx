@@ -1150,8 +1150,8 @@ export default function BankStatementsPage() {
     const clearKpiFilters = () => setKpiFilters(new Set());
 
     // Filters — committed date range vs pending (to avoid re-fetch on arrow navigation)
-    const [dateRange, setDateRange] = useState({ start: "2026-01-01", end: "2026-12-31" });
-    const [pendingDateRange, setPendingDateRange] = useState({ start: "2026-01-01", end: "2026-12-31" });
+    const [dateRange, setDateRange] = useState({ start: "2025-01-01", end: "2026-12-31" });
+    const [pendingDateRange, setPendingDateRange] = useState({ start: "2025-01-01", end: "2026-12-31" });
     const [gatewayFilter, setGatewayFilter] = useState("all");
     const [flowFilter, setFlowFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
@@ -5172,32 +5172,32 @@ export default function BankStatementsPage() {
                                     );
                                 })()}
                                 <div className="flex items-center justify-between">
-                                <div className="text-[10px] text-gray-500">
-                                    {selectedInvoices.size > 0 && reconTransaction && reconTransaction.amount >= 0 && (() => {
-                                        const allInvLists = Array.from(new Map([...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults].map(inv => [inv.id, inv])).values());
-                                        const selInvs = allInvLists.filter(inv => selectedInvoices.has(inv.id));
-                                        const tot = selInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
-                                        return <span className="text-cyan-700 dark:text-cyan-400">{selectedInvoices.size} invoice(s) = {formatCurrency(tot, reconTransaction?.currency || "EUR")}</span>;
-                                    })()}
-                                    {selectedOrderIds.size > 0 && <span className="text-cyan-700 dark:text-cyan-400">{selectedOrderIds.size} invoice-order(s) = {formatCurrency(selectedOrdersTotal, reconTransaction?.currency || "EUR")}</span>}
-                                    {selectedGatewayTxIds.size > 0 && <span className="text-purple-700 dark:text-purple-400">{selectedGatewayTxIds.size} gateway txn(s) = {formatCurrency(selectedGatewayTotal, reconTransaction?.currency || "EUR")}</span>}
-                                    {selectedDisbursementId && (() => { const ds = disbursementSuggestions.find(d => d.id === selectedDisbursementId); return ds ? <span className="text-purple-700 dark:text-purple-400">Disbursement {ds.disbursementDate} — {ds.resolvedOrders.length} orders ({ds.gatewayLabel})</span> : null; })()}
-                                    {selectedPaymentMatch && <span className="text-cyan-700 dark:text-cyan-400">Payment source selected</span>}
-                                    {selectedRevenueOrder && <span className="text-cyan-700 dark:text-cyan-400">Revenue order selected</span>}
-                                    {selectedIntercompanyMatch && <span className="text-amber-700 dark:text-amber-400">Intercompany transfer selected</span>}
-                                    {selectedInvoices.size === 0 && selectedOrderIds.size === 0 && selectedGatewayTxIds.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !selectedDisbursementId && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
-                                </div>
-                                <div className="flex gap-3">
-                                    <Button variant="outline" onClick={() => setReconDialogOpen(false)} className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] h-8 text-xs">Cancel</Button>
-                                    <Button
-                                        onClick={performManualReconciliation}
-                                        disabled={isSavingManual || (selectedInvoices.size === 0 && selectedOrderIds.size === 0 && selectedGatewayTxIds.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !selectedDisbursementId && !manualPaymentSource && !manualNote)}
-                                        className="bg-cyan-600 hover:bg-cyan-700 h-8 text-xs"
-                                    >
-                                        {isSavingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Link2 className="h-3.5 w-3.5 mr-1" />}
-                                        Reconcile
-                                    </Button>
-                                </div>
+                                    <div className="text-[10px] text-gray-500">
+                                        {selectedInvoices.size > 0 && reconTransaction && reconTransaction.amount >= 0 && (() => {
+                                            const allInvLists = Array.from(new Map([...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults].map(inv => [inv.id, inv])).values());
+                                            const selInvs = allInvLists.filter(inv => selectedInvoices.has(inv.id));
+                                            const tot = selInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
+                                            return <span className="text-cyan-700 dark:text-cyan-400">{selectedInvoices.size} invoice(s) = {formatCurrency(tot, reconTransaction?.currency || "EUR")}</span>;
+                                        })()}
+                                        {selectedOrderIds.size > 0 && <span className="text-cyan-700 dark:text-cyan-400">{selectedOrderIds.size} invoice-order(s) = {formatCurrency(selectedOrdersTotal, reconTransaction?.currency || "EUR")}</span>}
+                                        {selectedGatewayTxIds.size > 0 && <span className="text-purple-700 dark:text-purple-400">{selectedGatewayTxIds.size} gateway txn(s) = {formatCurrency(selectedGatewayTotal, reconTransaction?.currency || "EUR")}</span>}
+                                        {selectedDisbursementId && (() => { const ds = disbursementSuggestions.find(d => d.id === selectedDisbursementId); return ds ? <span className="text-purple-700 dark:text-purple-400">Disbursement {ds.disbursementDate} — {ds.resolvedOrders.length} orders ({ds.gatewayLabel})</span> : null; })()}
+                                        {selectedPaymentMatch && <span className="text-cyan-700 dark:text-cyan-400">Payment source selected</span>}
+                                        {selectedRevenueOrder && <span className="text-cyan-700 dark:text-cyan-400">Revenue order selected</span>}
+                                        {selectedIntercompanyMatch && <span className="text-amber-700 dark:text-amber-400">Intercompany transfer selected</span>}
+                                        {selectedInvoices.size === 0 && selectedOrderIds.size === 0 && selectedGatewayTxIds.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !selectedDisbursementId && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <Button variant="outline" onClick={() => setReconDialogOpen(false)} className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] h-8 text-xs">Cancel</Button>
+                                        <Button
+                                            onClick={performManualReconciliation}
+                                            disabled={isSavingManual || (selectedInvoices.size === 0 && selectedOrderIds.size === 0 && selectedGatewayTxIds.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !selectedDisbursementId && !manualPaymentSource && !manualNote)}
+                                            className="bg-cyan-600 hover:bg-cyan-700 h-8 text-xs"
+                                        >
+                                            {isSavingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Link2 className="h-3.5 w-3.5 mr-1" />}
+                                            Reconcile
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
