@@ -469,6 +469,7 @@ const sheets: Record<string, DataSheetEntry> = {
         ],
         feedInstructions: { en: "Upload bank statement CSVs via the respective report page.", es: "Subir CSVs de extractos bancarios vía la página de reporte correspondiente." },
         enrichmentChain: { en: "CSV upload → csv_files metadata → csv_rows parsed → bank statement view", es: "Subida CSV → metadatos csv_files → csv_rows parseados → vista de extracto bancario" },
+        videoUrl: "https://rrzgawssbyfzbkmtcovz.supabase.co/storage/v1/object/public/tutorial-videos/1773873061306-04_Bank_Statements.mp4",
     },
     "cash-management-payment-channels": {
         title: { en: "Payment Channels", es: "Canales de Pago" },
