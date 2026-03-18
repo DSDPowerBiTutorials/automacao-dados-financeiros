@@ -12,15 +12,20 @@ export {
     SWIFT_COMMISSION_CONFIG
 } from './swift-commission-task'
 
-// Adicionar novas tasks aqui conforme forem criadas
-// export { executeXyzTask, xyzTaskMeta } from './xyz-task'
+// FX Variation Task
+export {
+    executeFxVariationTask,
+    fxVariationTaskMeta,
+    FX_VARIATION_CONFIG
+} from './fx-variation-task'
 
 // Registry de todas as tasks para o dispatcher
 import { swiftCommissionTaskMeta } from './swift-commission-task'
+import { fxVariationTaskMeta } from './fx-variation-task'
 
 export const ALL_TASKS = [
     swiftCommissionTaskMeta,
-    // Adicionar novas tasks aqui
+    fxVariationTaskMeta,
 ]
 
 // Mapa para lookup rápido por key

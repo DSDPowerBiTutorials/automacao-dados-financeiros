@@ -652,6 +652,35 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================
+    // 13. FX VARIATION MENSAL (BOTella)
+    // ============================================
+    try {
+        const fxStart = Date.now();
+        console.log("\n💱 [13/13] Calculando variação cambial FX...");
+
+        const { executeFxVariationTask } = await import("@/lib/bot/tasks/fx-variation-task");
+        const fxResult = await executeFxVariationTask();
+
+        results.push({
+            name: "FX Variation Monthly",
+            success: fxResult.success,
+            message: `Created: ${fxResult.created}, Updated: ${fxResult.updated}, Failed: ${fxResult.failed}`,
+            count: fxResult.created + fxResult.updated,
+            duration_ms: Date.now() - fxStart,
+        });
+        console.log(`   ✅ FX Variation: ${fxResult.created} criadas, ${fxResult.updated} atualizadas`);
+    } catch (error: any) {
+        console.error("[FX Variation] Error:", error);
+        results.push({
+            name: "FX Variation Monthly",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
     // SALVAR METADATA DA SINCRONIZAÇÃO
     // ============================================
     const totalDuration = Date.now() - startTime;
