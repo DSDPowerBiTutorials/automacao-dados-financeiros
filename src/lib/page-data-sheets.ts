@@ -354,6 +354,7 @@ const sheets: Record<string, DataSheetEntry> = {
         ],
         feedInstructions: { en: "Upload invoice orders CSV. Maps to financial account codes for revenue classification.", es: "Subir CSV de pedidos de facturación. Se mapea a códigos de cuenta financiera para clasificación de ingresos." },
         enrichmentChain: { en: "CSV → csv_rows (source='invoice-orders') + custom_data → financial_account_code → links to HubSpot orders → P&L revenue", es: "CSV → csv_rows (source='invoice-orders') + custom_data → financial_account_code → vinculación pedidos HubSpot → ingresos P&L" },
+        videoUrl: "https://rrzgawssbyfzbkmtcovz.supabase.co/storage/v1/object/public/tutorial-videos/1773861812567-01_AC_-_Invoice_Orders_Upload_Flow.mp4",
     },
     "ar-master-customers": {
         title: { en: "Customers Master Data", es: "Datos Maestros Clientes" },
