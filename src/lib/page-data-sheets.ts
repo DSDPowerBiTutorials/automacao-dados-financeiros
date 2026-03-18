@@ -270,6 +270,7 @@ const sheets: Record<string, DataSheetEntry> = {
         ],
         feedInstructions: { en: "Enter invoices manually via the form. Set up master data (providers, cost centers, financial accounts) first.", es: "Ingresar facturas manualmente vía formulario. Configurar datos maestros (proveedores, centros de coste, cuentas financieras) primero." },
         enrichmentChain: { en: "Manual entry → invoices table → linked to cost_centers + financial_accounts → feeds P&L + Departmental PnL", es: "Entrada manual → tabla invoices → vinculada a cost_centers + financial_accounts → alimenta P&L + PnL Departamental" },
+        videoUrl: "https://rrzgawssbyfzbkmtcovz.supabase.co/storage/v1/object/public/tutorial-videos/1773865549393-02_AP_-_Invoices_creation_and_reconciliation.mp4",
     },
     "ap-payments": {
         title: { en: "AP Payments", es: "Pagos Cuentas por Pagar" },

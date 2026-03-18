@@ -527,10 +527,16 @@ function AccountsPayable({ lang }: { lang: Lang }) {
             <h4 className="font-semibold mt-4 mb-2">
                 <Badge color="purple">{t(lang, "🎬 Video Tutorial", "🎬 Tutorial en Vídeo")}</Badge>
             </h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                 {t(lang, "Watch how to enter an AP invoice, set up master data (providers, cost centers), and process payments.", "Mira cómo ingresar una factura de CP, configurar datos maestros (proveedores, centros de coste) y procesar pagos.")}
             </p>
-            <p className="text-xs text-gray-500 mt-1">
+            <video
+                src="https://rrzgawssbyfzbkmtcovz.supabase.co/storage/v1/object/public/tutorial-videos/1773865549393-02_AP_-_Invoices_creation_and_reconciliation.mp4"
+                controls
+                preload="metadata"
+                className="w-full max-w-2xl rounded-lg border border-gray-200 dark:border-gray-700"
+            />
+            <p className="text-xs text-gray-500 mt-2">
                 {t(lang, "Tip: Look for the ▶ icon in the page header for quick access to this video.", "Consejo: Busca el icono ▶ en el encabezado de la página para acceso rápido al vídeo.")}
             </p>
         </>
