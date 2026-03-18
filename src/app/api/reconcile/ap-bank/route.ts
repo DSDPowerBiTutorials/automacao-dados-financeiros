@@ -123,11 +123,11 @@ export async function POST(req: NextRequest) {
 
         console.log(`[ap-bank] Starting AP ↔ Bank reconciliation | dryRun=${dryRun} | minDate=${minDate}`);
 
-        // 1. Fetch all unreconciled AP invoices (INCURRED only)
+        // 1. Fetch all unreconciled AP invoices (INCURRED only) — includes partially paid
         const invoices = await fetchAll("invoices", (q: any) =>
             q
                 .eq("invoice_type", "INCURRED")
-                .or("is_reconciled.is.null,is_reconciled.eq.false")
+                .or("is_reconciled.is.null,is_reconciled.eq.false,payment_status.eq.partial")
                 .gte("invoice_date", minDate)
         );
         console.log(`[ap-bank] ${invoices.length} unreconciled AP invoices`);
@@ -175,7 +175,12 @@ export async function POST(req: NextRequest) {
         for (const inv of invoices) {
             if (matchedInvoiceIds.has(inv.id)) continue;
 
-            const invAmount = Math.abs(parseFloat(inv.paid_amount) || parseFloat(inv.invoice_amount) || 0);
+            const invAmountFull = Math.abs(parseFloat(inv.paid_amount) || parseFloat(inv.invoice_amount) || 0);
+            if (invAmountFull < 0.01) continue;
+
+            // For partial invoices, use remaining amount instead of full
+            const previouslyPaid = parseFloat(inv.reconciled_amount) || 0;
+            const invAmount = inv.payment_status === "partial" ? Math.max(0, invAmountFull - previouslyPaid) : invAmountFull;
             if (invAmount < 0.01) continue;
 
             const invDate = inv.schedule_date || inv.payment_date || inv.due_date || inv.invoice_date;
@@ -378,13 +383,21 @@ export async function POST(req: NextRequest) {
 
                     // Update each AP invoice
                     for (const m of invMatches) {
+                        // Calculate cumulative reconciled amount for partial support
+                        const invData = invoices.find((i: any) => i.id === m.invoice_id);
+                        const prevReconciled = parseFloat(invData?.reconciled_amount) || 0;
+                        const cumulativePaid = prevReconciled + m.invoice_amount;
+                        const fullAmount = Math.abs(parseFloat(invData?.paid_amount) || parseFloat(invData?.invoice_amount) || 0);
+                        const isFullyPaid = cumulativePaid >= fullAmount * 0.98;
+
                         const { error: invErr } = await supabaseAdmin
                             .from("invoices")
                             .update({
-                                is_reconciled: true,
+                                is_reconciled: isFullyPaid,
                                 reconciled_transaction_id: bankTxId,
                                 reconciled_at: now,
-                                reconciled_amount: m.invoice_amount,
+                                reconciled_amount: cumulativePaid,
+                                payment_status: isFullyPaid ? "paid" : "partial",
                             })
                             .eq("id", m.invoice_id);
 

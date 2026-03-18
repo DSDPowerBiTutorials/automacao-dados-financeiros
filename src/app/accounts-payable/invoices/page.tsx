@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef, useDeferredValue } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { Plus, Search, Edit2, ArrowUpDown, FileText, TrendingUp, RefreshCw, DollarSign, Trash2, X, Pencil, Filter, ChevronDown, ChevronRight, ChevronLeft, Check, Save, Download, FileSpreadsheet, Columns3, Split, Eye, Zap, User, CheckCircle2, Building2 } from "lucide-react";
+import { Plus, Search, Edit2, ArrowUpDown, FileText, TrendingUp, RefreshCw, DollarSign, Trash2, X, Pencil, Filter, ChevronDown, ChevronRight, ChevronLeft, Check, Save, Download, FileSpreadsheet, Columns3, Split, Eye, Zap, User, CheckCircle2, Building2, CircleDashed } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -1089,10 +1089,13 @@ export default function InvoicesPage() {
     return label;
   }
 
-  function getComputedPaymentStatus(invoice: Invoice): "PAID" | "SCHEDULED" | "NOT_SCHEDULED" {
+  function getComputedPaymentStatus(invoice: Invoice): "PAID" | "PARTIAL" | "SCHEDULED" | "NOT_SCHEDULED" {
     const storedStatus = (invoice.payment_status || "").toUpperCase();
+    // Partial: has some payment but not fully reconciled/paid
+    if (storedStatus === "PARTIAL" || (invoice.reconciled_amount && invoice.reconciled_amount > 0 && !invoice.is_reconciled)) {
+      return "PARTIAL";
+    }
     const isPaid = !!invoice.payment_date || (invoice.paid_amount || 0) > 0 || !!invoice.is_reconciled || storedStatus === "PAID";
-
     if (isPaid) return "PAID";
     if (invoice.schedule_date) return "SCHEDULED";
     return "NOT_SCHEDULED";
@@ -4298,9 +4301,11 @@ export default function InvoicesPage() {
                                     variant={paymentStatus === 'PAID' ? 'default' : 'outline'}
                                     className={`text-[10px] px-1.5 py-0 border ${paymentStatus === 'PAID'
                                       ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-200 dark:border-green-700'
-                                      : paymentStatus === 'SCHEDULED'
-                                        ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700'
-                                        : 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-[#111111] dark:text-gray-200 dark:border-gray-600'
+                                      : paymentStatus === 'PARTIAL'
+                                        ? 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-200 dark:border-orange-700'
+                                        : paymentStatus === 'SCHEDULED'
+                                          ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700'
+                                          : 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-[#111111] dark:text-gray-200 dark:border-gray-600'
                                       }`}
                                   >
                                     {paymentStatus.replace('_', ' ')}
@@ -4314,6 +4319,10 @@ export default function InvoicesPage() {
                                   {invoice.is_reconciled ? (
                                     <span title={`Reconciled${invoice.reconciled_at ? ' on ' + formatDate(invoice.reconciled_at) : ''}`}>
                                       <CheckCircle2 className="h-3.5 w-3.5 text-green-400 inline" />
+                                    </span>
+                                  ) : paymentStatus === 'PARTIAL' ? (
+                                    <span title={`Partially paid: ${formatEuropeanNumber(invoice.reconciled_amount || 0)} of ${formatEuropeanNumber(invoice.invoice_amount || 0)} ${invoice.currency || 'EUR'}`}>
+                                      <CircleDashed className="h-3.5 w-3.5 text-orange-500 inline" />
                                     </span>
                                   ) : (
                                     <span className="text-gray-500" title="Not reconciled">-</span>
@@ -4510,6 +4519,7 @@ export default function InvoicesPage() {
                           {visibleColumns.has('payment_status') && (
                             <td className="px-2 py-1 text-center text-[10px]">
                               <Badge variant="outline" className={`text-[9px] px-1.5 py-0 border ${paymentStatus === 'PAID' ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-200 dark:border-green-700' :
+                                paymentStatus === 'PARTIAL' ? 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-200 dark:border-orange-700' :
                                 paymentStatus === 'SCHEDULED' ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700' :
                                   'bg-gray-100 text-gray-800 border-gray-300 dark:bg-[#111111] dark:text-gray-200 dark:border-gray-600'
                                 }`}>
@@ -4528,6 +4538,10 @@ export default function InvoicesPage() {
                                     <span title="Manually reconciled"><User className="h-3.5 w-3.5 text-blue-500" /></span>
                                   )}
                                 </div>
+                              ) : paymentStatus === 'PARTIAL' ? (
+                                <span title={`Partially paid: ${formatEuropeanNumber(invoice.reconciled_amount || 0)} of ${formatEuropeanNumber(invoice.invoice_amount || 0)} ${invoice.currency || 'EUR'}`}>
+                                  <CircleDashed className="h-3.5 w-3.5 text-orange-500 inline" />
+                                </span>
                               ) : (
                                 <span className="text-gray-500 text-[10px]">-</span>
                               )}

@@ -46,6 +46,7 @@ import {
     Globe,
     ExternalLink,
     Eye,
+    Split,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { arSearch, arFetchUnreconciled, arFetchByIds, arFetchById, arFetchByOrderId, arUpdate } from "@/lib/ar-invoices-api";
@@ -204,6 +205,8 @@ interface APInvoiceMatch {
     description: string;
     invoice_amount: number;
     paid_amount: number | null;
+    reconciled_amount: number | null;
+    payment_status: string | null;
     schedule_date: string;
     payment_date: string | null;
     currency: string;
@@ -776,6 +779,14 @@ export default function BankStatementsPage() {
     // Stores the adjusted amount per order (orderId → amount) set by installment popup
     const [installmentOverrides, setInstallmentOverrides] = useState<Map<string, number>>(new Map());
 
+    // Expense Partial Payment Popup state (shown when invoice total ≠ bank amount)
+    const [showExpensePartialPopup, setShowExpensePartialPopup] = useState(false);
+    const [expensePartialInvoices, setExpensePartialInvoices] = useState<Array<{ id: number; provider_code: string; invoice_number: string; invoice_amount: number; previouslyPaid: number; remaining: number; allocatedAmount: number; currency: string }>>([]);
+    const [expensePartialBankAmount, setExpensePartialBankAmount] = useState(0);
+    const [expensePartialCurrency, setExpensePartialCurrency] = useState("EUR");
+    // Stores the allocated amount per invoice (invoice_id → amount) set by partial popup
+    const [expenseAllocations, setExpenseAllocations] = useState<Map<number, number>>(new Map());
+
     // Reconciliation detail popup (eye icon on reconciled orders)
     const [reconDetailPopup, setReconDetailPopup] = useState<{
         order: RevenueOrderMatch;
@@ -1071,7 +1082,7 @@ export default function BankStatementsPage() {
                 supabase
                     .from("invoices")
                     .select("*")
-                    .eq("is_reconciled", false)
+                    .or("is_reconciled.eq.false,is_reconciled.is.null,payment_status.eq.partial")
                     .eq("invoice_type", "INCURRED")
                     .order("schedule_date", { ascending: false })
                     .limit(1500),
@@ -1105,13 +1116,21 @@ export default function BankStatementsPage() {
 
                     return providerCodeNormalized.includes(normalizedQuery) || invoiceNumber.includes(normalizedQuery);
                 })
-                .map((inv: any) => ({
-                    ...inv,
-                    invoice_amount: parseFloat(inv.invoice_amount) || 0,
-                    paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
-                    matchScore: 0,
-                    matchReason: "Manual search",
-                }));
+                .map((inv: any) => {
+                    const fullAmount = parseFloat(inv.invoice_amount) || 0;
+                    const prevPaid = parseFloat(inv.reconciled_amount) || 0;
+                    const isPartial = inv.payment_status === "partial" && prevPaid > 0;
+                    const remaining = isPartial ? (fullAmount - prevPaid) : fullAmount;
+                    return {
+                        ...inv,
+                        invoice_amount: fullAmount,
+                        paid_amount: isPartial ? remaining : (inv.paid_amount ? parseFloat(inv.paid_amount) : null),
+                        reconciled_amount: prevPaid > 0 ? prevPaid : null,
+                        payment_status: inv.payment_status || null,
+                        matchScore: 0,
+                        matchReason: isPartial ? `Partial (${formatCurrency(prevPaid)} paid, ${formatCurrency(remaining)} remaining)` : "Manual search",
+                    };
+                });
 
             setManualSearchResults(results);
         } catch (err) {
@@ -1689,7 +1708,7 @@ export default function BankStatementsPage() {
                 .map(w => w.toLowerCase())
                 .filter(w => !NOISE_WORDS.has(w));
 
-            // Load all unreconciled AP invoices
+            // Load all unreconciled AP invoices (including partially paid)
             const allPages: any[] = [];
             let page = 0;
             const PAGE_SIZE = 1000;
@@ -1697,7 +1716,7 @@ export default function BankStatementsPage() {
                 const { data: chunk } = await supabase
                     .from("invoices")
                     .select("*")
-                    .eq("is_reconciled", false)
+                    .or("is_reconciled.eq.false,is_reconciled.is.null,payment_status.eq.partial")
                     .eq("invoice_type", "INCURRED")
                     .order("schedule_date", { ascending: false })
                     .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
@@ -1714,7 +1733,11 @@ export default function BankStatementsPage() {
             allPages.forEach(inv => {
                 const provider = (inv.provider_code || "").toLowerCase();
                 const invDesc = (inv.description || "").toLowerCase();
-                const invAmount = parseFloat(inv.paid_amount) || parseFloat(inv.invoice_amount) || 0;
+                const fullInvoiceAmount = parseFloat(inv.invoice_amount) || 0;
+                const previouslyPaid = parseFloat(inv.reconciled_amount) || 0;
+                const isPartial = inv.payment_status === "partial" && previouslyPaid > 0;
+                // For partial invoices, use remaining amount for matching
+                const invAmount = isPartial ? (fullInvoiceAmount - previouslyPaid) : (parseFloat(inv.paid_amount) || fullInvoiceAmount);
                 const amountDiff = Math.abs(invAmount - txAmount);
 
                 // Method 1: Fuzzy match extracted supplier name vs provider_code (≥60%)
@@ -1733,10 +1756,12 @@ export default function BankStatementsPage() {
 
                 const parsed: APInvoiceMatch = {
                     ...inv,
-                    invoice_amount: parseFloat(inv.invoice_amount) || 0,
-                    paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
+                    invoice_amount: fullInvoiceAmount,
+                    paid_amount: isPartial ? invAmount : (inv.paid_amount ? parseFloat(inv.paid_amount) : null),
+                    reconciled_amount: previouslyPaid > 0 ? previouslyPaid : null,
+                    payment_status: inv.payment_status || null,
                     matchScore: 0,
-                    matchReason: "",
+                    matchReason: isPartial ? `Partial (${formatCurrency(previouslyPaid)} paid, ${formatCurrency(invAmount)} remaining)` : "",
                 };
 
                 if (isSupplierMatch) {
@@ -2204,6 +2229,47 @@ export default function BankStatementsPage() {
                 }
             }
 
+            // ── EXPENSE PARTIAL POPUP INTERCEPT ──
+            // If expense + invoices selected + total doesn't match bank amount, show popup to allocate amounts
+            if (isExpense && selectedInvoices.size > 0 && !showExpensePartialPopup) {
+                const allInvoiceLists = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults];
+                const selectedInvs = allInvoiceLists.filter(inv => selectedInvoices.has(inv.id));
+                if (selectedInvs.length > 0) {
+                    const totalInvoiceAmount = selectedInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
+                    const isExactMatch = Math.abs(totalInvoiceAmount - txAmount) < 0.01;
+
+                    if (!isExactMatch) {
+                        // Build popup data with proportional pre-fill
+                        const popupInvoices = selectedInvs.map(inv => {
+                            const invAmt = inv.paid_amount ?? inv.invoice_amount ?? 0;
+                            const previouslyPaid = inv.reconciled_amount ?? 0;
+                            const fullAmount = inv.invoice_amount ?? 0;
+                            const remaining = previouslyPaid > 0 ? (fullAmount - previouslyPaid) : fullAmount;
+                            // Pre-fill proportionally: (invoice share / total) * bank amount
+                            const proportional = totalInvoiceAmount > 0
+                                ? Number(((invAmt / totalInvoiceAmount) * txAmount).toFixed(2))
+                                : 0;
+                            return {
+                                id: inv.id,
+                                provider_code: inv.provider_code || "",
+                                invoice_number: inv.invoice_number || "",
+                                invoice_amount: fullAmount,
+                                previouslyPaid,
+                                remaining,
+                                allocatedAmount: Math.min(proportional, remaining),
+                                currency: inv.currency || reconTransaction.currency || "EUR",
+                            };
+                        });
+                        setExpensePartialInvoices(popupInvoices);
+                        setExpensePartialBankAmount(txAmount);
+                        setExpensePartialCurrency(reconTransaction.currency || "EUR");
+                        setShowExpensePartialPopup(true);
+                        setIsSavingManual(false);
+                        return; // Stop — user will confirm allocations in popup, which calls executeFinalReconciliation
+                    }
+                }
+            }
+
             // Proceed with reconciliation (either directly or after P&L popup confirmation)
             await executeFinalReconciliation(isExpense, txAmount, now);
         } catch (err: unknown) {
@@ -2259,37 +2325,51 @@ export default function BankStatementsPage() {
         setIsSavingManual(true);
 
         try {
-            // CASE 1: Expense → AP Invoice match (supports multiple invoices)
+            // CASE 1: Expense → AP Invoice match (supports multiple invoices + partial payments)
             if (isExpense && selectedInvoices.size > 0) {
                 const allInvoiceLists = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults];
                 const selectedInvs = allInvoiceLists.filter(inv => selectedInvoices.has(inv.id));
                 if (selectedInvs.length === 0) throw new Error("No invoices found");
 
-                const totalInvoiceAmount = selectedInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
                 const invoiceNumbers = selectedInvs.map(inv => inv.invoice_number).filter(Boolean).join(", ");
                 const providers = [...new Set(selectedInvs.map(inv => inv.provider_code).filter(Boolean))].join(", ");
 
-                // Update each AP invoice — also fill payment fields from bank transaction
+                // Update each AP invoice — use allocated amounts from popup if available
                 const bankAccountCode = BANK_ACCOUNT_CODE_MAP[reconTransaction.source] || null;
                 const bankTxDate = reconTransaction.date || null;
+                let totalAllocated = 0;
+                let hasPartial = false;
                 for (const inv of selectedInvs) {
-                    const paidAmt = inv.paid_amount ?? inv.invoice_amount ?? 0;
+                    const fullInvoiceAmount = inv.invoice_amount ?? 0;
+                    const previouslyPaid = inv.reconciled_amount ?? 0;
+                    // Use allocated amount from popup, or default to displayed amount
+                    const allocatedAmt = expenseAllocations.has(inv.id)
+                        ? expenseAllocations.get(inv.id)!
+                        : (inv.paid_amount ?? inv.invoice_amount ?? 0);
+                    const cumulativePaid = previouslyPaid + allocatedAmt;
+                    const isFullyPaid = cumulativePaid >= fullInvoiceAmount * 0.98; // 98% tolerance
+                    totalAllocated += allocatedAmt;
+                    if (!isFullyPaid) hasPartial = true;
+
                     const { error: invErr } = await supabase
                         .from("invoices")
                         .update({
-                            is_reconciled: true,
+                            is_reconciled: isFullyPaid,
                             reconciled_transaction_id: reconTransaction.id,
                             reconciled_at: now,
-                            reconciled_amount: paidAmt,
-                            paid_amount: paidAmt,
+                            reconciled_amount: Number(cumulativePaid.toFixed(2)),
+                            paid_amount: Number(cumulativePaid.toFixed(2)),
                             paid_currency: reconTransaction.currency || inv.currency || "EUR",
                             payment_date: bankTxDate,
                             bank_account_code: bankAccountCode,
                             payment_method_code: "BANK_TRANSFER",
+                            payment_status: isFullyPaid ? "paid" : "partial",
                         })
                         .eq("id", inv.id);
                     if (invErr) throw invErr;
                 }
+
+                const totalInvoiceAmount = totalAllocated;
 
                 // Update bank transaction — NO gateway/paymentSource for expenses
                 const updatedCustomData = {
@@ -2301,6 +2381,7 @@ export default function BankStatementsPage() {
                     matched_invoice_total: totalInvoiceAmount,
                     matched_provider: providers,
                     manual_note: manualNote || null,
+                    has_partial_invoices: hasPartial || undefined,
                 };
 
                 const { error: txErr } = await supabase
@@ -4463,6 +4544,7 @@ export default function BankStatementsPage() {
                                                                         </div>
                                                                         <div className="text-right flex items-center gap-1.5">
                                                                             <span className="text-sm font-medium text-red-600 dark:text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
+                                                                            {inv.payment_status === "partial" && <Badge variant="outline" className="text-[8px] px-1 py-0 bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-700">PARTIAL</Badge>}
                                                                             <Badge variant="outline" className="text-[9px] px-1 py-0 bg-green-100 text-green-700 border-green-300 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700">{inv.matchScore}%</Badge>
                                                                         </div>
                                                                     </div>
@@ -4739,8 +4821,9 @@ export default function BankStatementsPage() {
                                                                         <div className="text-center">
                                                                             <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatNumericDate(inv.schedule_date)}</span>
                                                                         </div>
-                                                                        <div className="text-right">
+                                                                        <div className="text-right flex items-center gap-1.5">
                                                                             <span className="text-xs font-medium text-red-600 dark:text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
+                                                                            {inv.payment_status === "partial" && <Badge variant="outline" className="text-[8px] px-1 py-0 bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-700">PARTIAL</Badge>}
                                                                         </div>
                                                                     </div>
                                                                 </button>
@@ -5059,9 +5142,38 @@ export default function BankStatementsPage() {
                             )}
 
                             {/* Dialog Footer */}
-                            <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                            <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                                {/* Expense invoice summary with remaining amount */}
+                                {selectedInvoices.size > 0 && reconTransaction && reconTransaction.amount < 0 && (() => {
+                                    const allInvLists = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults];
+                                    const selInvs = allInvLists.filter(inv => selectedInvoices.has(inv.id));
+                                    const tot = selInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
+                                    const bankAmt = Math.abs(reconTransaction.amount);
+                                    const remaining = Math.max(0, bankAmt - tot);
+                                    const isExact = Math.abs(bankAmt - tot) < 0.01;
+                                    const invoicesExceed = tot > bankAmt + 0.01;
+                                    return (
+                                        <div className={`rounded-md p-2 border ${isExact ? "bg-green-50 border-green-300 dark:bg-green-900/20 dark:border-green-800" : invoicesExceed ? "bg-amber-50 border-amber-300 dark:bg-amber-900/20 dark:border-amber-800" : "bg-cyan-50 border-cyan-300 dark:bg-cyan-900/20 dark:border-cyan-800"}`}>
+                                            <div className="flex items-center justify-between">
+                                                <span className={`text-[10px] font-medium ${isExact ? "text-green-700 dark:text-green-400" : invoicesExceed ? "text-amber-700 dark:text-amber-400" : "text-cyan-700 dark:text-cyan-400"}`}>
+                                                    {selectedInvoices.size} invoice(s) selected — total: {formatCurrency(tot, reconTransaction.currency)}
+                                                </span>
+                                                <div className="text-[10px] text-right space-x-3">
+                                                    <span className="text-gray-500">Bank exit: {formatCurrency(bankAmt, reconTransaction.currency)}</span>
+                                                    {!isExact && (
+                                                        <span className={invoicesExceed ? "text-amber-600 dark:text-amber-400 font-medium" : "text-cyan-600 dark:text-cyan-400 font-medium"}>
+                                                            {invoicesExceed ? `Invoices exceed by ${formatCurrency(tot - bankAmt, reconTransaction.currency)}` : `Remaining: ${formatCurrency(remaining, reconTransaction.currency)}`}
+                                                        </span>
+                                                    )}
+                                                    {isExact && <span className="text-green-600 dark:text-green-400 font-medium">✓ Exact match</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                                <div className="flex items-center justify-between">
                                 <div className="text-[10px] text-gray-500">
-                                    {selectedInvoices.size > 0 && (() => {
+                                    {selectedInvoices.size > 0 && reconTransaction && reconTransaction.amount >= 0 && (() => {
                                         const allInvLists = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults];
                                         const selInvs = allInvLists.filter(inv => selectedInvoices.has(inv.id));
                                         const tot = selInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
@@ -5085,6 +5197,7 @@ export default function BankStatementsPage() {
                                         {isSavingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Link2 className="h-3.5 w-3.5 mr-1" />}
                                         Reconcile
                                     </Button>
+                                </div>
                                 </div>
                             </div>
                         </div>
@@ -5361,6 +5474,142 @@ export default function BankStatementsPage() {
                             >
                                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                                 {installmentCount === 1 ? `Confirm ${formatCurrency(parseFloat(installmentAmount) || installmentData.orderAmount, installmentData.currency)}` : `Confirm Installment (${formatCurrency(parseFloat(installmentAmount) || 0, installmentData.currency)})`}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══════════════════════════════════════════════════════ */}
+            {/* EXPENSE PARTIAL PAYMENT POPUP — allocate bank amount to invoices */}
+            {/* ═══════════════════════════════════════════════════════ */}
+            {showExpensePartialPopup && expensePartialInvoices.length > 0 && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60" onClick={() => setShowExpensePartialPopup(false)} />
+                    <div className="relative bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-[600px] max-h-[85vh] flex flex-col">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Split className="h-4 w-4 text-cyan-600" />
+                                Expense Payment Allocation
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                                The selected invoices total doesn&apos;t match the bank exit amount.
+                                Adjust the allocated amount for each invoice below.
+                            </p>
+                        </div>
+
+                        {/* Info Bar */}
+                        <div className="px-6 py-2 bg-cyan-50 dark:bg-cyan-950/20 border-b border-cyan-200 dark:border-cyan-800/50">
+                            <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-600 dark:text-gray-400">Bank exit amount</span>
+                                <span className="font-bold text-cyan-700 dark:text-cyan-400">{formatCurrency(expensePartialBankAmount, expensePartialCurrency)}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs mt-1">
+                                <span className="text-gray-600 dark:text-gray-400">Total invoices</span>
+                                <span className="font-medium text-gray-700 dark:text-gray-300">
+                                    {formatCurrency(expensePartialInvoices.reduce((s, inv) => s + inv.remaining, 0), expensePartialCurrency)}
+                                </span>
+                            </div>
+                            {(() => {
+                                const totalAlloc = expensePartialInvoices.reduce((s, inv) => s + inv.allocatedAmount, 0);
+                                const bankRemaining = Math.max(0, expensePartialBankAmount - totalAlloc);
+                                return (
+                                    <div className="flex items-center justify-between text-xs mt-1 pt-1 border-t border-cyan-200 dark:border-cyan-700">
+                                        <span className="text-gray-600 dark:text-gray-400">Remaining bank amount</span>
+                                        <span className={`font-medium ${bankRemaining < 0.01 ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>
+                                            {bankRemaining < 0.01 ? "✓ Fully allocated" : formatCurrency(bankRemaining, expensePartialCurrency)}
+                                        </span>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
+                        {/* Invoice Rows */}
+                        <div className="flex-1 overflow-y-auto px-6 py-3 space-y-2">
+                            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 px-2 text-[9px] text-gray-500 uppercase tracking-wider mb-1">
+                                <span>Supplier / Invoice</span>
+                                <span className="text-right w-20">Invoice Amt</span>
+                                <span className="text-right w-20">Prev. Paid</span>
+                                <span className="text-right w-24">Allocate Now</span>
+                            </div>
+                            {expensePartialInvoices.map((inv, idx) => (
+                                <div key={inv.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-2 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30">
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{inv.provider_code}</p>
+                                        <p className="text-[10px] text-gray-500 truncate">{inv.invoice_number || "-"}</p>
+                                    </div>
+                                    <div className="text-right w-20">
+                                        <span className="text-xs text-gray-700 dark:text-gray-300">{formatCurrency(inv.invoice_amount, inv.currency)}</span>
+                                    </div>
+                                    <div className="text-right w-20">
+                                        {inv.previouslyPaid > 0 ? (
+                                            <span className="text-xs text-orange-600 dark:text-orange-400">{formatCurrency(inv.previouslyPaid, inv.currency)}</span>
+                                        ) : (
+                                            <span className="text-xs text-gray-400">-</span>
+                                        )}
+                                    </div>
+                                    <div className="w-24">
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            min={0}
+                                            max={inv.remaining}
+                                            value={inv.allocatedAmount}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value) || 0;
+                                                const capped = Math.min(val, inv.remaining);
+                                                setExpensePartialInvoices(prev => prev.map((p, i) =>
+                                                    i === idx ? { ...p, allocatedAmount: capped } : p
+                                                ));
+                                            }}
+                                            className="h-7 text-xs text-right"
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setShowExpensePartialPopup(false);
+                                    setExpensePartialInvoices([]);
+                                }}
+                                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 h-8 text-xs"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={async () => {
+                                    const totalAlloc = expensePartialInvoices.reduce((s, inv) => s + inv.allocatedAmount, 0);
+                                    if (totalAlloc > expensePartialBankAmount + 0.01) {
+                                        toast({ title: "Exceeds bank amount", description: `Total allocated (${formatCurrency(totalAlloc, expensePartialCurrency)}) exceeds bank exit (${formatCurrency(expensePartialBankAmount, expensePartialCurrency)})`, variant: "destructive" });
+                                        return;
+                                    }
+                                    if (totalAlloc < 0.01) {
+                                        toast({ title: "No allocation", description: "Allocate at least some amount to one invoice", variant: "destructive" });
+                                        return;
+                                    }
+                                    // Store allocations and proceed with reconciliation
+                                    const allocMap = new Map<number, number>();
+                                    for (const inv of expensePartialInvoices) {
+                                        if (inv.allocatedAmount > 0) {
+                                            allocMap.set(inv.id, inv.allocatedAmount);
+                                        }
+                                    }
+                                    setExpenseAllocations(allocMap);
+                                    setShowExpensePartialPopup(false);
+                                    setExpensePartialInvoices([]);
+                                    // Execute reconciliation with allocated amounts
+                                    await executeFinalReconciliation(true, expensePartialBankAmount, new Date().toISOString());
+                                }}
+                                className="bg-cyan-600 hover:bg-cyan-700 h-8 text-xs text-white"
+                            >
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                Confirm Allocation ({formatCurrency(expensePartialInvoices.reduce((s, inv) => s + inv.allocatedAmount, 0), expensePartialCurrency)})
                             </Button>
                         </div>
                     </div>
