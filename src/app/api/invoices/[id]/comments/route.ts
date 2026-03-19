@@ -122,14 +122,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         // Process @mentions: notify + auto-add as collaborator
         // Guard with commentAuthorId (always present) — not authorSystemId (may be null)
+        const effectiveTriggeredBy = authorSystemId || commentAuthorId;
         for (const mentionedId of mentionedIds) {
-            if (commentAuthorId && commentAuthorId !== mentionedId) {
+            if (effectiveTriggeredBy && effectiveTriggeredBy !== mentionedId) {
                 await createWSNotification({
                     userId: mentionedId,
                     type: 'mention',
                     title: `${authorName} mentioned you`,
                     message: `${authorName} mentioned you in a comment on a scheduled payment (Invoice #${invoiceId})`,
-                    triggeredBy: commentAuthorId,
+                    triggeredBy: effectiveTriggeredBy,
                     referenceType: 'invoice',
                     referenceUrl,
                     metadata: { invoice_id: invoiceId, comment_id: data.id },
@@ -148,7 +149,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         // Notify existing collaborators (except author and already-mentioned)
-        const alreadyNotified = new Set([...mentionedIds, authorSystemId, commentAuthorId].filter(Boolean));
+        const alreadyNotified = new Set([...mentionedIds, authorSystemId, commentAuthorId, effectiveTriggeredBy].filter(Boolean));
         try {
             const { data: collabs } = await supabaseAdmin
                 .from('invoice_collaborators')
@@ -156,13 +157,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 .eq('invoice_id', invoiceId);
 
             for (const collab of (collabs || [])) {
-                if (!alreadyNotified.has(collab.user_id) && commentAuthorId) {
+                if (!alreadyNotified.has(collab.user_id) && effectiveTriggeredBy) {
                     await createWSNotification({
                         userId: collab.user_id,
                         type: 'comment_reply',
                         title: `${authorName} commented on a payment you follow`,
                         message: `New comment on scheduled payment (Invoice #${invoiceId})`,
-                        triggeredBy: commentAuthorId,
+                        triggeredBy: effectiveTriggeredBy,
                         referenceType: 'invoice',
                         referenceUrl,
                         metadata: { invoice_id: invoiceId, comment_id: data.id },

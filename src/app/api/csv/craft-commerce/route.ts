@@ -141,6 +141,60 @@ function getPaymentStatus(
     return "paid";
 }
 
+/** Safely parse embedded JSON from CSV field (handles escaped quotes/slashes) */
+function tryParseJSON(raw: string): unknown | null {
+    if (!raw || raw.trim() === "") return null;
+    // Remove surrounding quotes and unescape CSV double-quotes
+    let cleaned = raw.replace(/^["']+|["']+$/g, "").trim();
+    cleaned = cleaned.replace(/""/g, '"');
+    // Unescape forward slashes
+    cleaned = cleaned.replace(/\\\//g, "/");
+    try { return JSON.parse(cleaned); } catch { return null; }
+}
+
+/** Extract customer name from Craft Commerce customer JSON */
+function extractCustomerName(customerRaw: string): string | null {
+    const obj = tryParseJSON(customerRaw);
+    if (!obj || typeof obj !== "object") return null;
+    const c = obj as Record<string, unknown>;
+    if (c.fullName && typeof c.fullName === "string") return c.fullName;
+    const first = c.firstName || "";
+    const last = c.lastName || "";
+    const name = `${first} ${last}`.trim();
+    return name || null;
+}
+
+/** Extract company name from billing address or customer JSON */
+function extractCompanyName(billingRaw: string, customerRaw: string): string | null {
+    const billing = tryParseJSON(billingRaw);
+    if (billing && typeof billing === "object") {
+        const b = billing as Record<string, unknown>;
+        if (b.organization && typeof b.organization === "string" && b.organization.trim()) {
+            return b.organization.trim();
+        }
+    }
+    const customer = tryParseJSON(customerRaw);
+    if (customer && typeof customer === "object") {
+        const c = customer as Record<string, unknown>;
+        if (c.hubspotCompanyId) return null; // no company name directly in customer
+    }
+    return null;
+}
+
+/** Extract product descriptions from lineItems JSON array */
+function extractProducts(lineItemsRaw: string): string | null {
+    const arr = tryParseJSON(lineItemsRaw);
+    if (!Array.isArray(arr) || arr.length === 0) return null;
+    const descriptions = arr
+        .map((item: Record<string, unknown>) => {
+            const desc = item.description || item.sku || "";
+            const qty = item.qty || 1;
+            return qty > 1 ? `${desc} (x${qty})` : String(desc);
+        })
+        .filter(Boolean);
+    return descriptions.length > 0 ? descriptions.join(", ") : null;
+}
+
 /** Mapear gatewayId para nome legível */
 function getGatewayName(gatewayId: string): string {
     const map: Record<string, string> = {
@@ -216,6 +270,9 @@ export async function POST(request: NextRequest) {
         const colOrigin = findCol(headers, "origin");
         const colPaymentSourceId = findCol(headers, "paymentsourceid");
         const colDateUpdated = findCol(headers, "dateupdated");
+        const colCustomer = findCol(headers, "customer");
+        const colLineItems = findCol(headers, "lineitems");
+        const colBillingAddress = findCol(headers, "billingaddress");
 
         if (colReference === -1 || colDateOrdered === -1) {
             return NextResponse.json(
@@ -311,6 +368,14 @@ export async function POST(request: NextRequest) {
 
             const invoiceNumber = `CC-${reference}`;
 
+            // Extract customer/product data from embedded JSON columns
+            const customerRaw = getVal(colCustomer);
+            const lineItemsRaw = getVal(colLineItems);
+            const billingRaw = getVal(colBillingAddress);
+            const clientName = extractCustomerName(customerRaw);
+            const companyName = extractCompanyName(billingRaw, customerRaw);
+            const products = extractProducts(lineItemsRaw);
+
             const record = {
                 invoice_number: invoiceNumber,
                 order_id: reference,
@@ -318,9 +383,9 @@ export async function POST(request: NextRequest) {
                 order_status: getOrderStatusLabel(orderStatusId),
                 deal_status: dealStatus,
                 invoice_date: dateOrdered || dateCreated || new Date().toISOString().split("T")[0],
-                products: null, // Not available in this CSV export
-                company_name: null,
-                client_name: null,
+                products: products,
+                company_name: companyName,
+                client_name: clientName,
                 email: email || null,
                 total_amount: storedItemSubtotal > 0 ? storedItemSubtotal : storedTotalPrice,
                 currency: currency.toUpperCase(),
@@ -360,6 +425,9 @@ export async function POST(request: NextRequest) {
                     stored_total_qty: storedTotalQty,
                     customer_id: customerId,
                     customer_email: email,
+                    customer_name: clientName,
+                    company_name: companyName,
+                    products: products,
                     gateway_id: gatewayId,
                     gateway_name: getGatewayName(gatewayId),
                     hubspot_company_id: hubspotCompanyId || null,

@@ -39,17 +39,32 @@ export async function GET(req: NextRequest) {
 
         if (error) throw error;
 
-        // Enrich triggered_by with system_users data
+        // Enrich triggered_by with system_users data, falling back to auth users table
         const triggerIds = [...new Set((data || []).map(n => n.triggered_by).filter(Boolean))];
         let usersMap: Record<string, { id: string; name: string; avatar_url: string | null }> = {};
 
         if (triggerIds.length > 0) {
+            // Try system_users first
             const { data: sysUsers } = await supabaseAdmin
                 .from('system_users')
                 .select('id, name, avatar_url')
                 .in('id', triggerIds);
             for (const u of (sysUsers || [])) {
                 usersMap[u.id] = u;
+            }
+
+            // Fallback: any triggerIds not found in system_users → try auth users table
+            const missingIds = triggerIds.filter(id => !usersMap[id]);
+            if (missingIds.length > 0) {
+                const { data: authUsers } = await supabaseAdmin
+                    .from('users')
+                    .select('id, email, raw_user_meta_data')
+                    .in('id', missingIds);
+                for (const au of (authUsers || [])) {
+                    const meta = (au.raw_user_meta_data || {}) as Record<string, unknown>;
+                    const name = (meta.full_name || meta.name || au.email || 'Unknown') as string;
+                    usersMap[au.id] = { id: au.id, name, avatar_url: (meta.avatar_url as string) || null };
+                }
             }
         }
 
