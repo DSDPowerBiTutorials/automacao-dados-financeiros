@@ -603,15 +603,18 @@ export default function PaymentSchedulePage() {
             const addedBy = adder?.id || null;
             const session = await supabase.auth.getSession();
             const token = session?.data?.session?.access_token;
-            await fetch(`/api/invoices/${selectedInvoice.id}/collaborators`, {
+            const res = await fetch(`/api/invoices/${selectedInvoice.id}/collaborators`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
                 body: JSON.stringify({ user_id: userId, added_by: addedBy }),
             });
+            const json = await res.json();
+            if (!json.success) throw new Error(json.error || "Failed to add collaborator");
             loadCollaborators(selectedInvoice.id);
             setShowCollabPicker(false);
             setCollabSearch("");
-        } catch { toast({ title: "Error", description: "Failed to add collaborator", variant: "destructive" }); }
+            toast({ title: "Collaborator added", variant: "success" });
+        } catch (e: any) { toast({ title: "Error", description: e?.message || "Failed to add collaborator", variant: "destructive" }); }
     }
 
     async function handleRemoveCollaborator(userId: string) {
