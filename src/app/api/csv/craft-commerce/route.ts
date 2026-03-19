@@ -82,7 +82,8 @@ function parseAmount(str: string | null | undefined): number {
  */
 function parseCraftDate(dateStr: string | null | undefined): string | null {
     if (!dateStr || dateStr.trim() === "" || dateStr.trim() === "-") return null;
-    const trimmed = dateStr.replace(/["\t]/g, "").trim();
+    // Remove quotes, tabs AND backslashes (CSV escapes / as \/)
+    const trimmed = dateStr.replace(/["\t\\]/g, "").trim();
 
     // JSON format: {date:M/D/YYYY,time:...}
     const jsonMatch = trimmed.match(/date\s*:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
@@ -96,11 +97,7 @@ function parseCraftDate(dateStr: string | null | undefined): string | null {
         return trimmed.substring(0, 10);
     }
 
-    // Fallback
-    const d = new Date(trimmed);
-    if (!isNaN(d.getTime())) {
-        return d.toISOString().split("T")[0];
-    }
+    // NEVER fallback to new Date() — return null if unparseable
     return null;
 }
 
