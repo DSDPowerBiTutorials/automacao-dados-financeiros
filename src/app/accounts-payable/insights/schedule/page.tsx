@@ -51,6 +51,29 @@ import { InvoiceSidePanel } from "@/components/app/invoice-side-panel";
 import { UserAvatar } from "@/components/user-avatar";
 import { UserProfilePopup } from "@/components/user-profile-popup";
 import { PageHeader } from "@/components/ui/page-header";
+import { UserPlus } from "lucide-react";
+
+type SystemUser = {
+    id: string;
+    email: string;
+    name: string;
+    avatar_url: string | null;
+    role: string | null;
+    department: string | null;
+};
+
+type InvoiceCollaborator = {
+    id: number;
+    invoice_id: number;
+    user_id: string;
+    added_by: string | null;
+    added_at: string;
+    user_name: string | null;
+    user_email: string | null;
+    user_avatar: string | null;
+    user_role: string | null;
+    user_department: string | null;
+};
 
 type Invoice = {
     id: number;
@@ -238,6 +261,19 @@ export default function PaymentSchedulePage() {
     const [submittingComment, setSubmittingComment] = useState(false);
     const [activeTab, setActiveTab] = useState<"comments" | "all">("all");
 
+    // Mention system
+    const commentInputRef = useRef<HTMLTextAreaElement>(null);
+    const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
+    const [showMentionList, setShowMentionList] = useState(false);
+    const [mentionSearch, setMentionSearch] = useState("");
+    const [mentionStartIndex, setMentionStartIndex] = useState(0);
+
+    // Collaborators
+    const [collaborators, setCollaborators] = useState<InvoiceCollaborator[]>([]);
+    const [loadingCollaborators, setLoadingCollaborators] = useState(false);
+    const [showCollabPicker, setShowCollabPicker] = useState(false);
+    const [collabSearch, setCollabSearch] = useState("");
+
     // Reconciliation dialog
     const [reconciliationDialogOpen, setReconciliationDialogOpen] = useState(false);
     const [reconciliationInvoice, setReconciliationInvoice] = useState<Invoice | null>(null);
@@ -372,9 +408,22 @@ export default function PaymentSchedulePage() {
         }
     }, [invoices]);
 
+    // Load system users for @mention dropdown
+    useEffect(() => {
+        async function loadSystemUsers() {
+            try {
+                const res = await fetch("/api/workstream/users");
+                const json = await res.json();
+                if (json.success) setSystemUsers(json.data || []);
+            } catch { /* ignore */ }
+        }
+        loadSystemUsers();
+    }, []);
+
     useEffect(() => {
         if (selectedInvoice) {
             loadActivities(selectedInvoice.id);
+            loadCollaborators(selectedInvoice.id);
         }
     }, [selectedInvoice]);
 
@@ -469,25 +518,104 @@ export default function PaymentSchedulePage() {
             const { data: userData } = await supabase.auth.getUser();
             const userEmail = userData?.user?.email || "Unknown";
             const userName = userData?.user?.user_metadata?.name || userEmail.split("@")[0];
+            const userId = userData?.user?.id || null;
 
-            const { data, error } = await supabase.from("invoice_activities").insert([{
-                invoice_id: selectedInvoice.id,
-                user_email: userEmail,
-                user_name: userName,
-                activity_type: "comment",
-                content: newComment,
-            }]).select().single();
+            const res = await fetch(`/api/invoices/${selectedInvoice.id}/comments`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content: newComment, user_id: userId, user_email: userEmail, user_name: userName }),
+            });
+            const json = await res.json();
+            if (!json.success) throw new Error(json.error);
 
-            if (error) throw error;
-
-            setActivities([data, ...activities]);
+            setActivities([json.data, ...activities]);
             setNewComment("");
+            setShowMentionList(false);
             toast({ title: "Comment added", variant: "success" });
+            // Refresh collaborators (auto-join + mention auto-add)
+            loadCollaborators(selectedInvoice.id);
         } catch (e: any) {
             toast({ title: "Error", description: e?.message || "Failed to add comment", variant: "destructive" });
         } finally {
             setSubmittingComment(false);
         }
+    }
+
+    // ─── Mention helpers ───
+    function handleCommentChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+        const value = e.target.value;
+        const cursorPos = e.target.selectionStart;
+        setNewComment(value);
+
+        const textBeforeCursor = value.slice(0, cursorPos);
+        const atIndex = textBeforeCursor.lastIndexOf("@");
+
+        if (atIndex !== -1) {
+            const textAfterAt = textBeforeCursor.slice(atIndex + 1);
+            if (!textAfterAt.includes("\n") && textAfterAt.length < 30) {
+                setShowMentionList(true);
+                setMentionSearch(textAfterAt.toLowerCase());
+                setMentionStartIndex(atIndex);
+                return;
+            }
+        }
+        setShowMentionList(false);
+    }
+
+    function selectMention(user: SystemUser) {
+        const before = newComment.slice(0, mentionStartIndex);
+        const after = newComment.slice(commentInputRef.current?.selectionStart || mentionStartIndex);
+        const newText = `${before}@${user.name} ${after}`;
+        setNewComment(newText);
+        setShowMentionList(false);
+        commentInputRef.current?.focus();
+    }
+
+    const filteredMentionUsers = systemUsers.filter(u =>
+        u.name.toLowerCase().includes(mentionSearch) ||
+        u.email.toLowerCase().includes(mentionSearch)
+    );
+
+    // ─── Collaborator helpers ───
+    async function loadCollaborators(invoiceId: number) {
+        setLoadingCollaborators(true);
+        try {
+            const res = await fetch(`/api/invoices/${invoiceId}/collaborators`);
+            const json = await res.json();
+            if (json.success) setCollaborators(json.data || []);
+        } catch { setCollaborators([]); }
+        finally { setLoadingCollaborators(false); }
+    }
+
+    async function handleAddCollaborator(userId: string) {
+        if (!selectedInvoice) return;
+        try {
+            const { data: userData } = await supabase.auth.getUser();
+            const addedBy = userData?.user?.id || null;
+            await fetch(`/api/invoices/${selectedInvoice.id}/collaborators`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: userId, added_by: addedBy }),
+            });
+            loadCollaborators(selectedInvoice.id);
+            setShowCollabPicker(false);
+            setCollabSearch("");
+        } catch { toast({ title: "Error", description: "Failed to add collaborator", variant: "destructive" }); }
+    }
+
+    async function handleRemoveCollaborator(userId: string) {
+        if (!selectedInvoice) return;
+        try {
+            await fetch(`/api/invoices/${selectedInvoice.id}/collaborators?user_id=${encodeURIComponent(userId)}`, { method: "DELETE" });
+            setCollaborators(prev => prev.filter(c => c.user_id !== userId));
+        } catch { toast({ title: "Error", description: "Failed to remove collaborator", variant: "destructive" }); }
+    }
+
+    async function handleJoinTask() {
+        if (!selectedInvoice) return;
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+        if (userId) handleAddCollaborator(userId);
     }
 
     const filteredInvoices = useMemo(() => {
@@ -1043,6 +1171,9 @@ export default function PaymentSchedulePage() {
         setDetailPanelOpen(false);
         setSelectedInvoice(null);
         setActivities([]);
+        setCollaborators([]);
+        setShowMentionList(false);
+        setShowCollabPicker(false);
     }
 
     async function openReconciliationDialog(invoice: Invoice) {
@@ -2081,19 +2212,41 @@ export default function PaymentSchedulePage() {
                     </div>
 
                     {/* Comment Input */}
-                    <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3">
+                    <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 relative">
+                        {/* Mention dropdown */}
+                        {showMentionList && filteredMentionUsers.length > 0 && (
+                            <div className="absolute bottom-full left-4 right-4 mb-1 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-[200px] overflow-y-auto">
+                                {filteredMentionUsers.slice(0, 8).map((u) => (
+                                    <button
+                                        key={u.id}
+                                        onClick={() => selectMention(u)}
+                                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-left"
+                                    >
+                                        <UserAvatar user={{ id: u.id, email: u.email, name: u.name, avatar_url: u.avatar_url }} size="sm" />
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-sm font-medium text-gray-900 dark:text-white truncate block">{u.name}</span>
+                                            <span className="text-[10px] text-gray-500 truncate block">{u.email}</span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         <div className="flex items-start gap-3">
                             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
                                 <User className="h-4 w-4 text-gray-900 dark:text-white" />
                             </div>
                             <div className="flex-1">
                                 <Textarea
-                                    placeholder="Add a comment..."
+                                    ref={commentInputRef}
+                                    placeholder="Add a comment... Use @ to mention"
                                     value={newComment}
-                                    onChange={(e) => setNewComment(e.target.value)}
+                                    onChange={handleCommentChange}
                                     className="bg-gray-50 dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 min-h-[60px] resize-none"
                                     onKeyDown={(e) => {
-                                        if (e.key === "Enter" && !e.shiftKey) {
+                                        if (showMentionList) {
+                                            if (e.key === "Escape") { e.preventDefault(); setShowMentionList(false); return; }
+                                        }
+                                        if (e.key === "Enter" && !e.shiftKey && !showMentionList) {
                                             e.preventDefault();
                                             addComment();
                                         }
@@ -2109,25 +2262,101 @@ export default function PaymentSchedulePage() {
                     </div>
 
                     {/* Collaborators */}
-                    <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-500">Collaborators</span>
-                            <div className="flex -space-x-2">
-                                <div className="w-7 h-7 rounded-full bg-blue-600 border-2 border-gray-200 dark:border-[#1e1f21] flex items-center justify-center">
-                                    <span className="text-xs text-gray-900 dark:text-white font-medium">S</span>
+                    <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 relative">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm text-gray-500">Collaborators</span>
+                                <div className="flex items-center gap-1 flex-wrap">
+                                    {collaborators.map((c) => (
+                                        <UserProfilePopup
+                                            key={c.user_id}
+                                            user={{
+                                                id: c.user_id,
+                                                email: c.user_email || "",
+                                                name: c.user_name || "",
+                                                avatar_url: c.user_avatar || null,
+                                                department: c.user_department || null,
+                                                role: c.user_role || null,
+                                            }}
+                                            side="top"
+                                        >
+                                            <div className="group relative flex items-center">
+                                                <UserAvatar
+                                                    user={{
+                                                        id: c.user_id,
+                                                        email: c.user_email || "",
+                                                        name: c.user_name || "",
+                                                        avatar_url: c.user_avatar || null,
+                                                    }}
+                                                    size="sm"
+                                                    className="cursor-pointer"
+                                                />
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleRemoveCollaborator(c.user_id); }}
+                                                    className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full text-white text-[8px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    title="Remove collaborator"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        </UserProfilePopup>
+                                    ))}
                                 </div>
-                                <div className="w-7 h-7 rounded-full bg-gray-600 border-2 border-gray-200 dark:border-[#1e1f21] flex items-center justify-center">
-                                    <User className="h-3 w-3 text-gray-500 dark:text-gray-400" />
+                                <div className="relative">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0 text-gray-500 hover:text-gray-900 dark:hover:text-white border border-dashed border-gray-300 dark:border-gray-600 rounded-full"
+                                        onClick={() => { setShowCollabPicker(!showCollabPicker); setCollabSearch(""); }}
+                                    >
+                                        <UserPlus className="h-3.5 w-3.5" />
+                                    </Button>
+                                    {showCollabPicker && (
+                                        <div className="absolute bottom-full left-0 mb-1 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 w-64">
+                                            <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+                                                <Input
+                                                    placeholder="Search team members..."
+                                                    value={collabSearch}
+                                                    onChange={(e) => setCollabSearch(e.target.value)}
+                                                    className="h-7 text-xs bg-transparent"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div className="max-h-[200px] overflow-y-auto">
+                                                {systemUsers
+                                                    .filter(u =>
+                                                        !collaborators.some(c => c.user_id === u.id) &&
+                                                        (u.name.toLowerCase().includes(collabSearch.toLowerCase()) ||
+                                                         u.email.toLowerCase().includes(collabSearch.toLowerCase()))
+                                                    )
+                                                    .slice(0, 8)
+                                                    .map(u => (
+                                                        <button
+                                                            key={u.id}
+                                                            onClick={() => handleAddCollaborator(u.id)}
+                                                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-left"
+                                                        >
+                                                            <UserAvatar user={{ id: u.id, email: u.email, name: u.name, avatar_url: u.avatar_url }} size="sm" />
+                                                            <div className="flex-1 min-w-0">
+                                                                <span className="text-sm font-medium text-gray-900 dark:text-white truncate block">{u.name}</span>
+                                                                <span className="text-[10px] text-gray-500 truncate block">{u.email}</span>
+                                                            </div>
+                                                        </button>
+                                                    ))
+                                                }
+                                                {systemUsers.filter(u => !collaborators.some(c => c.user_id === u.id) && (u.name.toLowerCase().includes(collabSearch.toLowerCase()) || u.email.toLowerCase().includes(collabSearch.toLowerCase()))).length === 0 && (
+                                                    <p className="text-xs text-gray-500 text-center py-3">No users found</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-500 hover:text-gray-900 dark:text-white">
-                                <Plus className="h-4 w-4" />
+                            <Button variant="ghost" size="sm" onClick={handleJoinTask} className="text-gray-500 hover:text-gray-900 dark:hover:text-white text-xs">
+                                <MessageCircle className="h-4 w-4 mr-1" />
+                                Join task
                             </Button>
                         </div>
-                        <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-900 dark:text-white text-xs">
-                            <MessageCircle className="h-4 w-4 mr-1" />
-                            Join task
-                        </Button>
                     </div>
                 </div>
             )}
