@@ -681,7 +681,7 @@ export function FileExplorer() {
                                 <div className="flex items-center justify-center gap-1">
                                     <button
                                         onClick={() => {
-                                            const url = `${window.location.origin}/api/share?bucket=${currentBucket}&path=${encodeURIComponent(file.path)}`;
+                                            const url = `${window.location.origin}/api/share?bucket=${activeBucket}&path=${encodeURIComponent(file.path)}`;
                                             navigator.clipboard.writeText(url);
                                             toast({ title: "Link copiado!", description: "Qualquer pessoa com o link pode aceder ao ficheiro." });
                                         }}
