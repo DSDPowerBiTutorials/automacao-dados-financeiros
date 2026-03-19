@@ -9,6 +9,37 @@ function getAdminClient() {
 }
 
 // ============================================================
+// User Resolution: auth UID ↔ system_users mapping
+// ============================================================
+
+/**
+ * Resolve an auth user ID to the matching system_users record by name.
+ * Returns { id, name, email } from system_users or null if not found.
+ */
+export async function resolveAuthToSystemUser(authUserId: string): Promise<{ id: string; name: string; email: string } | null> {
+    const sb = getAdminClient();
+    // Get the auth user's display name from the users table
+    const { data: authUser } = await sb
+        .from('users')
+        .select('name')
+        .eq('id', authUserId)
+        .single();
+    if (!authUser?.name) return null;
+
+    const firstName = authUser.name.split(' ')[0].toLowerCase();
+    const { data: sysUsers } = await sb
+        .from('system_users')
+        .select('id, name, email')
+        .eq('is_active', true);
+
+    return (sysUsers || []).find(u =>
+        u.name.toLowerCase() === firstName ||
+        u.name.toLowerCase().startsWith(firstName + ' ') ||
+        firstName.startsWith(u.name.toLowerCase())
+    ) || null;
+}
+
+// ============================================================
 // Projects
 // ============================================================
 

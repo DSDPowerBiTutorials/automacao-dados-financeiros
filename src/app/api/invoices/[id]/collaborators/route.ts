@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getUsers, createWSNotification } from '@/lib/workstream-api';
+import { createWSNotification, resolveAuthToSystemUser } from '@/lib/workstream-api';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -69,20 +69,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         // Send notification to new collaborator
         if (body.added_by && body.added_by !== body.user_id) {
             try {
-                const allUsers = await getUsers();
-                const adder = allUsers?.find((u: { id: string }) => u.id === body.added_by);
-                const adderName = adder?.name || 'Someone';
+                // Resolve auth UID → system_users.id for triggeredBy
+                const adderSystem = await resolveAuthToSystemUser(body.added_by);
+                const adderSystemId = adderSystem?.id || body.added_by;
+                const adderName = adderSystem?.name || 'Someone';
 
-                await createWSNotification({
-                    userId: body.user_id,
-                    type: 'task_assigned',
-                    title: `${adderName} added you as collaborator`,
-                    message: `You were added as collaborator on a scheduled payment (Invoice #${invoiceId})`,
-                    triggeredBy: body.added_by,
-                    referenceType: 'invoice',
-                    referenceUrl: `/accounts-payable/insights/schedule`,
-                    metadata: { invoice_id: invoiceId },
-                });
+                // Skip self-notification (same system user)
+                if (adderSystemId !== body.user_id) {
+                    await createWSNotification({
+                        userId: body.user_id,
+                        type: 'task_assigned',
+                        title: `${adderName} added you as collaborator`,
+                        message: `You were added as collaborator on a scheduled payment (Invoice #${invoiceId})`,
+                        triggeredBy: adderSystemId,
+                        referenceType: 'invoice',
+                        referenceUrl: `/accounts-payable/insights/schedule`,
+                        metadata: { invoice_id: invoiceId },
+                    });
+                }
             } catch { /* non-blocking */ }
         }
 

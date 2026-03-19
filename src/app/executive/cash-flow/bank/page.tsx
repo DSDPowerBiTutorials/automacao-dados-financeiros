@@ -27,6 +27,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import {
     ArrowDownCircle,
     ArrowUpCircle,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown,
     Download,
     RefreshCw,
     Search,
@@ -1323,6 +1326,8 @@ export default function BankCashFlowPage() {
     const [highlightDate, setHighlightDate] = useState<string>("");
     const [cashRangePreset, setCashRangePreset] = useState<"7d" | "30d" | "90d" | "180d" | "365d" | "custom">("90d");
     const [cashCustomRange, setCashCustomRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
+    const [cashSortField, setCashSortField] = useState<string>("date");
+    const [cashSortDirection, setCashSortDirection] = useState<"asc" | "desc">("asc");
 
     // ─── Cash Position Data (dynamic range, per bank, with carry-forward) ───
     const cashPositionData = useMemo(() => {
@@ -1430,6 +1435,33 @@ export default function BankCashFlowPage() {
 
         return result;
     }, [bankTransactions, cashRangePreset, cashCustomRange]);
+
+    // ─── Sorted Cash Position Data ───
+    const sortedCashPositionData = useMemo(() => {
+        const data = [...cashPositionData];
+        data.sort((a, b) => {
+            const valA = cashSortField === "date" ? a.date : (Number(a[cashSortField]) || 0);
+            const valB = cashSortField === "date" ? b.date : (Number(b[cashSortField]) || 0);
+            if (valA < valB) return cashSortDirection === "asc" ? -1 : 1;
+            if (valA > valB) return cashSortDirection === "asc" ? 1 : -1;
+            return 0;
+        });
+        return data;
+    }, [cashPositionData, cashSortField, cashSortDirection]);
+
+    const handleCashSort = (field: string) => {
+        if (cashSortField === field) {
+            setCashSortDirection(prev => prev === "asc" ? "desc" : "asc");
+        } else {
+            setCashSortField(field);
+            setCashSortDirection(field === "date" ? "asc" : "desc");
+        }
+    };
+
+    const CashSortIcon = ({ field }: { field: string }) => {
+        if (cashSortField !== field) return <ArrowUpDown className="h-3 w-3 ml-0.5 opacity-30" />;
+        return cashSortDirection === "asc" ? <ArrowUp className="h-3 w-3 ml-0.5" /> : <ArrowDown className="h-3 w-3 ml-0.5" />;
+    };
 
     // ─── Actual balance: most recent bank balance across all sources ───
     const actualBalance = useMemo(() => {
@@ -1843,15 +1875,21 @@ export default function BankCashFlowPage() {
                                     <table className="w-full text-xs">
                                         <thead className="sticky top-0 bg-gray-50 dark:bg-[#0a0a0a] z-10">
                                             <tr className="border-b border-gray-200 dark:border-gray-700">
-                                                <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Date</th>
+                                                <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-300" onClick={() => handleCashSort("date")}>
+                                                    <span className="inline-flex items-center">Date <CashSortIcon field="date" /></span>
+                                                </th>
                                                 {BANK_ACCOUNTS.map(bank => (
-                                                    <th key={bank.key} className={`px-3 py-2 text-right text-[10px] font-medium uppercase ${bank.textColor}`}>{bank.label}</th>
+                                                    <th key={bank.key} className={`px-3 py-2 text-right text-[10px] font-medium uppercase cursor-pointer select-none hover:opacity-80 ${bank.textColor}`} onClick={() => handleCashSort(bank.key)}>
+                                                        <span className="inline-flex items-center justify-end">{bank.label} <CashSortIcon field={bank.key} /></span>
+                                                    </th>
                                                 ))}
-                                                <th className="px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">Total</th>
+                                                <th className="px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-300" onClick={() => handleCashSort("total")}>
+                                                    <span className="inline-flex items-center justify-end">Total <CashSortIcon field="total" /></span>
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {cashPositionData.map((row, idx) => {
+                                            {sortedCashPositionData.map((row, idx) => {
                                                 const isHighlighted = highlightDate && row.date === highlightDate;
                                                 const isToday = row.date === new Date().toISOString().slice(0, 10);
                                                 return (

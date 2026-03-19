@@ -23,9 +23,7 @@ import {
     Building2,
     Send,
     Paperclip,
-    ThumbsUp,
     Link2,
-    Maximize2,
     MessageCircle,
     Upload,
     AlertCircle,
@@ -48,6 +46,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { InvoiceSidePanel } from "@/components/app/invoice-side-panel";
+import { InvoiceAttachments } from "@/components/app/invoice-attachments";
 import { UserAvatar } from "@/components/user-avatar";
 import { UserProfilePopup } from "@/components/user-profile-popup";
 import { PageHeader } from "@/components/ui/page-header";
@@ -273,6 +272,7 @@ export default function PaymentSchedulePage() {
     const [loadingCollaborators, setLoadingCollaborators] = useState(false);
     const [showCollabPicker, setShowCollabPicker] = useState(false);
     const [collabSearch, setCollabSearch] = useState("");
+    const [showAttachmentPanel, setShowAttachmentPanel] = useState(false);
 
     // Reconciliation dialog
     const [reconciliationDialogOpen, setReconciliationDialogOpen] = useState(false);
@@ -1174,6 +1174,7 @@ export default function PaymentSchedulePage() {
         setCollaborators([]);
         setShowMentionList(false);
         setShowCollabPicker(false);
+        setShowAttachmentPanel(false);
     }
 
     async function openReconciliationDialog(invoice: Invoice) {
@@ -1729,13 +1730,21 @@ export default function PaymentSchedulePage() {
                             <span className="font-medium text-gray-900 dark:text-white">{getProviderName(selectedInvoice.provider_code)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"><ThumbsUp className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"><Paperclip className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"><Link2 className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"><Maximize2 className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="sm" className={`h-8 w-8 p-0 ${showAttachmentPanel ? "text-blue-500" : "text-gray-500 dark:text-gray-400"} hover:text-gray-900 dark:hover:text-white`} onClick={() => setShowAttachmentPanel(!showAttachmentPanel)} title="Attachments"><Paperclip className="h-4 w-4" /></Button>
                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white" onClick={closeDetailPanel}><X className="h-4 w-4" /></Button>
                         </div>
                     </div>
+
+                    {/* Attachment Panel */}
+                    {showAttachmentPanel && (
+                        <div className="border-b border-gray-200 dark:border-gray-700 px-4 py-3 bg-gray-50 dark:bg-[#0a0a0a]">
+                            <InvoiceAttachments
+                                entityType="ap_invoice"
+                                entityId={selectedInvoice.id}
+                                invoiceDate={selectedInvoice.invoice_date || undefined}
+                            />
+                        </div>
+                    )}
 
                     {/* Panel Content */}
                     <div className="flex-1 overflow-y-auto">
