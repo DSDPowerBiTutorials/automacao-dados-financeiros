@@ -15,6 +15,60 @@ function extractMentionedUserIds(text: string, users: Array<{ id: string; name: 
     return [...new Set(ids)];
 }
 
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    try {
+        const { id } = await params;
+        const invoiceId = parseInt(id);
+
+        const { data, error } = await supabaseAdmin
+            .from('invoice_activities')
+            .select('*')
+            .eq('invoice_id', invoiceId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Enrich with user info from system_users (preferred) or users table
+        const enriched = await Promise.all(
+            (data || []).map(async (a: Record<string, unknown>) => {
+                let avatar_url = null;
+                let department = null;
+                let role = null;
+
+                if (a.user_id) {
+                    // Try system_users first
+                    const { data: su } = await supabaseAdmin
+                        .from('system_users')
+                        .select('avatar_url, department, role')
+                        .eq('id', a.user_id as string)
+                        .maybeSingle();
+
+                    if (su) {
+                        avatar_url = su.avatar_url;
+                        department = su.department;
+                        role = su.role;
+                    } else {
+                        // Fallback to auth users table
+                        const { data: au } = await supabaseAdmin
+                            .from('users')
+                            .select('avatar_url')
+                            .eq('id', a.user_id as string)
+                            .maybeSingle();
+                        if (au) avatar_url = au.avatar_url;
+                    }
+                }
+
+                return { ...a, avatar_url, department, role };
+            })
+        );
+
+        return NextResponse.json({ success: true, data: enriched });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to load comments';
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
+    }
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await params;
@@ -49,7 +103,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const commentAuthorId = body.user_id;
         // Resolve auth UID → system_users.id so triggeredBy is in the same space as mentionedIds
         const authorSystemUser = commentAuthorId ? await resolveAuthToSystemUser(commentAuthorId) : null;
-        const authorSystemId = authorSystemUser?.id || commentAuthorId;
+        const authorSystemId = authorSystemUser?.id;
         const authorName = authorSystemUser?.name || body.user_name || 'Someone';
         const referenceUrl = `/accounts-payable/insights/schedule?invoice=${invoiceId}`;
 

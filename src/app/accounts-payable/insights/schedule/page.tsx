@@ -477,24 +477,13 @@ export default function PaymentSchedulePage() {
     async function loadActivities(invoiceId: number) {
         setLoadingActivities(true);
         try {
-            // Fetch both activities and history in parallel
-            const [activitiesResult, historyResult] = await Promise.all([
-                supabase
-                    .from("invoice_activities")
-                    .select("*, users:user_id(avatar_url, department, role)")
-                    .eq("invoice_id", invoiceId)
-                    .order("created_at", { ascending: false }),
+            // Fetch both activities and history in parallel via API routes (bypasses RLS)
+            const [commentsResult, historyResult] = await Promise.all([
+                fetch(`/api/invoices/${invoiceId}/comments`).then(r => r.json()),
                 fetch(`/api/invoice-history?invoice_id=${invoiceId}`).then(r => r.json())
             ]);
 
-            // Map activities to include avatar_url from joined user
-            const activitiesData = (activitiesResult.data || []).map((a: any) => ({
-                ...a,
-                avatar_url: a.users?.avatar_url || null,
-                department: a.users?.department || null,
-                role: a.users?.role || null,
-                users: undefined // Remove the nested object
-            }));
+            const activitiesData = commentsResult.success ? (commentsResult.data || []) : [];
             const historyData = historyResult.success ? (historyResult.history || []) : [];
 
             // Convert history entries to activity format
@@ -2351,7 +2340,7 @@ export default function PaymentSchedulePage() {
                                                     .filter(u =>
                                                         !collaborators.some(c => c.user_id === u.id) &&
                                                         (u.name.toLowerCase().includes(collabSearch.toLowerCase()) ||
-                                                         u.email.toLowerCase().includes(collabSearch.toLowerCase()))
+                                                            u.email.toLowerCase().includes(collabSearch.toLowerCase()))
                                                     )
                                                     .slice(0, 8)
                                                     .map(u => (
