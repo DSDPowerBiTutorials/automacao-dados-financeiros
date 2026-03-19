@@ -67,6 +67,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             if (adderResolved) resolvedAddedBy = adderResolved.id;
         }
 
+        // Server-side fallback: resolve added_by from Authorization header when frontend couldn't
+        if (!resolvedAddedBy) {
+            const authHeader = req.headers.get('authorization');
+            if (authHeader?.startsWith('Bearer ')) {
+                const token = authHeader.slice(7);
+                const { data: { user: authUser } } = await supabaseAdmin.auth.getUser(token);
+                if (authUser) {
+                    const adderResolved = await resolveAuthToSystemUser(authUser.id);
+                    if (adderResolved) resolvedAddedBy = adderResolved.id;
+                }
+            }
+        }
+
         const { data, error } = await supabaseAdmin
             .from('invoice_collaborators')
             .upsert(

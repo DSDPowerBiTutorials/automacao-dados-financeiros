@@ -2,14 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getUsers, createWSNotification, resolveAuthToSystemUser } from '@/lib/workstream-api';
 
-// Extract @mentioned user IDs from comment text
+// Extract @mentioned user IDs from comment text (partial match: first name or start of full name)
 function extractMentionedUserIds(text: string, users: Array<{ id: string; name: string }>): string[] {
     const mentionRegex = /@(\w[\w\s]*?)(?=\s@|\s*$|[.,!?;])/g;
     const ids: string[] = [];
     let match;
     while ((match = mentionRegex.exec(text)) !== null) {
-        const name = match[1].trim();
-        const user = users.find(u => u.name.toLowerCase() === name.toLowerCase());
+        const name = match[1].trim().toLowerCase();
+        // Try exact match first, then partial match (user name starts with mention text)
+        const user = users.find(u => u.name.toLowerCase() === name)
+            || users.find(u => u.name.toLowerCase().startsWith(name))
+            || users.find(u => u.name.split(' ')[0].toLowerCase() === name.split(' ')[0].toLowerCase());
         if (user) ids.push(user.id);
     }
     return [...new Set(ids)];

@@ -524,9 +524,11 @@ export default function PaymentSchedulePage() {
             const userName = userData?.user?.user_metadata?.name || userEmail.split("@")[0];
             const userId = userData?.user?.id || null;
 
+            const session = await supabase.auth.getSession();
+            const token = session?.data?.session?.access_token;
             const res = await fetch(`/api/invoices/${selectedInvoice.id}/comments`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
                 body: JSON.stringify({ content: newComment, user_id: userId, user_email: userEmail, user_name: userName }),
             });
             const json = await res.json();
@@ -599,9 +601,11 @@ export default function PaymentSchedulePage() {
             const userEmail = userData?.user?.email;
             const adder = userEmail ? systemUsers.find(u => u.email.toLowerCase() === userEmail.toLowerCase()) : null;
             const addedBy = adder?.id || null;
+            const session = await supabase.auth.getSession();
+            const token = session?.data?.session?.access_token;
             await fetch(`/api/invoices/${selectedInvoice.id}/collaborators`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
                 body: JSON.stringify({ user_id: userId, added_by: addedBy }),
             });
             loadCollaborators(selectedInvoice.id);

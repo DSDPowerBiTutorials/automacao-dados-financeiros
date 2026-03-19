@@ -144,9 +144,8 @@ function getPaymentStatus(
 /** Safely parse embedded JSON from CSV field (handles escaped quotes/slashes) */
 function tryParseJSON(raw: string): unknown | null {
     if (!raw || raw.trim() === "") return null;
-    // Remove surrounding quotes and unescape CSV double-quotes
+    // Remove surrounding quotes only (parseCSVLine already unescaped "" → ")
     let cleaned = raw.replace(/^["']+|["']+$/g, "").trim();
-    cleaned = cleaned.replace(/""/g, '"');
     // Unescape forward slashes
     cleaned = cleaned.replace(/\\\//g, "/");
     try { return JSON.parse(cleaned); } catch { return null; }
@@ -509,7 +508,7 @@ export async function POST(request: NextRequest) {
                 .from("ar_invoices")
                 .upsert(batch, {
                     onConflict: "invoice_number,scope",
-                    ignoreDuplicates: true,
+                    ignoreDuplicates: false,
                 });
 
             if (error) {
