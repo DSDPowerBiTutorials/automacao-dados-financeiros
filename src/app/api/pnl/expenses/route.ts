@@ -16,7 +16,7 @@ const monthKeys = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep"
 // All expense FA codes used in the P&L structure
 const ALL_EXPENSE_FA_CODES = [
     // 201 - COGS
-    "201.1", "201.2", "201.3", "201.4", "201.5",
+    "201.1", "201.2", "201.3", "201.4", "201.5", "201.6",
     // 202 - Labour
     "202.1", "202.2", "202.3", "202.4", "202.5", "202.6", "202.7", "202.8",
     // 203 - Travels & Meals
@@ -115,10 +115,12 @@ export async function GET(request: NextRequest) {
             const rawFA = row.financial_account_code;
             const fa = rawFA.includes(" - ") ? rawFA.split(" - ")[0].trim() : rawFA;
 
+            // Exclude Balance Adjustments from P&L
+            if (fa === "0000" || fa === "400.0") continue;
+
             // Map legacy/removed FA codes to current chart of accounts
             let mappedFA = fa;
-            if (fa === "0000" || fa === "400.0") mappedFA = "210.0";
-            else if (fa === "209.1" || fa === "209.2") mappedFA = "209.0";
+            if (fa === "209.1" || fa === "209.2") mappedFA = "209.0";
 
             if (row.invoice_type === "BUDGET") {
                 // Budget data
