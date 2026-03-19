@@ -594,8 +594,11 @@ export default function PaymentSchedulePage() {
     async function handleAddCollaborator(userId: string) {
         if (!selectedInvoice) return;
         try {
+            // Resolve auth email → system_users.id so added_by matches FK
             const { data: userData } = await supabase.auth.getUser();
-            const addedBy = userData?.user?.id || null;
+            const userEmail = userData?.user?.email;
+            const adder = userEmail ? systemUsers.find(u => u.email.toLowerCase() === userEmail.toLowerCase()) : null;
+            const addedBy = adder?.id || null;
             await fetch(`/api/invoices/${selectedInvoice.id}/collaborators`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -617,9 +620,11 @@ export default function PaymentSchedulePage() {
 
     async function handleJoinTask() {
         if (!selectedInvoice) return;
+        // Resolve auth user → system_users.id by email (same pattern as workstream)
         const { data: userData } = await supabase.auth.getUser();
-        const userId = userData?.user?.id;
-        if (userId) handleAddCollaborator(userId);
+        const userEmail = userData?.user?.email;
+        const sysUser = userEmail ? systemUsers.find(u => u.email.toLowerCase() === userEmail.toLowerCase()) : null;
+        if (sysUser) handleAddCollaborator(sysUser.id);
     }
 
     const filteredInvoices = useMemo(() => {

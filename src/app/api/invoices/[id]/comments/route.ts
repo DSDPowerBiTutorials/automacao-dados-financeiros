@@ -100,14 +100,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         if (error) throw error;
 
+        // Follow workstream pattern: use commentAuthorId (auth UID) as triggeredBy
+        // Resolve only for display name and collaborator FK (needs system_users.id)
         const commentAuthorId = body.user_id;
-        // Resolve auth UID → system_users.id so triggeredBy is in the same space as mentionedIds
         const authorSystemUser = commentAuthorId ? await resolveAuthToSystemUser(commentAuthorId) : null;
         const authorSystemId = authorSystemUser?.id;
         const authorName = authorSystemUser?.name || body.user_name || 'Someone';
         const referenceUrl = `/accounts-payable/insights/schedule?invoice=${invoiceId}`;
 
-        // Auto-add comment author as collaborator
+        // Auto-add comment author as collaborator (needs system_users.id for FK)
         if (authorSystemId) {
             try {
                 await supabaseAdmin
@@ -120,26 +121,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         // Process @mentions: notify + auto-add as collaborator
+        // Guard with commentAuthorId (always present) — not authorSystemId (may be null)
         for (const mentionedId of mentionedIds) {
-            if (authorSystemId && authorSystemId !== mentionedId) {
-                // Send notification
+            if (commentAuthorId && commentAuthorId !== mentionedId) {
                 await createWSNotification({
                     userId: mentionedId,
                     type: 'mention',
                     title: `${authorName} mentioned you`,
                     message: `${authorName} mentioned you in a comment on a scheduled payment (Invoice #${invoiceId})`,
-                    triggeredBy: authorSystemId,
+                    triggeredBy: commentAuthorId,
                     referenceType: 'invoice',
                     referenceUrl,
                     metadata: { invoice_id: invoiceId, comment_id: data.id },
                 });
 
-                // Auto-add as collaborator
+                // Auto-add mentioned user as collaborator
                 try {
                     await supabaseAdmin
                         .from('invoice_collaborators')
                         .upsert(
-                            { invoice_id: invoiceId, user_id: mentionedId, added_by: authorSystemId },
+                            { invoice_id: invoiceId, user_id: mentionedId, added_by: authorSystemId || mentionedId },
                             { onConflict: 'invoice_id,user_id' }
                         );
                 } catch { /* ignore */ }
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         // Notify existing collaborators (except author and already-mentioned)
-        const alreadyNotified = new Set([...mentionedIds, authorSystemId].filter(Boolean));
+        const alreadyNotified = new Set([...mentionedIds, authorSystemId, commentAuthorId].filter(Boolean));
         try {
             const { data: collabs } = await supabaseAdmin
                 .from('invoice_collaborators')
@@ -155,13 +156,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 .eq('invoice_id', invoiceId);
 
             for (const collab of (collabs || [])) {
-                if (!alreadyNotified.has(collab.user_id) && authorSystemId) {
+                if (!alreadyNotified.has(collab.user_id) && commentAuthorId) {
                     await createWSNotification({
                         userId: collab.user_id,
                         type: 'comment_reply',
                         title: `${authorName} commented on a payment you follow`,
                         message: `New comment on scheduled payment (Invoice #${invoiceId})`,
-                        triggeredBy: authorSystemId,
+                        triggeredBy: commentAuthorId,
                         referenceType: 'invoice',
                         referenceUrl,
                         metadata: { invoice_id: invoiceId, comment_id: data.id },
