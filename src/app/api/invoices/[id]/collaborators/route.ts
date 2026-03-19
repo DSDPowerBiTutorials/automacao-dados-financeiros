@@ -55,10 +55,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             return NextResponse.json({ success: false, error: 'user_id is required' }, { status: 400 });
         }
 
+        // Resolve IDs: if user_id or added_by are auth UIDs, convert to system_users.id
+        let resolvedUserId = body.user_id;
+        let resolvedAddedBy = body.added_by || null;
+
+        const userResolved = await resolveAuthToSystemUser(body.user_id);
+        if (userResolved) resolvedUserId = userResolved.id;
+
+        if (body.added_by) {
+            const adderResolved = await resolveAuthToSystemUser(body.added_by);
+            if (adderResolved) resolvedAddedBy = adderResolved.id;
+        }
+
         const { data, error } = await supabaseAdmin
             .from('invoice_collaborators')
             .upsert(
-                { invoice_id: invoiceId, user_id: body.user_id, added_by: body.added_by || null },
+                { invoice_id: invoiceId, user_id: resolvedUserId, added_by: resolvedAddedBy },
                 { onConflict: 'invoice_id,user_id' }
             )
             .select()
@@ -67,26 +79,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         if (error) throw error;
 
         // Send notification to new collaborator
-        if (body.added_by && body.added_by !== body.user_id) {
+        if (resolvedAddedBy && resolvedAddedBy !== resolvedUserId) {
             try {
-                // Resolve auth UID → system_users.id for triggeredBy
-                const adderSystem = await resolveAuthToSystemUser(body.added_by);
-                const adderSystemId = adderSystem?.id || body.added_by;
-                const adderName = adderSystem?.name || 'Someone';
+                const adderResolved = await resolveAuthToSystemUser(body.added_by);
+                const adderName = adderResolved?.name || 'Someone';
 
-                // Skip self-notification (same system user)
-                if (adderSystemId !== body.user_id) {
-                    await createWSNotification({
-                        userId: body.user_id,
-                        type: 'task_assigned',
-                        title: `${adderName} added you as collaborator`,
-                        message: `You were added as collaborator on a scheduled payment (Invoice #${invoiceId})`,
-                        triggeredBy: adderSystemId,
-                        referenceType: 'invoice',
-                        referenceUrl: `/accounts-payable/insights/schedule?invoice=${invoiceId}`,
-                        metadata: { invoice_id: invoiceId },
-                    });
-                }
+                await createWSNotification({
+                    userId: resolvedUserId,
+                    type: 'task_assigned',
+                    title: `${adderName} added you as collaborator`,
+                    message: `You were added as collaborator on a scheduled payment (Invoice #${invoiceId})`,
+                    triggeredBy: resolvedAddedBy,
+                    referenceType: 'invoice',
+                    referenceUrl: `/accounts-payable/insights/schedule?invoice=${invoiceId}`,
+                    metadata: { invoice_id: invoiceId },
+                });
             } catch { /* non-blocking */ }
         }
 
