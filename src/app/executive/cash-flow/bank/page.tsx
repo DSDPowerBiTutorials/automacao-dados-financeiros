@@ -378,12 +378,12 @@ function parseChaseShortDescription(description: string, source: string): string
 
 export default function BankCashFlowPage() {
     const currentYear = new Date().getFullYear();
-    const defaultStartDate = `${currentYear}-01-01`;
+    const defaultStartDate = `${currentYear - 1}-01-01`;
     const defaultEndDate = `${currentYear}-12-31`;
 
     const fxRate = useExchangeRate();
 
-    const [selectedBanks, setSelectedBanks] = useState<Set<string>>(new Set(["bankinter-eur"]));
+    const [selectedBanks, setSelectedBanks] = useState<Set<string>>(new Set(BANK_ACCOUNTS.map(b => b.key)));
     const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
