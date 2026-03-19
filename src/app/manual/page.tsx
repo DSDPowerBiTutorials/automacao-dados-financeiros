@@ -482,6 +482,22 @@ function WebOrdersCRM({ lang }: { lang: Lang }) {
                 ]}
             />
             <p className="mt-2 text-sm">{t(lang, "System auto-classifies each order into deal status and payment status categories.", "El sistema auto-clasifica cada pedido en categorías de estado de deal y estado de pago.")}</p>
+
+            <h4 className="font-semibold mt-4 mb-2">
+                <Badge color="purple">{t(lang, "🎬 Video Tutorial", "🎬 Tutorial en Vídeo")}</Badge>
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                {t(lang, "Watch how to upload and manage Web Orders from Craft Commerce, including order classification and payment status tracking.", "Mira cómo subir y gestionar Pedidos Web desde Craft Commerce, incluyendo clasificación de pedidos y seguimiento de estado de pago.")}
+            </p>
+            <video
+                src="https://rrzgawssbyfzbkmtcovz.supabase.co/storage/v1/object/public/tutorial-videos/1773932248320-06_Web_orders.mp4"
+                controls
+                preload="metadata"
+                className="w-full max-w-2xl rounded-lg border border-gray-200 dark:border-gray-700"
+            />
+            <p className="text-xs text-gray-500 mt-2">
+                {t(lang, "Tip: Look for the ▶ icon in the page header for quick access to this video.", "Consejo: Busca el icono ▶ en el encabezado de la página para acceso rápido al vídeo.")}
+            </p>
         </>
     );
 }
@@ -538,6 +554,25 @@ function AccountsPayable({ lang }: { lang: Lang }) {
             </p>
             <video
                 src="https://rrzgawssbyfzbkmtcovz.supabase.co/storage/v1/object/public/tutorial-videos/1773865549393-02_AP_-_Invoices_creation_and_reconciliation.mp4"
+                controls
+                preload="metadata"
+                className="w-full max-w-2xl rounded-lg border border-gray-200 dark:border-gray-700"
+            />
+            <p className="text-xs text-gray-500 mt-2">
+                {t(lang, "Tip: Look for the ▶ icon in the page header for quick access to this video.", "Consejo: Busca el icono ▶ en el encabezado de la página para acceso rápido al vídeo.")}
+            </p>
+
+            <h4 className="font-semibold mt-4 mb-2">{t(lang, "Payment Schedule", "Calendario de Pagos")}</h4>
+            <p>{t(lang, "The Payment Schedule page provides a calendar view of all pending invoices grouped by due date, allowing you to track upcoming payments, add collaborators, and leave comments on each payment.", "La página del Calendario de Pagos proporciona una vista de calendario de todas las facturas pendientes agrupadas por fecha de vencimiento, permitiendo rastrear pagos próximos, añadir colaboradores y dejar comentarios en cada pago.")}</p>
+
+            <h4 className="font-semibold mt-4 mb-2">
+                <Badge color="purple">{t(lang, "🎬 Video Tutorial — Payment Schedule", "🎬 Tutorial en Vídeo — Calendario de Pagos")}</Badge>
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                {t(lang, "Watch how to use the Payment Schedule to track due dates, manage collaborators, and process scheduled payments.", "Mira cómo usar el Calendario de Pagos para rastrear vencimientos, gestionar colaboradores y procesar pagos programados.")}
+            </p>
+            <video
+                src="https://rrzgawssbyfzbkmtcovz.supabase.co/storage/v1/object/public/tutorial-videos/1773913795277-05_Payment_Scheduled.mp4"
                 controls
                 preload="metadata"
                 className="w-full max-w-2xl rounded-lg border border-gray-200 dark:border-gray-700"

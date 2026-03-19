@@ -594,6 +594,14 @@ Export the full orders CSV from Craft CMS admin panel. The export can contain ~2
 
 **After Import Feeds:** `/accounts-receivable/invoices`, `/sales-insights/clinics`, `/sales-insights/lab`.
 
+#### 🎬 Video Tutorial — Web Orders
+
+Watch how to upload and manage Web Orders from Craft Commerce, including order classification and payment status tracking.
+
+📹 **Video:** [06_Web_orders.mp4](https://rrzgawssbyfzbkmtcovz.supabase.co/storage/v1/object/public/tutorial-videos/1773932248320-06_Web_orders.mp4)
+
+> **Tip:** Look for the ▶ icon in the page header (`/accounts-receivable/invoices`) for quick access.
+
 ---
 
 ### 3.5 Accounts Payable Invoices
@@ -802,6 +810,16 @@ Each bank has a dedicated report page. Common features across all:
 | **AP Overview** | `/accounts-payable` | KPIs: total payables, pending, active vendors, overdue |
 | **Invoices** | `/accounts-payable/invoices` | Full lifecycle, 25+ columns, splitting, reconciliation |
 | **AP Insights** | `/accounts-payable/insights` | Expense analytics, payment schedule |
+| **Payment Schedule** | `/accounts-payable/insights/schedule` | Calendar view of pending payments, collaborators, comments |
+
+#### 🎬 Video Tutorial — Payment Schedule
+
+Watch how to use the Payment Schedule to track due dates, manage collaborators, and process scheduled payments.
+
+📹 **Video:** [05_Payment_Scheduled.mp4](https://rrzgawssbyfzbkmtcovz.supabase.co/storage/v1/object/public/tutorial-videos/1773913795277-05_Payment_Scheduled.mp4)
+
+> **Tip:** Look for the ▶ icon in the page header (`/accounts-payable/insights/schedule`) for quick access.
+
 | **Providers** | `/accounts-payable/master-data/providers` | Supplier master data |
 | **Financial Accounts** | `/accounts-payable/master-data/financial-accounts` | Chart of Accounts |
 | **Departmental Accounts** | `/accounts-payable/master-data/departmental-accounts` | Cost centers |

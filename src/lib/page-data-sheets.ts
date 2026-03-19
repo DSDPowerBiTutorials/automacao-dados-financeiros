@@ -287,6 +287,7 @@ const sheets: Record<string, DataSheetEntry> = {
         ],
         feedInstructions: { en: "Enter invoice due dates in AP → Invoices. Schedule updates automatically.", es: "Ingresar fechas de vencimiento en CP → Facturas. El calendario se actualiza automáticamente." },
         enrichmentChain: { en: "invoices (status=pending) → group by due_date → schedule visualization", es: "invoices (status=pendiente) → agrupar por due_date → visualización del calendario" },
+        videoUrl: "https://rrzgawssbyfzbkmtcovz.supabase.co/storage/v1/object/public/tutorial-videos/1773913795277-05_Payment_Scheduled.mp4",
     },
     "ap-overview": {
         title: { en: "Accounts Payable Overview", es: "Resumen Cuentas por Pagar" },
@@ -347,6 +348,7 @@ const sheets: Record<string, DataSheetEntry> = {
         ],
         feedInstructions: { en: "Create invoices manually or import from invoice-orders data.", es: "Crear facturas manualmente o importar de datos de invoice-orders." },
         enrichmentChain: { en: "Manual entry / invoice-orders import → ar_invoices → matched to bank transactions → reconciliation", es: "Entrada manual / importación invoice-orders → ar_invoices → vinculado a transacciones bancarias → conciliación" },
+        videoUrl: "https://rrzgawssbyfzbkmtcovz.supabase.co/storage/v1/object/public/tutorial-videos/1773932248320-06_Web_orders.mp4",
     },
     "ar-invoice-orders": {
         title: { en: "Invoice Orders", es: "Pedidos de Facturación" },
