@@ -31,8 +31,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 await createWSNotification({
                     userId: body.user_id,
                     type: 'task_assigned',
-                    title: 'Você foi adicionado como colaborador',
-                    message: `Você foi adicionado como colaborador na tarefa "${task.title}"`,
+                    title: 'You were added as a collaborator',
+                    message: `You were added as a collaborator on task "${task.title}"`,
                     triggeredBy: body.added_by,
                     referenceType: 'task',
                     referenceUrl: `/workstream/${task.project_id}?task=${taskId}`,

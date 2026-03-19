@@ -83,7 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                         message: `You were added as collaborator on a scheduled payment (Invoice #${invoiceId})`,
                         triggeredBy: adderSystemId,
                         referenceType: 'invoice',
-                        referenceUrl: `/accounts-payable/insights/schedule`,
+                        referenceUrl: `/accounts-payable/insights/schedule?invoice=${invoiceId}`,
                         metadata: { invoice_id: invoiceId },
                     });
                 }

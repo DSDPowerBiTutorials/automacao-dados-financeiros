@@ -37,13 +37,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                 if (triggeredBy) {
                     const allUsers = await getUsers();
                     const triggerUser = allUsers?.find((u: { id: string }) => u.id === triggeredBy);
-                    const triggerName = triggerUser?.name || 'Alguém';
+                    const triggerName = triggerUser?.name || 'Someone';
 
                     await createWSNotification({
                         userId: body.assignee_id,
                         type: 'task_assigned',
-                        title: `${triggerName} atribuiu uma tarefa a você`,
-                        message: `Você foi atribuído à tarefa "${data.title}"`,
+                        title: `${triggerName} assigned a task to you`,
+                        message: `You were assigned to task "${data.title}"`,
                         triggeredBy,
                         referenceType: 'task',
                         referenceUrl: `/workstream/${data.project_id}?task=${taskId}`,

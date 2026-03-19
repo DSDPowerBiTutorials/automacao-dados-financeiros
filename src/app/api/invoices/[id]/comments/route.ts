@@ -51,7 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const authorSystemUser = commentAuthorId ? await resolveAuthToSystemUser(commentAuthorId) : null;
         const authorSystemId = authorSystemUser?.id || commentAuthorId;
         const authorName = authorSystemUser?.name || body.user_name || 'Someone';
-        const referenceUrl = `/accounts-payable/insights/schedule`;
+        const referenceUrl = `/accounts-payable/insights/schedule?invoice=${invoiceId}`;
 
         // Auto-add comment author as collaborator
         if (authorSystemId) {

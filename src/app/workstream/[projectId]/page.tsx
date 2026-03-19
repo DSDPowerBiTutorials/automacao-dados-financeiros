@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import {
     LayoutGrid,
@@ -35,6 +35,7 @@ import type {
 export default function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
     const { projectId } = use(params);
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { profile } = useAuth();
 
     const [project, setProject] = useState<WSProject | null>(null);
@@ -90,6 +91,19 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
             setLoading(false);
         }
     }
+
+    // Deep link: auto-open task from URL ?task=ID
+    useEffect(() => {
+        const taskParam = searchParams.get('task');
+        if (taskParam && tasks.length > 0 && !selectedTask) {
+            const id = parseInt(taskParam);
+            const found = tasks.find((t) => t.id === id);
+            if (found) {
+                setSelectedTask(found);
+                window.history.replaceState(null, '', window.location.pathname);
+            }
+        }
+    }, [tasks, searchParams]);
 
     // Filtered tasks
     const filteredTasks = tasks.filter((t) => {

@@ -61,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const task = await getTask(taskId);
         const commentAuthorId = body.user_id;
         const commentAuthorUser = allUsers?.find((u: { id: string }) => u.id === commentAuthorId);
-        const authorName = commentAuthorUser?.name || 'Alguém';
+        const authorName = commentAuthorUser?.name || 'Someone';
         const referenceUrl = `/workstream/${task.project_id}?task=${taskId}`;
 
         // ===== NOTIFICATION LOGIC =====
@@ -73,8 +73,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 await createWSNotification({
                     userId: mentionedId,
                     type: 'mention',
-                    title: `${authorName} mencionou você`,
-                    message: `${authorName} mencionou você em um comentário na tarefa "${task.title}"`,
+                    title: `${authorName} mentioned you`,
+                    message: `${authorName} mentioned you in a comment on task "${task.title}"`,
                     triggeredBy: commentAuthorId,
                     referenceType: 'task',
                     referenceUrl,
@@ -96,8 +96,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             await createWSNotification({
                 userId: task.assignee_id,
                 type: 'comment_reply',
-                title: `${authorName} comentou na sua tarefa`,
-                message: `${authorName} comentou na tarefa "${task.title}"`,
+                title: `${authorName} commented on your task`,
+                message: `${authorName} commented on task "${task.title}"`,
                 triggeredBy: commentAuthorId,
                 referenceType: 'task',
                 referenceUrl,
@@ -115,8 +115,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                     await createWSNotification({
                         userId: collabId,
                         type: 'comment_reply',
-                        title: `${authorName} comentou em uma tarefa que você segue`,
-                        message: `Novo comentário na tarefa "${task.title}"`,
+                        title: `${authorName} commented on a task you follow`,
+                        message: `New comment on task "${task.title}"`,
                         triggeredBy: commentAuthorId,
                         referenceType: 'task',
                         referenceUrl,

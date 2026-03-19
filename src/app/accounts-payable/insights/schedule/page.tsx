@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
     ChevronDown,
     ChevronRight,
@@ -230,6 +231,7 @@ function formatActivityTime(dateStr: string): string {
 
 export default function PaymentSchedulePage() {
     const { selectedScope } = useGlobalScope();
+    const searchParams = useSearchParams();
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [providers, setProviders] = useState<Provider[]>([]);
     const [paymentMethods, setPaymentMethods] = useState<MasterData[]>([]);
@@ -407,6 +409,19 @@ export default function PaymentSchedulePage() {
             calculateReconciliationBalances(invoices);
         }
     }, [invoices]);
+
+    // Deep link: auto-open invoice from URL ?invoice=ID
+    useEffect(() => {
+        const invoiceParam = searchParams.get('invoice');
+        if (invoiceParam && invoices.length > 0 && !selectedInvoice) {
+            const id = parseInt(invoiceParam);
+            const found = invoices.find((inv) => inv.id === id);
+            if (found) {
+                openDetailPanel(found);
+                window.history.replaceState(null, '', window.location.pathname);
+            }
+        }
+    }, [invoices, searchParams]);
 
     // Load system users for @mention dropdown
     useEffect(() => {
