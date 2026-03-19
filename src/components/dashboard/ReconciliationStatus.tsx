@@ -37,16 +37,16 @@ export function ReconciliationStatus({ data }: ReconciliationStatusProps) {
         <div className="dashboard-card h-full">
             <div className="dashboard-card-header">
                 <h3 className="text-sm font-semibold dashboard-text-primary">
-                    Reconciliação por Fonte
+                    Reconciliation by Source
                 </h3>
                 <p className="text-xs dashboard-text-muted mt-0.5">
-                    Progresso de reconciliação por canal
+                    Reconciliation progress by channel
                 </p>
             </div>
             <div className="dashboard-card-content space-y-3">
                 {data.length === 0 ? (
                     <p className="text-xs dashboard-text-muted text-center py-4">
-                        Sem dados de reconciliação
+                        No reconciliation data
                     </p>
                 ) : (
                     data.map((item) => {
@@ -77,8 +77,8 @@ export function ReconciliationStatus({ data }: ReconciliationStatusProps) {
                                 </div>
                                 <div className="flex justify-between mt-0.5">
                                     <span className="text-[0.625rem] dashboard-text-muted">
-                                        {item.reconciled.toLocaleString("pt-BR")} de{" "}
-                                        {item.total.toLocaleString("pt-BR")}
+                                        {item.reconciled.toLocaleString("en-US")} of{" "}
+                                        {item.total.toLocaleString("en-US")}
                                     </span>
                                 </div>
                             </div>

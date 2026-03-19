@@ -34,16 +34,16 @@ export function BankBalancesCards({ data }: BankBalancesCardsProps) {
         <div className="dashboard-card h-full">
             <div className="dashboard-card-header">
                 <h3 className="text-sm font-semibold dashboard-text-primary">
-                    Saldos Bancários
+                    Bank Balances
                 </h3>
                 <p className="text-xs dashboard-text-muted mt-0.5">
-                    Último saldo registado por conta
+                    Last recorded balance per account
                 </p>
             </div>
             <div className="dashboard-card-content space-y-3">
                 {data.length === 0 ? (
                     <p className="text-xs dashboard-text-muted text-center py-4">
-                        Sem dados de saldo disponíveis
+                        No balance data available
                     </p>
                 ) : (
                     data.map((item) => {

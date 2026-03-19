@@ -53,7 +53,7 @@ function CustomTooltip({
                     />
                     <span className="dashboard-text-muted" style={{ fontSize: 12 }}>{entry.name}:</span>
                     <span className="dashboard-text-primary" style={{ fontWeight: 600, fontSize: 12 }}>
-                        €{entry.value.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
+                        €{entry.value.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                     </span>
                 </div>
             ))}
@@ -72,10 +72,10 @@ export function CashFlowAreaChart({ data, showIntercompany }: CashFlowAreaChartP
         <div className="dashboard-card">
             <div className="dashboard-card-header">
                 <h3 className="text-sm font-semibold dashboard-text-primary">
-                    Cash Flow — Últimos 12 Meses
+                    Cash Flow — Last 12 Months
                 </h3>
                 <p className="text-xs dashboard-text-muted mt-0.5">
-                    Entrada, saída e resultado líquido mensal
+                    Monthly inflow, outflow and net result
                 </p>
             </div>
             <div className="dashboard-card-content">
@@ -126,7 +126,7 @@ export function CashFlowAreaChart({ data, showIntercompany }: CashFlowAreaChartP
                         <Area
                             type="monotone"
                             dataKey="inflow"
-                            name="Entrada"
+                            name="Inflow"
                             stroke="#10b981"
                             strokeWidth={2}
                             fill="url(#gradInflow)"
@@ -136,7 +136,7 @@ export function CashFlowAreaChart({ data, showIntercompany }: CashFlowAreaChartP
                         <Area
                             type="monotone"
                             dataKey="outflow"
-                            name="Saída"
+                            name="Outflow"
                             stroke="#ef4444"
                             strokeWidth={2}
                             fill="url(#gradOutflow)"
@@ -146,7 +146,7 @@ export function CashFlowAreaChart({ data, showIntercompany }: CashFlowAreaChartP
                         <Area
                             type="monotone"
                             dataKey="net"
-                            name="Líquido"
+                            name="Net"
                             stroke="#3b82f6"
                             strokeWidth={2.5}
                             fill="none"
@@ -159,7 +159,7 @@ export function CashFlowAreaChart({ data, showIntercompany }: CashFlowAreaChartP
                                 <Area
                                     type="monotone"
                                     dataKey="icInflow"
-                                    name="IC Entrada"
+                                    name="IC Inflow"
                                     stroke="#8b5cf6"
                                     strokeWidth={1.5}
                                     fill="url(#gradICInflow)"
@@ -170,7 +170,7 @@ export function CashFlowAreaChart({ data, showIntercompany }: CashFlowAreaChartP
                                 <Area
                                     type="monotone"
                                     dataKey="icOutflow"
-                                    name="IC Saída"
+                                    name="IC Outflow"
                                     stroke="#f59e0b"
                                     strokeWidth={1.5}
                                     fill="url(#gradICOutflow)"

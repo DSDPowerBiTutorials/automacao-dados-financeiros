@@ -56,10 +56,10 @@ export function RecentTransactions({ data }: RecentTransactionsProps) {
         <div className="dashboard-card">
             <div className="dashboard-card-header">
                 <h3 className="text-sm font-semibold dashboard-text-primary">
-                    Últimas Transações
+                    Recent Transactions
                 </h3>
                 <p className="text-xs dashboard-text-muted mt-0.5">
-                    10 transações mais recentes no sistema
+                    10 most recent transactions in the system
                 </p>
             </div>
             <div className="dashboard-card-content p-0">
@@ -67,10 +67,10 @@ export function RecentTransactions({ data }: RecentTransactionsProps) {
                     <table className="dashboard-table">
                         <thead>
                             <tr>
-                                <th>Data</th>
-                                <th>Descrição</th>
-                                <th>Fonte</th>
-                                <th className="text-right">Montante</th>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Source</th>
+                                <th className="text-right">Amount</th>
                                 <th className="text-center">Status</th>
                             </tr>
                         </thead>
@@ -81,7 +81,7 @@ export function RecentTransactions({ data }: RecentTransactionsProps) {
                                         colSpan={5}
                                         className="text-center py-6 dashboard-text-muted text-xs"
                                     >
-                                        Sem transações recentes
+                                        No recent transactions
                                     </td>
                                 </tr>
                             ) : (

@@ -257,7 +257,7 @@ export default function DashboardPage() {
           outflows?.filter(i => i.is_intercompany).reduce((s, i) => s + (i.invoice_amount || 0), 0) || 0;
 
         months.push({
-          month: date.toLocaleDateString("pt-BR", {
+          month: date.toLocaleDateString("en-US", {
             month: "short",
             year: "2-digit",
           }),
@@ -543,7 +543,7 @@ export default function DashboardPage() {
     <div className="dashboard-bg px-6 py-6 space-y-6">
       {/* Header */}
       <DashboardHeader
-        userName={profile?.name || "Utilizador"}
+        userName={profile?.name || "User"}
         scope={selectedScope}
       />
 

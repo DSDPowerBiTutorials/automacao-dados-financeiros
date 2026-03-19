@@ -32,12 +32,12 @@ interface KPIStripProps {
 
 export function KPIStrip({ data, showIntercompany, onToggleIntercompany }: KPIStripProps) {
     const balanceDateStr = data.bankBalanceDate
-        ? new Date(data.bankBalanceDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
+        ? new Date(data.bankBalanceDate + "T00:00:00").toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" })
         : "";
 
     const cards = [
         {
-            label: "Receita (mês)",
+            label: "Revenue (month)",
             value: formatCurrency(data.revenueMonth, "EUR"),
             icon: TrendingUp,
             iconColor: "text-emerald-400",
@@ -46,7 +46,7 @@ export function KPIStrip({ data, showIntercompany, onToggleIntercompany }: KPISt
             icLabel: "IC",
         },
         {
-            label: "Despesas (mês)",
+            label: "Expenses (month)",
             value: formatCurrency(data.expenseMonth, "EUR"),
             icon: TrendingDown,
             iconColor: "text-red-400",
@@ -55,7 +55,7 @@ export function KPIStrip({ data, showIntercompany, onToggleIntercompany }: KPISt
             icLabel: "IC",
         },
         {
-            label: "Resultado Líquido",
+            label: "Net Result",
             value: formatCurrency(data.netResult, "EUR"),
             icon: DollarSign,
             iconColor: data.netResult >= 0 ? "text-blue-400" : "text-red-400",
@@ -63,15 +63,15 @@ export function KPIStrip({ data, showIntercompany, onToggleIntercompany }: KPISt
             valueColor: data.netResult >= 0 ? "text-emerald-400" : "text-red-400",
         },
         {
-            label: "Taxa de Reconciliação",
+            label: "Reconciliation Rate",
             value: `${data.reconciliationRate}%`,
             icon: ShieldCheck,
             iconColor: "text-amber-400",
             kpiClass: "kpi-reconciliation",
         },
         {
-            label: "Transações Pendentes",
-            value: data.pendingTransactions.toLocaleString("pt-BR"),
+            label: "Pending Transactions",
+            value: data.pendingTransactions.toLocaleString("en-US"),
             icon: Clock,
             iconColor: "text-violet-400",
             kpiClass: "kpi-pending",

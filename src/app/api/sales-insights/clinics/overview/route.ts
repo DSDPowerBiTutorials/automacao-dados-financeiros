@@ -85,9 +85,9 @@ export async function GET(request: NextRequest) {
         const isClinicFA = (fa: string) => ALL_CLINIC_FA_PREFIXES.some(p => fa.startsWith(p));
         const isMonthlyFeeFA = (fa: string) => CLINIC_FA_PREFIXES.includes(fa);
 
-        // ── 1. Fetch baseline (Dec year-1) + current year transactions ──
+        // ── 1. Fetch baseline (Nov+Dec year-1) + current year transactions ──
         const baselineYear = year - 1;
-        const baselineStart = `${baselineYear}-12-01`;
+        const baselineStart = `${baselineYear}-11-01`;
         const baselineEnd = `${baselineYear}-12-31`;
 
         const [baselineTx, yearTx] = await Promise.all([
@@ -95,7 +95,10 @@ export async function GET(request: NextRequest) {
             fetchRows("invoice-orders", `${year}-01-01`, `${year}-12-31`),
         ]);
 
-        // ── 2. Build baseline set: clinics with 102.x monthly fee in Dec (year-1) ──
+        // ── 2. Build baseline set: clinics with 102.x monthly fee in Nov or Dec (year-1) ──
+        // Track Nov and Dec separately to detect clinics that churned in Dec
+        const baselineNovClinics = new Set<string>();
+        const baselineDecClinics = new Set<string>();
         const baselineRevenue = new Map<string, number>();
         for (const tx of baselineTx) {
             const cd = tx.custom_data || {};
@@ -106,8 +109,21 @@ export async function GET(request: NextRequest) {
             // Region filter
             const txRegion = ["102.1", "102.3"].includes(fa) ? "ROW" : "AMEX";
             if (region !== "all" && txRegion !== region) continue;
-            const amount = parseEuropeanNumber(tx.amount);
-            baselineRevenue.set(name, (baselineRevenue.get(name) || 0) + amount);
+            const txDate = tx.date || "";
+            const txMonth = txDate.substring(5, 7);
+            if (txMonth === "11") baselineNovClinics.add(name);
+            if (txMonth === "12") baselineDecClinics.add(name);
+            // Only count Dec revenue for baseline MRR (the most recent month)
+            if (txMonth === "12") {
+                const amount = parseEuropeanNumber(tx.amount);
+                baselineRevenue.set(name, (baselineRevenue.get(name) || 0) + amount);
+            }
+        }
+        // Clinics active in Nov but NOT in Dec → they churned in Dec, include with MRR=0
+        for (const name of baselineNovClinics) {
+            if (!baselineDecClinics.has(name) && !baselineRevenue.has(name)) {
+                baselineRevenue.set(name, 0);
+            }
         }
 
         // ── 3. Aggregate year transactions per clinic ──

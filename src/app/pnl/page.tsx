@@ -30,6 +30,7 @@ import {
     History,
     ArrowLeft,
     Check,
+    Info,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1697,12 +1698,24 @@ export default function PnLReport() {
     };
 
     // Subtotal row for monthly view
+    const pnlTooltips: Record<string, string> = {
+        "GROSS PROFIT": "Gross Profit = Total Revenue − Total Expenses (COGS excluded where applicable)",
+        "EBITDA": "EBITDA = Gross Profit − Operating Expenses (excluding Depreciation, Amortization, Interest & Taxes)",
+    };
+
     const renderMonthlySubtotal = (label: string, monthlyData: typeof monthlyTotals.months, field: keyof typeof monthlyTotals.months[0], _ytd: number, total: number, isProfit = false) => {
+        const tooltip = pnlTooltips[label];
         return (
             <div className={`grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 ${isProfit ? "bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/40 dark:to-purple-900/40 border-y border-blue-300 dark:border-blue-500/30" : "bg-gray-100 dark:bg-black/60 border-y border-gray-200 dark:border-gray-700"}`}>
                 <div className="flex items-center gap-2">
                     <div className="w-3" />
                     <span className={`font-semibold ${isProfit ? "text-blue-700 dark:text-blue-300" : "text-gray-900 dark:text-white"} text-xs`}>{label}</span>
+                    {tooltip && (
+                        <span className="relative group cursor-help">
+                            <Info className="h-3 w-3 text-blue-400/70" />
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block w-52 text-[10px] font-normal normal-case tracking-normal bg-gray-900 text-white p-2 rounded shadow-lg z-50">{tooltip}</span>
+                        </span>
+                    )}
                 </div>
                 {monthlyData.map((m, i) => {
                     const isNotClosed = i > lastClosedMonth; // Month not closed if after last closed month
@@ -1790,7 +1803,12 @@ export default function PnLReport() {
                     <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/50 dark:to-blue-950/80 border-blue-200 dark:border-blue-700/50 col-span-1">
                         <CardContent className="pt-5 pb-4">
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Gross Profit</span>
+                                <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wider flex items-center gap-1">Gross Profit
+                                    <span className="relative group cursor-help">
+                                        <Info className="h-3 w-3 text-blue-400/70" />
+                                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block w-52 text-[10px] font-normal normal-case tracking-normal bg-gray-900 text-white p-2 rounded shadow-lg z-50">Gross Profit = Total Revenue − Total Expenses (COGS excluded where applicable)</span>
+                                    </span>
+                                </span>
                                 <Layers className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             </div>
                             <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCompact(monthlyTotals.ytd.grossProfit)}</p>
@@ -1812,7 +1830,12 @@ export default function PnLReport() {
                     <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/50 dark:to-purple-950/80 border-purple-200 dark:border-purple-700/50 col-span-1">
                         <CardContent className="pt-5 pb-4">
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wider">EBITDA</span>
+                                <span className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wider flex items-center gap-1">EBITDA
+                                    <span className="relative group cursor-help">
+                                        <Info className="h-3 w-3 text-purple-400/70" />
+                                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block w-56 text-[10px] font-normal normal-case tracking-normal bg-gray-900 text-white p-2 rounded shadow-lg z-50">EBITDA = Gross Profit − Operating Expenses (excluding Depreciation, Amortization, Interest &amp; Taxes)</span>
+                                    </span>
+                                </span>
                                 <Building2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                             </div>
                             <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCompact(monthlyTotals.ytd.ebitda)}</p>
@@ -1856,7 +1879,12 @@ export default function PnLReport() {
                     <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/50 dark:to-amber-950/80 border-amber-200 dark:border-amber-700/50 col-span-2">
                         <CardContent className="pt-5 pb-4">
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Net Income YTD</span>
+                                <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1">Net Income YTD
+                                    <span className="relative group cursor-help">
+                                        <Info className="h-3 w-3 text-amber-400/70" />
+                                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block w-56 text-[10px] font-normal normal-case tracking-normal bg-gray-900 text-white p-2 rounded shadow-lg z-50">Net Income = Total Revenue − Total Expenses (all-inclusive: operating, financial, taxes)</span>
+                                    </span>
+                                </span>
                                 <DollarSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                             </div>
                             <div className="flex items-baseline gap-4">
@@ -1941,7 +1969,7 @@ export default function PnLReport() {
                     <div className="max-h-[300px] overflow-y-auto">
                         {revenueStructure.map((line) => renderMonthlyRow(line))}
                     </div>
-                    {renderMonthlySubtotal("TOTAL REVENUE", monthlyTotals.months, "revenue", monthlyTotals.ytd.revenue, monthlyTotals.annual.revenue)}
+                    {renderMonthlySubtotal("TOTAL REVENUE", monthlyTotals.months, "revenue", monthlyTotals.ytd.revenue, monthlyTotals.ytd.revenue)}
 
                     {/* Expenses Section */}
                     <div data-tour="pnl-expense-section" className="bg-gradient-to-r from-red-100 to-red-50 dark:from-red-900/40 dark:to-red-900/20 border-b border-red-200 dark:border-red-800/50 py-2 px-3 mt-1">
@@ -1953,11 +1981,11 @@ export default function PnLReport() {
                     <div className="max-h-[300px] overflow-y-auto">
                         {expenseStructure.map((line) => renderMonthlyRow(line))}
                     </div>
-                    {renderMonthlySubtotal("TOTAL EXPENSES", monthlyTotals.months, "totalExpenses", monthlyTotals.ytd.totalExpenses, monthlyTotals.annual.totalExpenses)}
+                    {renderMonthlySubtotal("TOTAL EXPENSES", monthlyTotals.months, "totalExpenses", monthlyTotals.ytd.totalExpenses, monthlyTotals.ytd.totalExpenses)}
 
                     {/* Profit Lines */}
-                    {renderMonthlySubtotal("GROSS PROFIT", monthlyTotals.months, "grossProfit", monthlyTotals.ytd.grossProfit, monthlyTotals.annual.grossProfit, true)}
-                    {renderMonthlySubtotal("EBITDA", monthlyTotals.months, "ebitda", monthlyTotals.ytd.ebitda, monthlyTotals.annual.ebitda, true)}
+                    {renderMonthlySubtotal("GROSS PROFIT", monthlyTotals.months, "grossProfit", monthlyTotals.ytd.grossProfit, monthlyTotals.ytd.grossProfit, true)}
+                    {renderMonthlySubtotal("EBITDA", monthlyTotals.months, "ebitda", monthlyTotals.ytd.ebitda, monthlyTotals.ytd.ebitda, true)}
 
                     {/* Net Income Final Row */}
                     <div className="bg-gradient-to-r from-amber-100 via-orange-100 to-amber-100 dark:from-amber-900/60 dark:via-orange-900/50 dark:to-amber-900/60 border-y-2 border-amber-300 dark:border-amber-500/50 py-3 px-2">
@@ -1965,6 +1993,10 @@ export default function PnLReport() {
                             <div className="flex items-center gap-2">
                                 <DollarSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                                 <span className="text-sm font-bold text-amber-700 dark:text-amber-300">NET INCOME</span>
+                                <span className="relative group cursor-help">
+                                    <Info className="h-3 w-3 text-amber-400/70" />
+                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block w-56 text-[10px] font-normal normal-case tracking-normal bg-gray-900 text-white p-2 rounded shadow-lg z-50">Net Income = Total Revenue − Total Expenses (all-inclusive: operating, financial, taxes)</span>
+                                </span>
                             </div>
                             {monthlyTotals.months.map((m, i) => {
                                 const isNotClosed = i > lastClosedMonth; // Month not closed if after last closed month

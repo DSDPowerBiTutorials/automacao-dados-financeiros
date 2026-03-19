@@ -56,7 +56,7 @@ function CustomTooltip({
                 {item.name}
             </p>
             <p className="dashboard-text-muted" style={{ fontSize: 12, marginTop: 2 }}>
-                €{item.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                €{item.value.toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </p>
         </div>
     );
@@ -74,10 +74,10 @@ export function RevenueByChannelChart({ data }: RevenueByChannelChartProps) {
         <div className="dashboard-card h-full">
             <div className="dashboard-card-header">
                 <h3 className="text-sm font-semibold dashboard-text-primary">
-                    Receita por Canal
+                    Revenue by Channel
                 </h3>
                 <p className="text-xs dashboard-text-muted mt-0.5">
-                    Distribuição por fonte de pagamento
+                    Distribution by payment source
                 </p>
             </div>
             <div className="dashboard-card-content flex flex-col lg:flex-row items-center gap-4">

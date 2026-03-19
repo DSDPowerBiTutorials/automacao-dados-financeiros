@@ -43,7 +43,7 @@ function CustomTooltip({
                 {label}
             </p>
             <p className="dashboard-text-muted" style={{ fontSize: 12, marginTop: 2 }}>
-                €{payload[0].value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                €{payload[0].value.toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </p>
         </div>
     );
@@ -71,10 +71,10 @@ export function ExpensesByCostCenter({ data }: ExpensesByCostCenterProps) {
         <div className="dashboard-card h-full">
             <div className="dashboard-card-header">
                 <h3 className="text-sm font-semibold dashboard-text-primary">
-                    Despesas por Centro de Custo
+                    Expenses by Cost Center
                 </h3>
                 <p className="text-xs dashboard-text-muted mt-0.5">
-                    Top 8 centros de custo por volume
+                    Top 8 cost centers by volume
                 </p>
             </div>
             <div className="dashboard-card-content">

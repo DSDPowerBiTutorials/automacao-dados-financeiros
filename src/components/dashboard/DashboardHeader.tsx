@@ -10,11 +10,11 @@ interface DashboardHeaderProps {
 export function DashboardHeader({ userName, scope }: DashboardHeaderProps) {
     const now = new Date();
     const hour = now.getHours();
-    let greeting = "Bom dia";
-    if (hour >= 12 && hour < 18) greeting = "Boa tarde";
-    else if (hour >= 18) greeting = "Boa noite";
+    let greeting = "Good morning";
+    if (hour >= 12 && hour < 18) greeting = "Good afternoon";
+    else if (hour >= 18) greeting = "Good evening";
 
-    const dateStr = now.toLocaleDateString("pt-BR", {
+    const dateStr = now.toLocaleDateString("en-US", {
         weekday: "long",
         day: "numeric",
         month: "long",
@@ -22,7 +22,7 @@ export function DashboardHeader({ userName, scope }: DashboardHeaderProps) {
     });
 
     const scopeLabel =
-        scope === "GLOBAL" ? "Global" : scope === "ES" ? "Espanha" : "EUA";
+        scope === "GLOBAL" ? "Global" : scope === "ES" ? "Spain" : "USA";
 
     return (
         <div className="flex items-center justify-between">
