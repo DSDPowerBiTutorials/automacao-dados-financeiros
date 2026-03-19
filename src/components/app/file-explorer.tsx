@@ -17,6 +17,7 @@ import {
     RefreshCw,
     Search,
     HardDrive,
+    Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -678,6 +679,17 @@ export function FileExplorer() {
                                     {formatDate(file.createdAt)}
                                 </div>
                                 <div className="flex items-center justify-center gap-1">
+                                    <button
+                                        onClick={() => {
+                                            const url = `${window.location.origin}/api/share?bucket=${currentBucket}&path=${encodeURIComponent(file.path)}`;
+                                            navigator.clipboard.writeText(url);
+                                            toast({ title: "Link copiado!", description: "Qualquer pessoa com o link pode aceder ao ficheiro." });
+                                        }}
+                                        className="p-1.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded text-green-600 dark:text-green-400 transition-colors"
+                                        title="Copiar link público"
+                                    >
+                                        <Link2 className="h-4 w-4" />
+                                    </button>
                                     <button
                                         onClick={() => handleDownload(file)}
                                         className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded text-blue-600 dark:text-blue-400 transition-colors"
