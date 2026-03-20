@@ -60,13 +60,13 @@ interface ARInvoice {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  draft: { label: "Rascunho", color: "bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600" },
-  pending: { label: "Pendente", color: "bg-yellow-900/30 text-yellow-400 border border-yellow-700" },
-  sent: { label: "Enviada", color: "bg-blue-900/30 text-blue-400 border border-blue-700" },
-  paid: { label: "Paga", color: "bg-green-900/30 text-green-400 border border-green-700" },
-  partial: { label: "Parcial", color: "bg-orange-900/30 text-orange-400 border border-orange-700" },
-  overdue: { label: "Vencida", color: "bg-red-900/30 text-red-400 border border-red-700" },
-  cancelled: { label: "Cancelada", color: "bg-gray-100 dark:bg-black/50 text-gray-500 border border-gray-200 dark:border-gray-700" }
+  draft: { label: "Draft", color: "bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600" },
+  pending: { label: "Pending", color: "bg-yellow-900/30 text-yellow-400 border border-yellow-700" },
+  sent: { label: "Sent", color: "bg-blue-900/30 text-blue-400 border border-blue-700" },
+  paid: { label: "Paid", color: "bg-green-900/30 text-green-400 border border-green-700" },
+  partial: { label: "Partial", color: "bg-orange-900/30 text-orange-400 border border-orange-700" },
+  overdue: { label: "Overdue", color: "bg-red-900/30 text-red-400 border border-red-700" },
+  cancelled: { label: "Cancelled", color: "bg-gray-100 dark:bg-black/50 text-gray-500 border border-gray-200 dark:border-gray-700" }
 };
 
 const PAYMENT_METHODS = ["Braintree", "Stripe", "GoCardless", "PayPal", "Bank Transfer", "Credit Card", "Other"];
@@ -1003,20 +1003,12 @@ export default function ARInvoicesPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
-      <PageHeader title="Web Orders" subtitle="Contas a Receber">
+      <PageHeader title="Web Orders" subtitle="Accounts Receivable">
         <ScopeSelector value={selectedScope} onValueChange={setSelectedScope} />
       </PageHeader>
       <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]" onClick={runAutoReconcile} disabled={reconciling}>
-              {reconciling ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
-              Reconcile
-            </Button>
-            <Button variant="outline" size="sm" className="bg-transparent border-green-700 text-green-400 hover:bg-green-900/30" onClick={runBankReconcile} disabled={bankReconciling} title="Reconciliar com extrato bancário via Disbursement">
-              {bankReconciling ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <DollarSign className="h-4 w-4 mr-1" />}
-              Bank Reconcile
-            </Button>
             <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]" onClick={syncFromHubSpot} disabled={syncing}>
               {syncing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
               Sync
@@ -1046,7 +1038,7 @@ export default function ARInvoicesPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
               <Input
-                placeholder="Buscar..."
+                placeholder="Search..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="pl-9 w-64 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500"
@@ -1055,7 +1047,7 @@ export default function ARInvoicesPage() {
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
               <SelectTrigger className="w-[130px] bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
               <SelectContent className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700">
-                <SelectItem value="ALL" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">Todos</SelectItem>
+                <SelectItem value="ALL" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">All</SelectItem>
                 {Object.entries(STATUS_CONFIG).map(([key, config]) => (
                   <SelectItem key={key} value={key} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">{config.label}</SelectItem>
                 ))}
@@ -1068,8 +1060,8 @@ export default function ARInvoicesPage() {
       {/* Summary Stats Bar */}
       <div className="flex items-center gap-6 px-6 py-3 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 text-sm">
         <div className="flex items-center gap-2">
-          <Link2 className="h-4 w-4 text-purple-400" />
-          <span className="text-gray-500 dark:text-gray-400">Reconciliado:</span>
+          <CheckCircle2 className="h-4 w-4 text-purple-400" />
+          <span className="text-gray-500 dark:text-gray-400">Reconciled:</span>
           <span className="text-purple-400 font-semibold">€{formatEuropeanNumber(stats.reconciledTotal)}</span>
           <span className="text-gray-500 text-xs">({stats.reconciledCount})</span>
         </div>
@@ -1081,19 +1073,19 @@ export default function ARInvoicesPage() {
         </div>
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-green-400" />
-          <span className="text-gray-500 dark:text-gray-400">Pago:</span>
+          <span className="text-gray-500 dark:text-gray-400">Paid:</span>
           <span className="text-green-400 font-semibold">€{formatEuropeanNumber(stats.paidTotal)}</span>
           <span className="text-gray-500 text-xs">({stats.paidCount})</span>
         </div>
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-yellow-400" />
-          <span className="text-gray-500 dark:text-gray-400">Pendente:</span>
+          <span className="text-gray-500 dark:text-gray-400">Pending:</span>
           <span className="text-yellow-400 font-semibold">€{formatEuropeanNumber(stats.pendingTotal)}</span>
           <span className="text-gray-500 text-xs">({stats.pendingCount})</span>
         </div>
         <div className="flex items-center gap-2">
           <AlertCircle className="h-4 w-4 text-red-400" />
-          <span className="text-gray-500 dark:text-gray-400">Vencido:</span>
+          <span className="text-gray-500 dark:text-gray-400">Overdue:</span>
           <span className="text-red-400 font-semibold">€{formatEuropeanNumber(stats.overdueTotal)}</span>
           <span className="text-gray-500 text-xs">({stats.overdueCount})</span>
         </div>
@@ -1112,7 +1104,7 @@ export default function ARInvoicesPage() {
             </div>
             {activeFilterColumn === 'invoice_number' && (
               <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20">
-                <input type="text" placeholder="Filtrar..." value={columnFilters.invoice_number || ''} onChange={(e) => setColumnFilters({ ...columnFilters, invoice_number: e.target.value })} className="w-24 bg-gray-100 dark:bg-[#0a0a0a] border-none text-gray-900 dark:text-white text-[10px] p-1 rounded" autoFocus />
+                <input type="text" placeholder="Filter..." value={columnFilters.invoice_number || ''} onChange={(e) => setColumnFilters({ ...columnFilters, invoice_number: e.target.value })} className="w-24 bg-gray-100 dark:bg-[#0a0a0a] border-none text-gray-900 dark:text-white text-[10px] p-1 rounded" autoFocus />
               </div>
             )}
           </div>
@@ -1129,7 +1121,7 @@ export default function ARInvoicesPage() {
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 bg-gray-100 dark:bg-black border-gray-300 dark:border-gray-600" align="start">
                   <div className="p-2">
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Selecionar intervalo de datas</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Select date range</div>
                     <Calendar
                       mode="range"
                       selected={{ from: dateRange.from, to: dateRange.to }}
@@ -1139,7 +1131,7 @@ export default function ARInvoicesPage() {
                     />
                     <div className="flex gap-2 mt-2">
                       <Button size="sm" variant="outline" className="text-xs h-6" onClick={() => setDateRange({ from: undefined, to: undefined })}>
-                        Limpar
+                        Clear
                       </Button>
                       {(dateRange.from || dateRange.to) && (
                         <span className="text-xs text-gray-500 dark:text-gray-400 self-center">
@@ -1161,7 +1153,7 @@ export default function ARInvoicesPage() {
             </div>
             {activeFilterColumn === 'order_id' && (
               <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20">
-                <input type="text" placeholder="Filtrar..." value={columnFilters.order_id || ''} onChange={(e) => setColumnFilters({ ...columnFilters, order_id: e.target.value })} className="w-20 bg-gray-100 dark:bg-[#0a0a0a] border-none text-gray-900 dark:text-white text-[10px] p-1 rounded" autoFocus />
+                <input type="text" placeholder="Filter..." value={columnFilters.order_id || ''} onChange={(e) => setColumnFilters({ ...columnFilters, order_id: e.target.value })} className="w-20 bg-gray-100 dark:bg-[#0a0a0a] border-none text-gray-900 dark:text-white text-[10px] p-1 rounded" autoFocus />
               </div>
             )}
           </div>
@@ -1177,7 +1169,7 @@ export default function ARInvoicesPage() {
             {activeFilterColumn === 'order_status' && (
               <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20 min-w-[100px]">
                 <select value={columnFilters.order_status || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, order_status: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-100 dark:bg-[#0a0a0a] text-gray-900 dark:text-white text-[10px] p-1 rounded border-none" autoFocus>
-                  <option value="">Todos</option>
+                  <option value="">All</option>
                   {columnUniqueValues.order_status.map(v => <option key={v} value={v || ''}>{v}</option>)}
                 </select>
               </div>
@@ -1193,7 +1185,7 @@ export default function ARInvoicesPage() {
             {activeFilterColumn === 'deal_status' && (
               <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20 min-w-[130px]">
                 <select value={columnFilters.deal_status || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, deal_status: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-100 dark:bg-[#0a0a0a] text-gray-900 dark:text-white text-[10px] p-1 rounded border-none" autoFocus>
-                  <option value="">Todos</option>
+                  <option value="">All</option>
                   {columnUniqueValues.deal_status.map(v => <option key={v} value={v || ''}>{v}</option>)}
                 </select>
               </div>
@@ -1209,7 +1201,7 @@ export default function ARInvoicesPage() {
             {activeFilterColumn === 'products' && (
               <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20 min-w-[180px] max-h-[200px] overflow-y-auto">
                 <select value={columnFilters.products || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, products: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-100 dark:bg-[#0a0a0a] text-gray-900 dark:text-white text-[10px] p-1 rounded border-none" autoFocus>
-                  <option value="">Todos</option>
+                  <option value="">All</option>
                   {columnUniqueValues.products.map(v => <option key={v} value={v || ''}>{v?.substring(0, 40)}</option>)}
                 </select>
               </div>
@@ -1225,7 +1217,7 @@ export default function ARInvoicesPage() {
             {activeFilterColumn === 'company_name' && (
               <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20 min-w-[150px] max-h-[200px] overflow-y-auto">
                 <select value={columnFilters.company_name || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, company_name: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-100 dark:bg-[#0a0a0a] text-gray-900 dark:text-white text-[10px] p-1 rounded border-none" autoFocus>
-                  <option value="">Todos</option>
+                  <option value="">All</option>
                   {columnUniqueValues.company_name.map(v => <option key={v} value={v || ''}>{v?.substring(0, 30)}</option>)}
                 </select>
               </div>
@@ -1248,7 +1240,7 @@ export default function ARInvoicesPage() {
             </div>
             {activeFilterColumn === 'total_amount' && (
               <div className="absolute top-full right-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20">
-                <input type="text" placeholder="Filtrar..." value={columnFilters.total_amount || ''} onChange={(e) => setColumnFilters({ ...columnFilters, total_amount: e.target.value })} className="w-20 bg-gray-100 dark:bg-[#0a0a0a] border-none text-gray-900 dark:text-white text-[10px] p-1 rounded" autoFocus />
+                <input type="text" placeholder="Filter..." value={columnFilters.total_amount || ''} onChange={(e) => setColumnFilters({ ...columnFilters, total_amount: e.target.value })} className="w-20 bg-gray-100 dark:bg-[#0a0a0a] border-none text-gray-900 dark:text-white text-[10px] p-1 rounded" autoFocus />
               </div>
             )}
           </div>
@@ -1271,7 +1263,7 @@ export default function ARInvoicesPage() {
         ) : error ? (
           <div className="p-8 text-center text-red-400">{error}</div>
         ) : filteredInvoices.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">Nenhuma invoice encontrada</div>
+          <div className="p-8 text-center text-gray-500">No invoices found</div>
         ) : (
           filteredInvoices.map(inv => {
             const statusConfig = STATUS_CONFIG[inv.status] || STATUS_CONFIG.pending;
@@ -1312,7 +1304,7 @@ export default function ARInvoicesPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-1 text-blue-400 hover:text-blue-300"
-                      title={`Abrir ${inv.order_id} no backend`}
+                      title={`Open ${inv.order_id} in backend`}
                     >
                       <Globe className="h-3 w-3" />
                     </a>
@@ -1356,16 +1348,15 @@ export default function ARInvoicesPage() {
                   ) : inv.payment_method?.toLowerCase().includes('manual') && !inv.reconciled_with ? (
                     <div className="flex items-center gap-0.5">
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-yellow-900/30 text-yellow-400 border border-yellow-700/50" title="Manual payment - needs bank reconciliation">Manual</span>
-                      <button onClick={() => openManualReconcile(inv)} className="p-0.5 text-gray-600 hover:text-purple-400" title="Reconcile with bank"><Link2 className="h-2.5 w-2.5" /></button>
                     </div>
                   ) : inv.reconciled ? (
                     <div className="flex items-center gap-0.5">
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-900/30 text-green-400 border border-green-700/50">{inv.reconciled_with?.split(':')[0] || 'Yes'}</span>
-                      <button onClick={() => loadTransactionDetails(inv)} className="p-0.5 text-gray-500 hover:text-blue-400" title="Ver detalhes"><Eye className="h-2.5 w-2.5" /></button>
-                      <button onClick={() => handleRemoveReconciliation(inv)} className="p-0.5 text-gray-600 hover:text-red-400" title="Remover"><X className="h-2.5 w-2.5" /></button>
+                      <button onClick={() => loadTransactionDetails(inv)} className="p-0.5 text-gray-500 hover:text-blue-400" title="View details"><Eye className="h-2.5 w-2.5" /></button>
+                      <button onClick={() => handleRemoveReconciliation(inv)} className="p-0.5 text-gray-600 hover:text-red-400" title="Remove"><X className="h-2.5 w-2.5" /></button>
                     </div>
                   ) : (
-                    <button onClick={() => openManualReconcile(inv)} className="p-1 text-gray-600 hover:text-purple-400" title="Reconcile"><Link2 className="h-3 w-3" /></button>
+                    <span className="text-[9px] text-gray-500">—</span>
                   )}
                 </div>
                 {/* Type - Auto or Manual reconciliation indicator */}

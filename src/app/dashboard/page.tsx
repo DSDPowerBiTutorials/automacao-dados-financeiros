@@ -29,9 +29,9 @@ import {
   getSourceColor,
 } from "@/components/dashboard/ReconciliationStatus";
 import {
-  RecentTransactions,
-  RecentTransaction,
-} from "@/components/dashboard/RecentTransactions";
+  WeeklyPayments,
+  ScheduledPayment,
+} from "@/components/dashboard/WeeklyPayments";
 
 // ---------------------------------------------------------------------------
 // Loading skeleton
@@ -139,7 +139,7 @@ export default function DashboardPage() {
   const [reconciliationData, setReconciliationData] = useState<
     ReconciliationSource[]
   >([]);
-  const [recentTxData, setRecentTxData] = useState<RecentTransaction[]>([]);
+  const [weeklyPayments, setWeeklyPayments] = useState<ScheduledPayment[]>([]);
 
   // ---------------------------------------------------------------------------
   // Data loaders
@@ -462,39 +462,29 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const loadRecentTransactions = useCallback(async () => {
+  const loadWeeklyPayments = useCallback(async () => {
     try {
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const startDate = monday.toISOString().split("T")[0];
+      const endDate = sunday.toISOString().split("T")[0];
+
       const { data: rows } = await supabase
-        .from("csv_rows")
+        .from("invoices")
         .select(
-          "id, date, description, amount, source, reconciled, custom_data"
+          "id, schedule_date, provider_code, description, invoice_number, invoice_amount, currency, payment_status, payment_date"
         )
-        .order("date", { ascending: false })
-        .limit(10);
+        .gte("schedule_date", startDate)
+        .lte("schedule_date", endDate)
+        .order("schedule_date", { ascending: true });
 
-      if (!rows) return;
-
-      const txs: RecentTransaction[] = rows.map((r) => {
-        const src = (r.source || "").toLowerCase();
-        let currency = "EUR";
-        if (src.includes("usd")) currency = "USD";
-        else if (src.includes("gbp")) currency = "GBP";
-        else if (src.includes("aud")) currency = "AUD";
-
-        return {
-          id: r.id,
-          date: r.date || "",
-          description: r.description || "",
-          amount: r.amount || 0,
-          currency,
-          source: r.source || "",
-          reconciled: !!r.reconciled,
-        };
-      });
-
-      setRecentTxData(txs);
+      setWeeklyPayments(rows || []);
     } catch (error) {
-      console.error("Error loading recent transactions:", error);
+      console.error("Error loading weekly payments:", error);
     }
   }, []);
 
@@ -512,7 +502,7 @@ export default function DashboardPage() {
           loadExpenses(),
           loadBankBalances(),
           loadReconciliation(),
-          loadRecentTransactions(),
+          loadWeeklyPayments(),
         ]);
       } catch (error) {
         console.error("Dashboard load error:", error);
@@ -529,7 +519,7 @@ export default function DashboardPage() {
     loadExpenses,
     loadBankBalances,
     loadReconciliation,
-    loadRecentTransactions,
+    loadWeeklyPayments,
   ]);
 
   // ---------------------------------------------------------------------------
@@ -569,8 +559,8 @@ export default function DashboardPage() {
         <ReconciliationStatus data={reconciliationData} />
       </div>
 
-      {/* Recent Transactions */}
-      <RecentTransactions data={recentTxData} />
+      {/* Weekly Payments */}
+      <WeeklyPayments data={weeklyPayments} />
     </div>
   );
 }

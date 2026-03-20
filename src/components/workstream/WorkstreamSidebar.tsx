@@ -24,6 +24,7 @@ import {
     UserPlus,
 } from 'lucide-react';
 import { useNotifications } from '@/contexts/notification-context';
+import { useAuth } from '@/contexts/auth-context';
 import type { WSProject } from '@/lib/workstream-types';
 import { PROJECT_TYPE_CONFIG } from '@/lib/workstream-types';
 
@@ -36,6 +37,8 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
     const { unreadCount } = useNotifications();
+    const { profile } = useAuth();
+    const canDelete = profile?.role === 'admin' || profile?.role === 'editor' || profile?.role === 'finance_manager';
     const [projects, setProjects] = useState<WSProject[]>([]);
     const [loading, setLoading] = useState(true);
     const [starredExpanded, setStarredExpanded] = useState(true);
@@ -387,6 +390,8 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                     >
                                         <Archive className="h-3.5 w-3.5" /> Archive
                                     </button>
+                                    {canDelete && (
+                                    <>
                                     <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
                                     <button
                                         className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-red-400 hover:bg-red-900/20 transition-colors"
@@ -394,6 +399,8 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                     >
                                         <Trash2 className="h-3.5 w-3.5" /> Delete
                                     </button>
+                                    </>
+                                    )}
                                 </>
                             );
                         })()}

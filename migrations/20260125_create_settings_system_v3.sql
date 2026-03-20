@@ -265,10 +265,10 @@ ON CONFLICT (name) DO NOTHING;
 -- DADOS INICIAIS: USUÁRIOS DO SISTEMA
 -- ============================================
 INSERT INTO system_users (email, name, role, avatar_url, department) VALUES
-('fernando@dsd.com', 'Fernando', 'admin', '/avatars/Fernando.png', 'Administração'),
-('sofia@dsd.com', 'Sofia', 'manager', '/avatars/Sofia.png', 'Financeiro'),
-('jorge@dsd.com', 'Jorge', 'editor', '/avatars/Jorge.png', 'Operações'),
-('valeria@dsd.com', 'Valeria', 'viewer', '/avatars/Valeria.png', 'Suporte'),
+('fernando@digitalsmiledesign.com', 'Fernando', 'admin', '/avatars/Fernando.png', 'Administração'),
+('sofia@digitalsmiledesign.com', 'Sofia', 'manager', '/avatars/Sofia.png', 'Financeiro'),
+('jorge@digitalsmiledesign.com', 'Jorge', 'editor', '/avatars/Jorge.png', 'Operações'),
+('valeria@digitalsmiledesign.com', 'Valeria', 'viewer', '/avatars/Valeria.png', 'Suporte'),
 ('botella@system.local', 'BOTella', 'admin', '/avatars/botella.svg', 'Sistema')
 ON CONFLICT (email) DO NOTHING;
 
@@ -276,10 +276,10 @@ ON CONFLICT (email) DO NOTHING;
 -- DADOS INICIAIS: USUÁRIOS DO BOT
 -- ============================================
 INSERT INTO bot_users (email, name, role, avatar_url, is_active) VALUES
-('fernando@dsd.com', 'Fernando', 'admin', '/avatars/Fernando.png', true),
-('sofia@dsd.com', 'Sofia', 'manager', '/avatars/Sofia.png', true),
-('jorge@dsd.com', 'Jorge', 'editor', '/avatars/Jorge.png', true),
-('valeria@dsd.com', 'Valeria', 'viewer', '/avatars/Valeria.png', true),
+('fernando@digitalsmiledesign.com', 'Fernando', 'admin', '/avatars/Fernando.png', true),
+('sofia@digitalsmiledesign.com', 'Sofia', 'manager', '/avatars/Sofia.png', true),
+('jorge@digitalsmiledesign.com', 'Jorge', 'editor', '/avatars/Jorge.png', true),
+('valeria@digitalsmiledesign.com', 'Valeria', 'viewer', '/avatars/Valeria.png', true),
 ('botella@system.local', 'BOTella', 'admin', '/avatars/botella.svg', true)
 ON CONFLICT (email) DO NOTHING;
 

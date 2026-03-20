@@ -36,7 +36,7 @@ const settingsNav = [
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
     // TODO: Pegar usuário real do contexto de auth
-    const currentUser = { email: 'fernando@dsd.com', name: 'Fernando', role: 'admin' }
+    const currentUser = { email: 'fernando@digitalsmiledesign.com', name: 'Fernando', role: 'admin' }
     const isAdmin = currentUser.role === 'admin'
 
     return (
