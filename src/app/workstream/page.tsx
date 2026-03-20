@@ -187,7 +187,7 @@ export default function WorkstreamHomePage() {
                 {/* Main grid — 2 columns like Asana */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* LEFT COLUMN: My Tasks */}
-                    <div className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                    <div data-tour="ws-my-tasks" className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
                         <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
                             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">My Tasks</h2>
                             <div className="text-[10px] text-gray-600">
@@ -277,7 +277,7 @@ export default function WorkstreamHomePage() {
                     </div>
 
                     {/* RIGHT COLUMN: Projects */}
-                    <div className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                    <div data-tour="ws-projects" className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
                         <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
                             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Projects</h2>
                             <div className="flex items-center gap-2">
@@ -335,7 +335,7 @@ export default function WorkstreamHomePage() {
                     </div>
 
                     {/* BOTTOM LEFT: People */}
-                    <div className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                    <div data-tour="ws-people" className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
                         <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
                             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">People</h2>
                             <span className="text-[10px] text-gray-500">Frequent collaborators</span>
@@ -384,7 +384,7 @@ export default function WorkstreamHomePage() {
                     </div>
 
                     {/* BOTTOM RIGHT: Customize / Quick Links */}
-                    <div className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                    <div data-tour="ws-quick-links" className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
                         <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
                             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Customize</h2>
                             <Sparkles className="h-4 w-4 text-gray-500" />

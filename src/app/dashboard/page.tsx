@@ -538,29 +538,35 @@ export default function DashboardPage() {
       />
 
       {/* KPI Strip */}
+      <div data-tour="dash-kpi-strip">
       <KPIStrip
         data={kpiData}
         showIntercompany={showIntercompany}
         onToggleIntercompany={() => setShowIntercompany((p) => !p)}
       />
+      </div>
 
       {/* Cash Flow Chart (full width) */}
+      <div data-tour="dash-cashflow-chart">
       <CashFlowAreaChart data={cashFlowData} showIntercompany={showIntercompany} />
+      </div>
 
       {/* Revenue by Channel + Expense by Cost Center */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <RevenueByChannelChart data={channelData} />
-        <ExpensesByCostCenter data={expenseData} />
+        <div data-tour="dash-revenue-channel"><RevenueByChannelChart data={channelData} /></div>
+        <div data-tour="dash-expense-center"><ExpensesByCostCenter data={expenseData} /></div>
       </div>
 
       {/* Bank Balances + Reconciliation Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <BankBalancesCards data={bankBalances} />
-        <ReconciliationStatus data={reconciliationData} />
+        <div data-tour="dash-bank-balances"><BankBalancesCards data={bankBalances} /></div>
+        <div data-tour="dash-recon-status"><ReconciliationStatus data={reconciliationData} /></div>
       </div>
 
       {/* Weekly Payments */}
+      <div data-tour="dash-weekly-payments">
       <WeeklyPayments data={weeklyPayments} />
+      </div>
     </div>
   );
 }

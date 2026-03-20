@@ -1877,6 +1877,7 @@ export default function InvoicesPage() {
               Export PDF
             </Button>
             <Button
+              data-tour="ap-new-invoice"
               disabled={selectedScope === "GLOBAL"}
               variant="outline"
               className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
@@ -3017,6 +3018,7 @@ export default function InvoicesPage() {
               }}
             >
               <Button
+                data-tour="ap-column-selector"
                 type="button"
                 onClick={() => {
                   setTempVisibleColumns(new Set(visibleColumns));
@@ -3119,6 +3121,7 @@ export default function InvoicesPage() {
 
             {/* Group buttons */}
             <Button
+              data-tour="ap-grouping"
               variant={groupByMode === "provider" ? "default" : "outline"}
               size="sm"
               onClick={() => {
@@ -3187,6 +3190,7 @@ export default function InvoicesPage() {
 
           {/* Year Filter (server-side) */}
           <select
+            data-tour="ap-year-filter"
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
             className="h-9 rounded-md border border-gray-200 dark:border-gray-700 bg-transparent px-3 text-sm text-gray-900 dark:text-white"
@@ -3198,7 +3202,7 @@ export default function InvoicesPage() {
           </select>
 
           {/* Search */}
-          <div className="flex-1 max-w-md">
+          <div data-tour="ap-search" className="flex-1 max-w-md">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-500 dark:text-gray-400 pointer-events-none" />
               <Input
@@ -3275,7 +3279,7 @@ export default function InvoicesPage() {
             <p className="text-sm">Create your first invoice to get started</p>
           </div>
         ) : (
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <div data-tour="ap-table" className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             <div ref={tableContainerRef} className="overflow-x-auto max-h-[600px] overflow-y-auto">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] shadow-sm">
@@ -4535,8 +4539,8 @@ export default function InvoicesPage() {
                             <td className="px-2 py-1 text-center text-[10px]">
                               <Badge variant="outline" className={`text-[9px] px-1.5 py-0 border ${paymentStatus === 'PAID' ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-200 dark:border-green-700' :
                                 paymentStatus === 'PARTIAL' ? 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-200 dark:border-orange-700' :
-                                paymentStatus === 'SCHEDULED' ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700' :
-                                  'bg-gray-100 text-gray-800 border-gray-300 dark:bg-[#111111] dark:text-gray-200 dark:border-gray-600'
+                                  paymentStatus === 'SCHEDULED' ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700' :
+                                    'bg-gray-100 text-gray-800 border-gray-300 dark:bg-[#111111] dark:text-gray-200 dark:border-gray-600'
                                 }`}>
                                 {paymentStatus.replace('_', ' ')}
                               </Badge>

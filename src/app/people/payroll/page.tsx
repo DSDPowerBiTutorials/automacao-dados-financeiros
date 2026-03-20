@@ -512,7 +512,7 @@ export default function PayrollPage() {
             <PageHeader title="Payroll" subtitle={`${data.company} · NIF: ${data.nif} · ${data.period}${fileName ? ` · ${fileName}` : ""}`}>
                 <div className="flex items-center gap-3">
                     {/* View toggle */}
-                    <div className="flex items-center bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
+                    <div data-tour="payroll-view-toggle" className="flex items-center bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
                         {(
                             [
                                 ["employees", "Employees"],
@@ -533,7 +533,7 @@ export default function PayrollPage() {
                         ))}
                     </div>
                     {/* Year toggle */}
-                    <div className="flex items-center bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
+                    <div data-tour="payroll-year-toggle" className="flex items-center bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
                         {[2025, 2026].map((yr) => (
                             <button
                                 key={yr}
@@ -549,6 +549,7 @@ export default function PayrollPage() {
                     </div>
                     {/* Upload another */}
                     <Button
+                        data-tour="payroll-actions"
                         size="sm"
                         variant="outline"
                         onClick={() => fileInputRef.current?.click()}
@@ -583,7 +584,7 @@ export default function PayrollPage() {
 
             {viewMode === "employees" && (
                 <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
-                    <div className="flex items-center gap-3">
+                    <div data-tour="payroll-search" className="flex items-center gap-3">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                             <Input
@@ -613,7 +614,7 @@ export default function PayrollPage() {
             )}
 
             {/* ─── KPI Bar ─── */}
-            <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-50 dark:bg-[#0a0a0a]">
+            <div data-tour="payroll-kpi-bar" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-50 dark:bg-[#0a0a0a]">
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                     <KpiCard
                         icon={<Users className="h-4 w-4 text-violet-500" />}
@@ -662,7 +663,7 @@ export default function PayrollPage() {
             <PayrollInvoiceGenerator payrollData={data} selectedYear={selectedYear} />
 
             {/* ─── Main Content ─── */}
-            <div className="flex-1 overflow-auto">
+            <div data-tour="payroll-table" className="flex-1 overflow-auto">
                 {viewMode === "employees" ? (
                     <EmployeesTable
                         employees={filteredEmployees}

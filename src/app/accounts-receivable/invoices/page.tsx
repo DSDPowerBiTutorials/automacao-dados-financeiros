@@ -1008,7 +1008,7 @@ export default function ARInvoicesPage() {
       </PageHeader>
       <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div data-tour="ar-toolbar" className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]" onClick={syncFromHubSpot} disabled={syncing}>
               {syncing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
               Sync
@@ -1034,7 +1034,7 @@ export default function ARInvoicesPage() {
               <Plus className="h-4 w-4 mr-1" /> New
             </Button>
           </div>
-          <div className="flex items-center gap-3">
+          <div data-tour="ar-search" className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
               <Input
@@ -1058,7 +1058,7 @@ export default function ARInvoicesPage() {
       </div>
 
       {/* Summary Stats Bar */}
-      <div className="flex items-center gap-6 px-6 py-3 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 text-sm">
+      <div data-tour="ar-stats-bar" className="flex items-center gap-6 px-6 py-3 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 text-sm">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-purple-400" />
           <span className="text-gray-500 dark:text-gray-400">Reconciled:</span>
@@ -1092,7 +1092,7 @@ export default function ARInvoicesPage() {
       </div>
 
       {/* Table Header */}
-      <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700">
+      <div data-tour="ar-table" className="sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-1 px-3 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase">
           <div className="w-[55px] flex-shrink-0"></div>
           {/* Invoice */}

@@ -361,7 +361,7 @@ export default function PaymentChannelsPage() {
         <div className="flex flex-col h-full bg-white dark:bg-black text-gray-900 dark:text-white">
             {/* ─── Header ─── */}
             <PageHeader title="Payment Channels" subtitle={`Unified view of all payment gateways — ${summary.total.toLocaleString()} transactions`}>
-                <div className="flex items-center gap-3">
+                <div data-tour="channels-date-range" className="flex items-center gap-3">
                     {/* Date range */}
                     <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-500" />
@@ -380,7 +380,7 @@ export default function PaymentChannelsPage() {
                     </Button>
                 </div>
             </PageHeader>
-            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
+            <div data-tour="channels-filters" className="border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
                 <div className="flex items-center gap-3">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
@@ -414,7 +414,7 @@ export default function PaymentChannelsPage() {
             </div>
 
             {/* ─── Gateway Toggle Tabs ─── */}
-            <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#0a0a0a]">
+            <div data-tour="channels-gateway-tabs" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#0a0a0a]">
                 {/* Hidden file inputs for each gateway upload */}
                 {GATEWAYS.map(gw => (
                     <input key={`upload-${gw.key}`} type="file" accept={gw.uploadAccept} onChange={e => handleUpload(gw.key, e)} className="hidden" id={`file-upload-${gw.key}`} />
@@ -463,7 +463,7 @@ export default function PaymentChannelsPage() {
             </div>
 
             {/* ─── KPI Stats Bar ─── */}
-            <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
+            <div data-tour="channels-kpi-bar" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
                 {kpiFilter && (
                     <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs text-gray-500 dark:text-gray-400">Filtering by: <span className="text-gray-900 dark:text-white font-medium capitalize">{kpiFilter}</span></span>
@@ -525,7 +525,7 @@ export default function PaymentChannelsPage() {
             </div>
 
             {/* ─── Main Content ─── */}
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div data-tour="channels-txn-list" className="flex-1 overflow-y-auto px-6 py-4">
                 {isLoading ? (
                     <div className="flex items-center justify-center py-20">
                         <Loader2 className="h-8 w-8 text-indigo-500 animate-spin" />

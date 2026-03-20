@@ -592,4 +592,351 @@ export const TOURS: TourDefinition[] = [
             },
         ],
     },
+
+    /* ------------------------------------------------------------------ */
+    /*  11. Dashboard Tour                                                 */
+    /* ------------------------------------------------------------------ */
+    {
+        id: "dashboard",
+        titleEN: "Dashboard Overview",
+        titleES: "Visión General del Dashboard",
+        descriptionEN: "Explore the main dashboard with KPIs, charts, and summaries",
+        descriptionES: "Explora el dashboard principal con KPIs, gráficos y resúmenes",
+        pagePath: "/dashboard",
+        steps: [
+            {
+                element: '[data-tour="dash-kpi-strip"]',
+                titleEN: "1. Key Performance Indicators",
+                titleES: "1. Indicadores Clave de Rendimiento",
+                descriptionEN: "Six KPI cards at a glance: <b>Revenue</b>, <b>Expenses</b>, <b>Net Result</b>, <b>Reconciliation Rate</b>, <b>Pending Transactions</b>, and <b>Bank Balance</b>. Toggle the Intercompany switch to include/exclude inter-entity transfers from the numbers.",
+                descriptionES: "Seis tarjetas KPI de un vistazo: <b>Ingresos</b>, <b>Gastos</b>, <b>Resultado Neto</b>, <b>Tasa de Conciliación</b>, <b>Transacciones Pendientes</b> y <b>Saldo Bancario</b>. Activa el interruptor Intercompany para incluir/excluir transferencias inter-entidad.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="dash-cashflow-chart"]',
+                titleEN: "2. Cash Flow Trend",
+                titleES: "2. Tendencia de Flujo de Caja",
+                descriptionEN: "A 12-month area chart showing monthly <b>inflows</b> (green) and <b>outflows</b> (red). Hover over any point to see the exact amounts. The chart adapts when the Intercompany toggle is active.",
+                descriptionES: "Gráfico de área de 12 meses mostrando <b>entradas</b> mensuales (verde) y <b>salidas</b> (rojo). Pasa el cursor sobre cualquier punto para ver los importes exactos. El gráfico se adapta cuando el toggle Intercompany está activo.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="dash-revenue-channel"]',
+                titleEN: "3. Revenue by Payment Channel",
+                titleES: "3. Ingresos por Canal de Pago",
+                descriptionEN: "Breakdown of revenue by payment gateway: Braintree, Stripe, GoCardless, PayPal, and others. Shows how much revenue flows through each channel.",
+                descriptionES: "Desglose de ingresos por pasarela de pago: Braintree, Stripe, GoCardless, PayPal y otros. Muestra cuántos ingresos fluyen por cada canal.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="dash-expense-center"]',
+                titleEN: "4. Expenses by Cost Center",
+                titleES: "4. Gastos por Centro de Coste",
+                descriptionEN: "Top 8 departments by expense amount. Quickly identify which areas of the business are driving the highest costs.",
+                descriptionES: "Los 8 departamentos principales por importe de gasto. Identifica rápidamente qué áreas del negocio generan los mayores costes.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="dash-bank-balances"]',
+                titleEN: "5. Bank Account Balances",
+                titleES: "5. Saldos de Cuentas Bancarias",
+                descriptionEN: "Card grid showing current balances for each bank account (Bankinter EUR, Bankinter USD, Sabadell, Chase). Each card displays total inflows, outflows, and the running balance.",
+                descriptionES: "Cuadrícula de tarjetas mostrando saldos actuales de cada cuenta bancaria (Bankinter EUR, Bankinter USD, Sabadell, Chase). Cada tarjeta muestra entradas, salidas y saldo acumulado.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="dash-recon-status"]',
+                titleEN: "6. Reconciliation Status",
+                titleES: "6. Estado de Conciliación",
+                descriptionEN: "Reconciliation progress by data source (top 10). Each bar shows the percentage of transactions matched. Green = fully reconciled, amber = partially, red = needs attention.",
+                descriptionES: "Progreso de conciliación por fuente de datos (top 10). Cada barra muestra el porcentaje de transacciones emparejadas. Verde = completamente conciliado, ámbar = parcial, rojo = necesita atención.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="dash-weekly-payments"]',
+                titleEN: "7. This Week's Payments",
+                titleES: "7. Pagos de Esta Semana",
+                descriptionEN: "A table of scheduled payments for the current week (Monday–Sunday). Shows date, provider, description, amount, and payment status (Paid / Pending). Data comes from the Payment Schedule.",
+                descriptionES: "Tabla de pagos programados para la semana actual (Lunes–Domingo). Muestra fecha, proveedor, descripción, importe y estado de pago (Pagado / Pendiente). Los datos vienen del Payment Schedule.",
+                side: "top",
+            },
+        ],
+    },
+
+    /* ------------------------------------------------------------------ */
+    /*  12. Accounts Payable Invoices Tour                                 */
+    /* ------------------------------------------------------------------ */
+    {
+        id: "ap-invoices",
+        titleEN: "Accounts Payable — Invoices",
+        titleES: "Cuentas por Pagar — Facturas",
+        descriptionEN: "Complete walkthrough of the AP invoices management page",
+        descriptionES: "Guía completa de la página de gestión de facturas CP",
+        pagePath: "/accounts-payable/invoices",
+        steps: [
+            {
+                element: '[data-tour="ap-new-invoice"]',
+                titleEN: "1. Create New Invoice",
+                titleES: "1. Crear Nueva Factura",
+                descriptionEN: "Click <b>New Invoice</b> to open the creation form. Choose invoice type (Incurred, Budget, or Adjustment), fill in dates, provider, amounts, and financial account. You can also export to Excel or PDF from here.",
+                descriptionES: "Haz clic en <b>New Invoice</b> para abrir el formulario de creación. Elige el tipo (Incurred, Budget o Adjustment), rellena fechas, proveedor, importes y cuenta financiera. También puedes exportar a Excel o PDF desde aquí.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="ap-column-selector"]',
+                titleEN: "2. Column Selector",
+                titleES: "2. Selector de Columnas",
+                descriptionEN: "Customize which columns are visible in the table. Choose from 25+ columns including dates, amounts, financial accounts, cost centers, and payment info. Drag to reorder columns.",
+                descriptionES: "Personaliza qué columnas son visibles en la tabla. Elige entre más de 25 columnas incluyendo fechas, importes, cuentas financieras, centros de coste e info de pago. Arrastra para reordenar.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="ap-grouping"]',
+                titleEN: "3. Grouping Modes",
+                titleES: "3. Modos de Agrupación",
+                descriptionEN: "Group invoices by <b>Provider</b>, <b>Financial Account</b>, or <b>Department</b>. Each group shows a subtotal. Use Expand All / Collapse All for quick navigation through grouped data.",
+                descriptionES: "Agrupa facturas por <b>Proveedor</b>, <b>Cuenta Financiera</b> o <b>Departamento</b>. Cada grupo muestra un subtotal. Usa Expand All / Collapse All para navegación rápida.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="ap-year-filter"]',
+                titleEN: "4. Year Filter",
+                titleES: "4. Filtro de Año",
+                descriptionEN: "Filter invoices by fiscal year (2023–2026) or view all years combined. This is a server-side filter that reloads data for the selected year.",
+                descriptionES: "Filtra facturas por año fiscal (2023–2026) o ve todos los años combinados. Es un filtro server-side que recarga datos del año seleccionado.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="ap-search"]',
+                titleEN: "5. Search & Filters",
+                titleES: "5. Búsqueda y Filtros",
+                descriptionEN: "Search across all fields: provider name, description, invoice number, amount. Active column-level filters appear as badges — click the X to remove them.",
+                descriptionES: "Busca en todos los campos: nombre de proveedor, descripción, número de factura, importe. Los filtros activos por columna aparecen como badges — haz clic en X para eliminarlos.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="ap-table"]',
+                titleEN: "6. Invoice Table",
+                titleES: "6. Tabla de Facturas",
+                descriptionEN: "The main table with inline editing. Click any cell to edit directly. Each row shows: status indicator (colored dot), dates, provider, description, amount, financial account, and more. Click the <b>pencil icon</b> to open full edit mode, or <b>Split</b> icon to split an invoice into parts.",
+                descriptionES: "La tabla principal con edición inline. Haz clic en cualquier celda para editar directamente. Cada fila muestra: indicador de estado (punto de color), fechas, proveedor, descripción, importe, cuenta financiera y más. Haz clic en el <b>icono lápiz</b> para modo edición completo, o <b>Split</b> para dividir una factura.",
+                side: "top",
+            },
+        ],
+    },
+
+    /* ------------------------------------------------------------------ */
+    /*  13. Accounts Receivable Invoices (Web Orders) Tour                 */
+    /* ------------------------------------------------------------------ */
+    {
+        id: "ar-invoices",
+        titleEN: "Accounts Receivable — Web Orders",
+        titleES: "Cuentas por Cobrar — Web Orders",
+        descriptionEN: "Navigate the AR invoices page with sync, filters, and statuses",
+        descriptionES: "Navega la página de facturas CC con sincronización, filtros y estados",
+        pagePath: "/accounts-receivable/invoices",
+        steps: [
+            {
+                element: '[data-tour="ar-toolbar"]',
+                titleEN: "1. Action Toolbar",
+                titleES: "1. Barra de Acciones",
+                descriptionEN: "Four key actions: <b>Sync</b> pulls the latest orders from HubSpot, <b>Export</b> downloads filtered data as Excel, <b>Upload Orders</b> imports Craft Commerce CSV data, and <b>New</b> creates a manual invoice entry.",
+                descriptionES: "Cuatro acciones clave: <b>Sync</b> trae los últimos pedidos de HubSpot, <b>Export</b> descarga los datos filtrados como Excel, <b>Upload Orders</b> importa CSV de Craft Commerce, y <b>New</b> crea una entrada manual.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="ar-search"]',
+                titleEN: "2. Search & Status Filter",
+                titleES: "2. Búsqueda y Filtro de Estado",
+                descriptionEN: "Search by invoice number, client name, or email. Use the status dropdown to filter by: Draft, Pending, Sent, Paid, Partial, Overdue, or Cancelled.",
+                descriptionES: "Busca por número de factura, nombre de cliente o email. Usa el dropdown de estado para filtrar por: Draft, Pending, Sent, Paid, Partial, Overdue o Cancelled.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="ar-stats-bar"]',
+                titleEN: "3. Summary Statistics",
+                titleES: "3. Estadísticas Resumen",
+                descriptionEN: "Five KPI badges: <b>Reconciled</b> (purple — matched with bank), <b>Total</b> (all invoices), <b>Paid</b> (green), <b>Pending</b> (yellow), and <b>Overdue</b> (red). Each shows amount and count.",
+                descriptionES: "Cinco badges KPI: <b>Reconciliado</b> (púrpura — emparejado con banco), <b>Total</b> (todas las facturas), <b>Pagado</b> (verde), <b>Pendiente</b> (amarillo) y <b>Vencido</b> (rojo). Cada uno muestra importe y recuento.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="ar-table"]',
+                titleEN: "4. Orders Table",
+                titleES: "4. Tabla de Pedidos",
+                descriptionEN: "All web orders with sortable columns: Invoice #, Date, Client, Email, Amount, Currency, Source, Status, and Gateway. Click column headers to sort. Use the filter icon (🔍) on each column for inline filtering. Click any row to expand its details.",
+                descriptionES: "Todos los pedidos web con columnas ordenables: Factura #, Fecha, Cliente, Email, Importe, Moneda, Fuente, Estado y Pasarela. Haz clic en los encabezados para ordenar. Usa el icono de filtro (🔍) en cada columna para filtrado inline. Haz clic en cualquier fila para expandir detalles.",
+                side: "top",
+            },
+            {
+                titleEN: "5. Order Detail & Actions",
+                titleES: "5. Detalle de Pedido y Acciones",
+                descriptionEN: "When you click a row, the expanded view shows all order metadata. Actions include: <b>View Details</b> (full order info with backend link), <b>Edit</b> (modify status, dates, amounts), and <b>Delete</b>. Reconciled orders show the matched bank transaction reference.",
+                descriptionES: "Al hacer clic en una fila, la vista expandida muestra toda la metadata del pedido. Acciones incluyen: <b>Ver Detalles</b> (info completa con enlace al backend), <b>Editar</b> (modificar estado, fechas, importes), y <b>Eliminar</b>. Pedidos conciliados muestran la referencia de transacción bancaria emparejada.",
+                side: "bottom",
+            },
+        ],
+    },
+
+    /* ------------------------------------------------------------------ */
+    /*  14. Payment Channels Tour                                          */
+    /* ------------------------------------------------------------------ */
+    {
+        id: "payment-channels",
+        titleEN: "Payment Channels",
+        titleES: "Canales de Pago",
+        descriptionEN: "Unified view of all payment gateways and their transactions",
+        descriptionES: "Vista unificada de todas las pasarelas de pago y sus transacciones",
+        pagePath: "/cash-management/payment-channels",
+        steps: [
+            {
+                element: '[data-tour="channels-date-range"]',
+                titleEN: "1. Date Range & Actions",
+                titleES: "1. Rango de Fechas y Acciones",
+                descriptionEN: "Set the date range to filter transactions. Click <b>Apply</b> to reload data. Use <b>Refresh</b> to re-fetch from the database, and <b>Export</b> to download as CSV.",
+                descriptionES: "Establece el rango de fechas para filtrar transacciones. Haz clic en <b>Apply</b> para recargar datos. Usa <b>Refresh</b> para re-consultar la base de datos, y <b>Export</b> para descargar como CSV.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="channels-filters"]',
+                titleEN: "2. Search & Filters",
+                titleES: "2. Búsqueda y Filtros",
+                descriptionEN: "Search by customer name, email, order ID, or transaction ID. Filter by <b>Flow</b> (Inflows/Outflows), <b>Reconciliation Status</b> (Reconciled/Pending), and toggle the <b>Show/Hide Reconciled</b> button.",
+                descriptionES: "Busca por nombre de cliente, email, ID de pedido o ID de transacción. Filtra por <b>Flujo</b> (Entradas/Salidas), <b>Estado de Conciliación</b> (Conciliado/Pendiente), y activa el botón <b>Show/Hide Recon.</b>",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="channels-gateway-tabs"]',
+                titleEN: "3. Gateway Channel Tabs",
+                titleES: "3. Pestañas de Canales de Pasarela",
+                descriptionEN: "Toggle payment gateways on/off: Stripe, Braintree (EUR/USD/GBP/AUD), PayPal, GoCardless, and Pleo. Each tab shows the transaction count. <b>Double-click</b> to isolate a single gateway. Click <b>All</b> to select everything.",
+                descriptionES: "Activa/desactiva pasarelas de pago: Stripe, Braintree (EUR/USD/GBP/AUD), PayPal, GoCardless y Pleo. Cada pestaña muestra el recuento de transacciones. <b>Doble clic</b> para aislar una sola pasarela. Haz clic en <b>All</b> para seleccionar todas.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="channels-kpi-bar"]',
+                titleEN: "4. KPI Summary Bar",
+                titleES: "4. Barra de Resumen KPI",
+                descriptionEN: "Six KPI cards: <b>Inflows</b> (green), <b>Outflows</b> (red), <b>Net</b> (blue), <b>Reconciled</b> (count + %), <b>Pending</b> (amber), and <b>Reconciled Value</b> (purple). Click Inflows, Outflows, Reconciled, or Pending to filter the transaction list.",
+                descriptionES: "Seis tarjetas KPI: <b>Entradas</b> (verde), <b>Salidas</b> (rojo), <b>Neto</b> (azul), <b>Conciliado</b> (recuento + %), <b>Pendiente</b> (ámbar) y <b>Valor Conciliado</b> (púrpura). Haz clic en Entradas, Salidas, Conciliado o Pendiente para filtrar.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="channels-txn-list"]',
+                titleEN: "5. Transaction List",
+                titleES: "5. Lista de Transacciones",
+                descriptionEN: "Transactions grouped by date. Each date header shows a summary of debits and credits for that day. Expand/collapse groups with the chevron. Each row shows: description, customer name, amount (color-coded), gateway badge, and reconciliation status icon.",
+                descriptionES: "Transacciones agrupadas por fecha. Cada encabezado de fecha muestra un resumen de débitos y créditos del día. Expande/colapsa grupos con el chevron. Cada fila muestra: descripción, nombre de cliente, importe (codificado por color), badge de pasarela e icono de estado de conciliación.",
+                side: "top",
+            },
+        ],
+    },
+
+    /* ------------------------------------------------------------------ */
+    /*  15. Payroll Tour                                                   */
+    /* ------------------------------------------------------------------ */
+    {
+        id: "payroll",
+        titleEN: "Payroll Management",
+        titleES: "Gestión de Nóminas",
+        descriptionEN: "Upload, analyze, and manage payroll data",
+        descriptionES: "Carga, analiza y gestiona datos de nóminas",
+        pagePath: "/people/payroll",
+        steps: [
+            {
+                element: '[data-tour="payroll-view-toggle"]',
+                titleEN: "1. View Mode",
+                titleES: "1. Modo de Vista",
+                descriptionEN: "Switch between three views: <b>Employees</b> (individual breakdown with expandable detail rows), <b>Departments</b> (summary by department), and <b>Monthly</b> (historical month-by-month view).",
+                descriptionES: "Cambia entre tres vistas: <b>Employees</b> (desglose individual con filas expandibles), <b>Departments</b> (resumen por departamento), y <b>Monthly</b> (vista histórica mes a mes).",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="payroll-year-toggle"]',
+                titleEN: "2. Year Selector",
+                titleES: "2. Selector de Año",
+                descriptionEN: "Toggle between 2025 and 2026 payroll data. The system loads the latest uploaded payroll file for the selected year.",
+                descriptionES: "Cambia entre datos de nómina de 2025 y 2026. El sistema carga el último archivo de nómina subido para el año seleccionado.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="payroll-actions"]',
+                titleEN: "3. Upload, Export & Clear",
+                titleES: "3. Cargar, Exportar y Limpiar",
+                descriptionEN: "Upload a new payroll <b>.xlsx</b> file (drag-and-drop or click), <b>Export</b> the current data as CSV/Excel, or <b>Clear</b> to remove all payroll data for the period.",
+                descriptionES: "Sube un nuevo archivo de nómina <b>.xlsx</b> (arrastrar-soltar o clic), <b>Export</b> los datos actuales como CSV/Excel, o <b>Clear</b> para eliminar todos los datos del período.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="payroll-search"]',
+                titleEN: "4. Search & Department Filter",
+                titleES: "4. Búsqueda y Filtro de Departamento",
+                descriptionEN: "Search employees by name, ID, or department. Use the department dropdown to filter by specific teams.",
+                descriptionES: "Busca empleados por nombre, ID o departamento. Usa el dropdown de departamento para filtrar por equipos específicos.",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="payroll-kpi-bar"]',
+                titleEN: "5. Payroll KPIs",
+                titleES: "5. KPIs de Nómina",
+                descriptionEN: "Seven summary cards: <b>Employees</b> (headcount), <b>Gross Total</b>, <b>Deductions</b>, <b>Net (Liquid)</b>, <b>SS Company</b> (social security employer share), <b>IRPF Total</b> (income tax), and <b>Company Cost</b> (total employer cost).",
+                descriptionES: "Siete tarjetas resumen: <b>Empleados</b> (headcount), <b>Bruto Total</b>, <b>Deducciones</b>, <b>Neto (Líquido)</b>, <b>SS Empresa</b> (cuota patronal), <b>IRPF Total</b> (impuesto sobre la renta), y <b>Coste Empresa</b> (coste total empleador).",
+                side: "bottom",
+            },
+            {
+                element: '[data-tour="payroll-table"]',
+                titleEN: "6. Employee Table",
+                titleES: "6. Tabla de Empleados",
+                descriptionEN: "Each row shows: Employee ID, Name, Department, Gross, Deductions, IRPF, IRPF %, Net, and Company Cost. Click the <b>chevron</b> to expand and see the detailed breakdown of earnings and deductions per employee. The footer row shows grand totals.",
+                descriptionES: "Cada fila muestra: ID Empleado, Nombre, Departamento, Bruto, Deducciones, IRPF, % IRPF, Neto y Coste Empresa. Haz clic en el <b>chevron</b> para expandir y ver el desglose detallado de devengos y deducciones. La fila de totales muestra los totales generales.",
+                side: "top",
+            },
+        ],
+    },
+
+    /* ------------------------------------------------------------------ */
+    /*  16. Workstream Home Tour                                           */
+    /* ------------------------------------------------------------------ */
+    {
+        id: "workstream",
+        titleEN: "DSD Workstream",
+        titleES: "DSD Workstream",
+        descriptionEN: "Your project management hub — tasks, projects, people, and quick actions",
+        descriptionES: "Tu centro de gestión de proyectos — tareas, proyectos, personas y acciones rápidas",
+        pagePath: "/workstream",
+        steps: [
+            {
+                element: '[data-tour="ws-my-tasks"]',
+                titleEN: "1. My Tasks",
+                titleES: "1. Mis Tareas",
+                descriptionEN: "Your personal task list. Tasks are organized in three tabs: <b>Upcoming</b> (due soon), <b>Overdue</b> (past due — shown in red), and <b>Completed</b>. Click the circle icon to toggle a task between done/not done. Each task shows its project color dot and due date.",
+                descriptionES: "Tu lista personal de tareas. Las tareas se organizan en tres pestañas: <b>Upcoming</b> (próximas), <b>Overdue</b> (vencidas — en rojo), y <b>Completed</b>. Haz clic en el círculo para marcar/desmarcar tarea. Cada tarea muestra el color del proyecto y fecha de vencimiento.",
+                side: "right",
+            },
+            {
+                element: '[data-tour="ws-projects"]',
+                titleEN: "2. Projects",
+                titleES: "2. Proyectos",
+                descriptionEN: "Your active projects in a card grid. Each card shows the project name, color, and type. Click any project to open its board (Kanban / List / Calendar views). Use the <b>+ Create project</b> card to start a new one.",
+                descriptionES: "Tus proyectos activos en una cuadrícula de tarjetas. Cada tarjeta muestra el nombre, color y tipo del proyecto. Haz clic en cualquier proyecto para abrir su tablero (vistas Kanban / Lista / Calendario). Usa <b>+ Create project</b> para crear uno nuevo.",
+                side: "left",
+            },
+            {
+                element: '[data-tour="ws-people"]',
+                titleEN: "3. People & Teams",
+                titleES: "3. Personas y Equipos",
+                descriptionEN: "Your frequent collaborators. Click <b>Invite</b> to add new team members. Click <b>View all teams</b> to see the full team directory with roles and permissions.",
+                descriptionES: "Tus colaboradores frecuentes. Haz clic en <b>Invite</b> para añadir nuevos miembros del equipo. Haz clic en <b>View all teams</b> para ver el directorio completo con roles y permisos.",
+                side: "right",
+            },
+            {
+                element: '[data-tour="ws-quick-links"]',
+                titleEN: "4. Quick Actions",
+                titleES: "4. Acciones Rápidas",
+                descriptionEN: "Four shortcuts: <b>Reporting</b> (progress across projects), <b>Goals</b> (team and company objectives), <b>Portfolios</b> (project health at a glance), and <b>Finance Hub</b> (jump to financial dashboards).",
+                descriptionES: "Cuatro atajos: <b>Reporting</b> (progreso de todos los proyectos), <b>Goals</b> (objetivos de equipo y empresa), <b>Portfolios</b> (salud del proyecto de un vistazo), y <b>Finance Hub</b> (ir a dashboards financieros).",
+                side: "left",
+            },
+        ],
+    },
 ];
