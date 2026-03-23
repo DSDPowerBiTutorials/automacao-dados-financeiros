@@ -65,6 +65,7 @@ export interface NavItem {
 export interface NavGroup {
   label: string
   items: NavItem[]
+  allowedRoles?: string[]
 }
 
 export const NAV: NavGroup[] = withUnderConstruction([
@@ -157,6 +158,7 @@ export const NAV: NavGroup[] = withUnderConstruction([
   },
   {
     label: "Accounts Payable",
+    allowedRoles: ["admin", "finance_manager"],
     items: [
       {
         title: "Overview",
@@ -213,6 +215,7 @@ export const NAV: NavGroup[] = withUnderConstruction([
   },
   {
     label: "Accounts Receivable",
+    allowedRoles: ["admin", "finance_manager"],
     items: [
       {
         title: "Overview",
@@ -262,6 +265,7 @@ export const NAV: NavGroup[] = withUnderConstruction([
   },
   {
     label: "Cash Management",
+    allowedRoles: ["admin", "finance_manager", "analyst"],
     items: [
       {
         title: "Bank Statements",
@@ -294,6 +298,7 @@ export const NAV: NavGroup[] = withUnderConstruction([
   },
   {
     label: "Payroll",
+    allowedRoles: ["admin", "finance_manager"],
     items: [
       {
         title: "👥 Payroll",

@@ -45,9 +45,11 @@ import {
     Loader2,
     Clock,
     CheckCircle2,
+    Activity,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { PageHeader } from '@/components/ui/page-header'
+import { UserActivityDialog } from '@/components/settings/UserActivityDialog'
 
 interface AuthUser {
     id: string
@@ -79,6 +81,7 @@ export default function UsersPage() {
     const [roleFilter, setRoleFilter] = useState<string>('all')
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [editingUser, setEditingUser] = useState<AuthUser | null>(null)
+    const [activityUser, setActivityUser] = useState<AuthUser | null>(null)
     const { toast } = useToast()
 
     const [formData, setFormData] = useState({
@@ -102,7 +105,7 @@ export default function UsersPage() {
             .order('name')
 
         if (error) {
-            toast({ title: 'Erro ao carregar usuários', variant: 'destructive' })
+            toast({ title: 'Error loading users', variant: 'destructive' })
         } else {
             setUsers(data || [])
         }
@@ -111,7 +114,7 @@ export default function UsersPage() {
 
     async function handleCreateUser() {
         if (!formData.name || !formData.email) {
-            toast({ title: 'Nome e email são obrigatórios', variant: 'destructive' })
+            toast({ title: 'Name and email are required', variant: 'destructive' })
             return
         }
 
@@ -130,15 +133,15 @@ export default function UsersPage() {
             const data = await res.json()
 
             if (!res.ok) {
-                toast({ title: 'Erro ao convidar usuário', description: data.error, variant: 'destructive' })
+                toast({ title: 'Error inviting user', description: data.error, variant: 'destructive' })
             } else {
-                toast({ title: 'Convite enviado!', description: `Email de convite enviado para ${formData.email}` })
+                toast({ title: 'Invite sent!', description: `Invitation email sent to ${formData.email}` })
                 setIsCreateOpen(false)
                 resetForm()
                 loadUsers()
             }
         } catch {
-            toast({ title: 'Erro de conexão', variant: 'destructive' })
+            toast({ title: 'Connection error', variant: 'destructive' })
         } finally {
             setActionLoading(null)
         }
@@ -160,9 +163,9 @@ export default function UsersPage() {
             .eq('id', editingUser.id)
 
         if (error) {
-            toast({ title: 'Erro ao atualizar usuário', variant: 'destructive' })
+            toast({ title: 'Error updating user', variant: 'destructive' })
         } else {
-            toast({ title: 'Usuário atualizado!' })
+            toast({ title: 'User updated!' })
             setEditingUser(null)
             resetForm()
             loadUsers()
@@ -177,15 +180,15 @@ export default function UsersPage() {
             .eq('id', user.id)
 
         if (error) {
-            toast({ title: 'Erro ao alterar status', variant: 'destructive' })
+            toast({ title: 'Error changing status', variant: 'destructive' })
         } else {
-            toast({ title: user.is_active ? 'Usuário desativado' : 'Usuário ativado' })
+            toast({ title: user.is_active ? 'User deactivated' : 'User activated' })
             loadUsers()
         }
     }
 
     async function handleDeleteUser(user: AuthUser) {
-        if (!confirm(`Tem certeza que deseja excluir ${user.name}? Esta ação remove o acesso ao sistema permanentemente.`)) return
+        if (!confirm(`Are you sure you want to delete ${user.name}? This action permanently removes access to the system.`)) return
 
         setActionLoading(user.id)
 
@@ -202,13 +205,13 @@ export default function UsersPage() {
             const data = await res.json()
 
             if (!res.ok) {
-                toast({ title: 'Erro ao excluir', description: data.error, variant: 'destructive' })
+                toast({ title: 'Error deleting', description: data.error, variant: 'destructive' })
             } else {
-                toast({ title: 'Usuário excluído' })
+                toast({ title: 'User deleted' })
                 loadUsers()
             }
         } catch {
-            toast({ title: 'Erro de conexão', variant: 'destructive' })
+            toast({ title: 'Connection error', variant: 'destructive' })
         } finally {
             setActionLoading(null)
         }
@@ -239,15 +242,15 @@ export default function UsersPage() {
             if (!res.ok) {
                 // If user already exists (409), it means they're already invited
                 if (res.status === 409) {
-                    toast({ title: 'Usuário já existe', description: 'O convite já foi enviado anteriormente', variant: 'destructive' })
+                    toast({ title: 'User already exists', description: 'The invite was already sent previously', variant: 'destructive' })
                 } else {
-                    toast({ title: 'Erro ao reenviar', description: data.error, variant: 'destructive' })
+                    toast({ title: 'Error resending', description: data.error, variant: 'destructive' })
                 }
             } else {
-                toast({ title: 'Convite reenviado!', description: `Novo email enviado para ${user.email}` })
+                toast({ title: 'Invite resent!', description: `New email sent to ${user.email}` })
             }
         } catch {
-            toast({ title: 'Erro de conexão', variant: 'destructive' })
+            toast({ title: 'Connection error', variant: 'destructive' })
         } finally {
             setActionLoading(null)
         }
@@ -286,32 +289,32 @@ export default function UsersPage() {
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle>Gestão de Usuários</CardTitle>
+                            <CardTitle>User Management</CardTitle>
                             <CardDescription>
-                                Convide usuários, gerencie permissões e controle o acesso ao sistema
+                                Invite users, manage permissions and control system access
                             </CardDescription>
                         </div>
                         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                             <DialogTrigger asChild>
                                 <Button onClick={resetForm}>
                                     <Plus className="h-4 w-4 mr-2" />
-                                    Convidar Usuário
+                                    Invite User
                                 </Button>
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>Convidar Novo Usuário</DialogTitle>
+                                    <DialogTitle>Invite New User</DialogTitle>
                                     <DialogDescription>
-                                        O usuário receberá um email com link para criar a password e aceder ao sistema.
+                                        The user will receive an email with a link to create their password and access the system.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium">Nome *</label>
+                                        <label className="text-sm font-medium">Name *</label>
                                         <Input
                                             value={formData.name}
                                             onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                            placeholder="Nome completo"
+                                            placeholder="Full name"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -341,7 +344,7 @@ export default function UsersPage() {
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium">Departamento</label>
+                                        <label className="text-sm font-medium">Department</label>
                                         <Input
                                             value={formData.department}
                                             onChange={e => setFormData({ ...formData, department: e.target.value })}
@@ -349,7 +352,7 @@ export default function UsersPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium">Telefone</label>
+                                        <label className="text-sm font-medium">Phone</label>
                                         <Input
                                             value={formData.phone}
                                             onChange={e => setFormData({ ...formData, phone: e.target.value })}
@@ -375,18 +378,18 @@ export default function UsersPage() {
                                 </div>
                                 <DialogFooter>
                                     <Button variant="outline" onClick={() => setIsCreateOpen(false)} disabled={actionLoading === 'create'}>
-                                        Cancelar
+                                        Cancel
                                     </Button>
                                     <Button onClick={handleCreateUser} disabled={actionLoading === 'create'}>
                                         {actionLoading === 'create' ? (
                                             <>
                                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                Enviando...
+                                                Sending...
                                             </>
                                         ) : (
                                             <>
                                                 <Send className="h-4 w-4 mr-2" />
-                                                Enviar Convite
+                                                Send Invite
                                             </>
                                         )}
                                     </Button>
@@ -401,7 +404,7 @@ export default function UsersPage() {
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Buscar por nome ou email..."
+                                placeholder="Search by name or email..."
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                                 className="pl-10"
@@ -426,11 +429,11 @@ export default function UsersPage() {
                         {loading ? (
                             <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                Carregando...
+                                Loading...
                             </div>
                         ) : filteredUsers.length === 0 ? (
                             <div className="text-center py-8 text-muted-foreground">
-                                Nenhum usuário encontrado
+                                No users found
                             </div>
                         ) : (
                             filteredUsers.map(user => (
@@ -444,18 +447,18 @@ export default function UsersPage() {
                                             <div className="flex items-center gap-2">
                                                 <span className="font-medium">{user.name}</span>
                                                 {!user.is_active && (
-                                                    <Badge variant="outline" className="text-xs">Inativo</Badge>
+                                                    <Badge variant="outline" className="text-xs">Inactive</Badge>
                                                 )}
                                                 {!hasLoggedIn(user) && user.is_active && (
                                                     <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50">
                                                         <Clock className="h-3 w-3 mr-1" />
-                                                        Convite Pendente
+                                                        Pending Invite
                                                     </Badge>
                                                 )}
                                                 {hasLoggedIn(user) && user.is_active && (
                                                     <Badge variant="outline" className="text-xs text-green-600 border-green-300 bg-green-50">
                                                         <CheckCircle2 className="h-3 w-3 mr-1" />
-                                                        Ativo
+                                                        Active
                                                     </Badge>
                                                 )}
                                             </div>
@@ -497,25 +500,29 @@ export default function UsersPage() {
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => openEditDialog(user)}>
                                                     <Pencil className="h-4 w-4 mr-2" />
-                                                    Editar
+                                                    Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => setActivityUser(user)}>
+                                                    <Activity className="h-4 w-4 mr-2" />
+                                                    View Activity
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleToggleActive(user)}>
                                                     {user.is_active ? (
                                                         <>
                                                             <UserX className="h-4 w-4 mr-2" />
-                                                            Desativar
+                                                            Deactivate
                                                         </>
                                                     ) : (
                                                         <>
                                                             <UserCheck className="h-4 w-4 mr-2" />
-                                                            Ativar
+                                                            Activate
                                                         </>
                                                     )}
                                                 </DropdownMenuItem>
                                                 {!hasLoggedIn(user) && (
                                                     <DropdownMenuItem onClick={() => handleResendInvite(user)}>
                                                         <Send className="h-4 w-4 mr-2" />
-                                                        Reenviar Convite
+                                                        Resend Invite
                                                     </DropdownMenuItem>
                                                 )}
                                                 <DropdownMenuSeparator />
@@ -524,7 +531,7 @@ export default function UsersPage() {
                                                     onClick={() => handleDeleteUser(user)}
                                                 >
                                                     <Trash2 className="h-4 w-4 mr-2" />
-                                                    Excluir
+                                                    Delete
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -540,9 +547,9 @@ export default function UsersPage() {
             <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Editar Usuário</DialogTitle>
+                        <DialogTitle>Edit User</DialogTitle>
                         <DialogDescription>
-                            Atualize os dados do usuário. O email não pode ser alterado.
+                            Update the user details. Email cannot be changed.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -556,7 +563,7 @@ export default function UsersPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Nome</label>
+                            <label className="text-sm font-medium">Name</label>
                             <Input
                                 value={formData.name}
                                 onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -580,14 +587,14 @@ export default function UsersPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Departamento</label>
+                            <label className="text-sm font-medium">Department</label>
                             <Input
                                 value={formData.department}
                                 onChange={e => setFormData({ ...formData, department: e.target.value })}
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Telefone</label>
+                            <label className="text-sm font-medium">Phone</label>
                             <Input
                                 value={formData.phone}
                                 onChange={e => setFormData({ ...formData, phone: e.target.value })}
@@ -612,19 +619,29 @@ export default function UsersPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setEditingUser(null)} disabled={actionLoading === 'update'}>
-                            Cancelar
+                            Cancel
                         </Button>
                         <Button onClick={handleUpdateUser} disabled={actionLoading === 'update'}>
                             {actionLoading === 'update' ? (
                                 <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Salvando...
+                                    Saving...
                                 </>
-                            ) : 'Salvar'}
+                            ) : 'Save'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* User Activity Dialog */}
+            <UserActivityDialog
+                userId={activityUser?.id || null}
+                userName={activityUser?.name || ''}
+                userEmail={activityUser?.email || ''}
+                open={!!activityUser}
+                onOpenChange={(open) => { if (!open) setActivityUser(null) }}
+                accessToken={session?.access_token}
+            />
         </div>
     )
 }

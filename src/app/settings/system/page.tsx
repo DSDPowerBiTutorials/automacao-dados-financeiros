@@ -22,16 +22,16 @@ export default function SystemPage() {
             <PageHeader title="Company Settings" subtitle="Organization details and configuration" />
             <Card>
                 <CardHeader>
-                    <CardTitle>Informações da Empresa</CardTitle>
+                    <CardTitle>Company Information</CardTitle>
                     <CardDescription>
-                        Configurações gerais da organização
+                        General organization settings
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <label className="text-sm font-medium flex items-center gap-2">
                             <Building className="h-4 w-4" />
-                            Nome da Empresa
+                            Company Name
                         </label>
                         <Input
                             value={settings.companyName}
@@ -43,9 +43,9 @@ export default function SystemPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Localização</CardTitle>
+                    <CardTitle>Localization</CardTitle>
                     <CardDescription>
-                        Configure fuso horário, formatos e moeda padrão
+                        Configure timezone, formats and default currency
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -53,7 +53,7 @@ export default function SystemPage() {
                         <div className="space-y-2">
                             <label className="text-sm font-medium flex items-center gap-2">
                                 <Globe className="h-4 w-4" />
-                                Fuso Horário
+                                Timezone
                             </label>
                             <Select
                                 value={settings.timezone}
@@ -74,7 +74,7 @@ export default function SystemPage() {
                         <div className="space-y-2">
                             <label className="text-sm font-medium flex items-center gap-2">
                                 <Globe className="h-4 w-4" />
-                                Idioma
+                                Language
                             </label>
                             <Select
                                 value={settings.language}
@@ -95,7 +95,7 @@ export default function SystemPage() {
                         <div className="space-y-2">
                             <label className="text-sm font-medium flex items-center gap-2">
                                 <Calendar className="h-4 w-4" />
-                                Formato de Data
+                                Date Format
                             </label>
                             <Select
                                 value={settings.dateFormat}
@@ -115,7 +115,7 @@ export default function SystemPage() {
                         <div className="space-y-2">
                             <label className="text-sm font-medium flex items-center gap-2">
                                 <DollarSign className="h-4 w-4" />
-                                Moeda Padrão
+                                Default Currency
                             </label>
                             <Select
                                 value={settings.currency}
@@ -138,34 +138,34 @@ export default function SystemPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Manutenção</CardTitle>
+                    <CardTitle>Maintenance</CardTitle>
                     <CardDescription>
-                        Ações de manutenção do sistema
+                        System maintenance actions
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
-                            <p className="font-medium">Limpar Cache</p>
-                            <p className="text-sm text-muted-foreground">Remove dados em cache do sistema</p>
+                            <p className="font-medium">Clear Cache</p>
+                            <p className="text-sm text-muted-foreground">Remove cached system data</p>
                         </div>
-                        <Button variant="outline">Limpar</Button>
+                        <Button variant="outline">Clear</Button>
                     </div>
 
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
-                            <p className="font-medium">Reindexar Dados</p>
-                            <p className="text-sm text-muted-foreground">Reconstrói índices de busca</p>
+                            <p className="font-medium">Reindex Data</p>
+                            <p className="text-sm text-muted-foreground">Rebuild search indexes</p>
                         </div>
-                        <Button variant="outline">Reindexar</Button>
+                        <Button variant="outline">Reindex</Button>
                     </div>
 
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
-                            <p className="font-medium">Exportar Backup</p>
-                            <p className="text-sm text-muted-foreground">Download completo dos dados</p>
+                            <p className="font-medium">Export Backup</p>
+                            <p className="text-sm text-muted-foreground">Full data download</p>
                         </div>
-                        <Button variant="outline">Exportar</Button>
+                        <Button variant="outline">Export</Button>
                     </div>
                 </CardContent>
             </Card>
@@ -173,7 +173,7 @@ export default function SystemPage() {
             <div className="flex justify-end">
                 <Button>
                     <Save className="h-4 w-4 mr-2" />
-                    Salvar Configurações
+                    Save Settings
                 </Button>
             </div>
         </div>

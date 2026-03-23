@@ -8,39 +8,39 @@ import { PageHeader } from '@/components/ui/page-header'
 const roles = [
     {
         name: 'Admin',
-        description: 'Acesso total ao sistema',
+        description: 'Full system access',
         permissions: ['*'],
         color: 'bg-red-100 text-red-800'
     },
     {
-        name: 'Gerente',
-        description: 'Leitura, escrita e gestão de usuários',
+        name: 'Manager',
+        description: 'Read, write and user management',
         permissions: ['read', 'write', 'export', 'manage_users'],
         color: 'bg-purple-100 text-purple-800'
     },
     {
         name: 'Editor',
-        description: 'Leitura e escrita limitada',
+        description: 'Limited read and write access',
         permissions: ['read', 'write', 'export'],
         color: 'bg-blue-100 text-blue-800'
     },
     {
-        name: 'Visualizador',
-        description: 'Apenas leitura',
+        name: 'Viewer',
+        description: 'Read-only access',
         permissions: ['read'],
         color: 'bg-gray-100 text-gray-800'
     }
 ]
 
 const allPermissions = [
-    { key: 'read', label: 'Leitura' },
-    { key: 'write', label: 'Escrita' },
-    { key: 'export', label: 'Exportar' },
-    { key: 'import', label: 'Importar' },
-    { key: 'manage_users', label: 'Gerenciar Usuários' },
-    { key: 'manage_settings', label: 'Gerenciar Configurações' },
-    { key: 'view_audit', label: 'Ver Auditoria' },
-    { key: 'manage_bot', label: 'Gerenciar BOT' },
+    { key: 'read', label: 'Read' },
+    { key: 'write', label: 'Write' },
+    { key: 'export', label: 'Export' },
+    { key: 'import', label: 'Import' },
+    { key: 'manage_users', label: 'Manage Users' },
+    { key: 'manage_settings', label: 'Manage Settings' },
+    { key: 'view_audit', label: 'View Audit' },
+    { key: 'manage_bot', label: 'Manage BOT' },
 ]
 
 export default function RolesPage() {
@@ -49,9 +49,9 @@ export default function RolesPage() {
             <PageHeader title="Roles & Permissions" subtitle="Manage user roles and access" />
             <Card>
                 <CardHeader>
-                    <CardTitle>Papéis & Permissões</CardTitle>
+                    <CardTitle>Roles & Permissions</CardTitle>
                     <CardDescription>
-                        Gerencie os papéis do sistema e suas permissões
+                        Manage system roles and their permissions
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { NAV, type NavGroup, type NavItem } from "@/config/navigation";
+import { useAuth } from "@/contexts/auth-context";
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
@@ -23,8 +24,12 @@ export function TablerSidebar({
 }) {
   const pathname = usePathname() || "/";
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  const { profile } = useAuth();
+  const userRole = profile?.role || "viewer";
 
-  const groups = useMemo<NavGroup[]>(() => NAV, []);
+  const groups = useMemo<NavGroup[]>(() => NAV.filter(
+    (g) => !g.allowedRoles || g.allowedRoles.includes(userRole)
+  ), [userRole]);
 
   return (
     <aside className="navbar navbar-vertical navbar-expand-lg" data-bs-theme="light">

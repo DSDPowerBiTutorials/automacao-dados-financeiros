@@ -24,9 +24,9 @@ export default function NotificationsPage() {
             <PageHeader title="Notification Channels" subtitle="Configure how you receive alerts" />
             <Card>
                 <CardHeader>
-                    <CardTitle>Canais de Notificação</CardTitle>
+                    <CardTitle>Notification Channels</CardTitle>
                     <CardDescription>
-                        Configure como você deseja receber notificações
+                        Configure how you want to receive notifications
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -35,7 +35,7 @@ export default function NotificationsPage() {
                             <Mail className="h-5 w-5 text-muted-foreground" />
                             <div>
                                 <p className="font-medium">Email</p>
-                                <p className="text-sm text-muted-foreground">Receber notificações por email</p>
+                                <p className="text-sm text-muted-foreground">Receive notifications via email</p>
                             </div>
                         </div>
                         <Switch
@@ -48,8 +48,8 @@ export default function NotificationsPage() {
                         <div className="flex items-center gap-3">
                             <Bell className="h-5 w-5 text-muted-foreground" />
                             <div>
-                                <p className="font-medium">Push (Navegador)</p>
-                                <p className="text-sm text-muted-foreground">Notificações push no navegador</p>
+                                <p className="font-medium">Push (Browser)</p>
+                                <p className="text-sm text-muted-foreground">Browser push notifications</p>
                             </div>
                         </div>
                         <Switch
@@ -63,7 +63,7 @@ export default function NotificationsPage() {
                             <Smartphone className="h-5 w-5 text-muted-foreground" />
                             <div>
                                 <p className="font-medium">SMS</p>
-                                <p className="text-sm text-muted-foreground">Mensagens de texto (somente críticos)</p>
+                                <p className="text-sm text-muted-foreground">Text messages (critical only)</p>
                             </div>
                         </div>
                         <Switch
@@ -76,16 +76,16 @@ export default function NotificationsPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Tipos de Notificação</CardTitle>
+                    <CardTitle>Notification Types</CardTitle>
                     <CardDescription>
-                        Escolha quais eventos devem gerar notificações
+                        Choose which events should generate notifications
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
-                            <p className="font-medium">Tarefas Concluídas</p>
-                            <p className="text-sm text-muted-foreground">Quando uma tarefa do BOT terminar com sucesso</p>
+                            <p className="font-medium">Tasks Completed</p>
+                            <p className="text-sm text-muted-foreground">When a BOT task finishes successfully</p>
                         </div>
                         <Switch
                             checked={settings.taskSuccess}
@@ -95,8 +95,8 @@ export default function NotificationsPage() {
 
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
-                            <p className="font-medium">Falhas de Tarefas</p>
-                            <p className="text-sm text-muted-foreground">Quando uma tarefa do BOT falhar</p>
+                            <p className="font-medium">Task Failures</p>
+                            <p className="text-sm text-muted-foreground">When a BOT task fails</p>
                         </div>
                         <Switch
                             checked={settings.taskFailure}
@@ -106,8 +106,8 @@ export default function NotificationsPage() {
 
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
-                            <p className="font-medium">Reconciliação Completa</p>
-                            <p className="text-sm text-muted-foreground">Quando a reconciliação automática terminar</p>
+                            <p className="font-medium">Reconciliation Complete</p>
+                            <p className="text-sm text-muted-foreground">When automatic reconciliation finishes</p>
                         </div>
                         <Switch
                             checked={settings.reconciliationComplete}
@@ -117,8 +117,8 @@ export default function NotificationsPage() {
 
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
-                            <p className="font-medium">Relatório Diário</p>
-                            <p className="text-sm text-muted-foreground">Resumo diário de atividades</p>
+                            <p className="font-medium">Daily Report</p>
+                            <p className="text-sm text-muted-foreground">Daily activity summary</p>
                         </div>
                         <Switch
                             checked={settings.dailyReport}
@@ -130,9 +130,9 @@ export default function NotificationsPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Frequência do Resumo</CardTitle>
+                    <CardTitle>Digest Frequency</CardTitle>
                     <CardDescription>
-                        Com que frequência você quer receber o resumo de atividades
+                        How often you want to receive the activity summary
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -144,11 +144,11 @@ export default function NotificationsPage() {
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="realtime">Tempo Real</SelectItem>
-                            <SelectItem value="hourly">A cada hora</SelectItem>
-                            <SelectItem value="daily">Diário</SelectItem>
-                            <SelectItem value="weekly">Semanal</SelectItem>
-                            <SelectItem value="never">Nunca</SelectItem>
+                            <SelectItem value="realtime">Real Time</SelectItem>
+                            <SelectItem value="hourly">Hourly</SelectItem>
+                            <SelectItem value="daily">Daily</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="never">Never</SelectItem>
                         </SelectContent>
                     </Select>
                 </CardContent>

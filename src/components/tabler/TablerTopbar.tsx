@@ -9,6 +9,7 @@ import { UserMenu } from "@/components/auth/UserMenu";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { DataFreshnessIndicator } from "@/components/sync/DataFreshnessIndicator";
 import { useGlobalScope } from "@/contexts/global-scope-context";
+import { useAuth } from "@/contexts/auth-context";
 import { SCOPE_CONFIG } from "@/lib/scope-utils";
 import { ChevronDown, ChevronUp, Search, KanbanSquare, BookOpen } from "lucide-react";
 import { TourMenu } from "@/components/tour/TourMenu";
@@ -27,7 +28,11 @@ export function TablerTopbar({
   onToggleNavVisible: () => void;
 }) {
   const pathname = usePathname();
-  const groups: NavGroup[] = useMemo(() => NAV, []);
+  const { profile } = useAuth();
+  const userRole = profile?.role || "viewer";
+  const groups: NavGroup[] = useMemo(() => NAV.filter(
+    (g) => !g.allowedRoles || g.allowedRoles.includes(userRole)
+  ), [userRole]);
   const { selectedScope, setSelectedScope } = useGlobalScope();
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [menuQuery, setMenuQuery] = useState("");

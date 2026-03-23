@@ -9,42 +9,42 @@ import { PageHeader } from '@/components/ui/page-header'
 const integrations = [
     {
         name: 'Braintree',
-        description: 'Processamento de pagamentos',
+        description: 'Payment processing',
         status: 'active',
         lastSync: '2026-01-25T08:00:00',
         icon: '💳'
     },
     {
         name: 'Stripe',
-        description: 'Pagamentos e assinaturas',
+        description: 'Payments and subscriptions',
         status: 'active',
         lastSync: '2026-01-25T08:00:00',
         icon: '💰'
     },
     {
         name: 'GoCardless',
-        description: 'Débito direto SEPA',
+        description: 'SEPA direct debit',
         status: 'active',
         lastSync: '2026-01-25T07:00:00',
         icon: '🏦'
     },
     {
         name: 'HubSpot',
-        description: 'CRM e gestão de clientes',
+        description: 'CRM and customer management',
         status: 'active',
         lastSync: '2026-01-25T06:00:00',
         icon: '📊'
     },
     {
         name: 'QuickBooks',
-        description: 'Contabilidade',
+        description: 'Accounting',
         status: 'inactive',
         lastSync: null,
         icon: '📒'
     },
     {
         name: 'Slack',
-        description: 'Notificações e alertas',
+        description: 'Notifications and alerts',
         status: 'inactive',
         lastSync: null,
         icon: '💬'
@@ -53,8 +53,8 @@ const integrations = [
 
 export default function IntegrationsPage() {
     function formatDate(date: string | null): string {
-        if (!date) return 'Nunca'
-        return new Date(date).toLocaleString('pt-BR')
+        if (!date) return 'Never'
+        return new Date(date).toLocaleString('en-US')
     }
 
     return (
@@ -64,14 +64,14 @@ export default function IntegrationsPage() {
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle>Integrações</CardTitle>
+                            <CardTitle>Integrations</CardTitle>
                             <CardDescription>
-                                Gerencie conexões com serviços externos
+                                Manage connections with external services
                             </CardDescription>
                         </div>
                         <Button>
                             <Plug className="h-4 w-4 mr-2" />
-                            Nova Integração
+                            New Integration
                         </Button>
                     </div>
                 </CardHeader>
@@ -91,12 +91,12 @@ export default function IntegrationsPage() {
                                             {integration.status === 'active' ? (
                                                 <Badge className="bg-green-100 text-green-800 gap-1">
                                                     <CheckCircle2 className="h-3 w-3" />
-                                                    Conectado
+                                                    Connected
                                                 </Badge>
                                             ) : (
                                                 <Badge variant="outline" className="gap-1">
                                                     <XCircle className="h-3 w-3" />
-                                                    Desconectado
+                                                    Disconnected
                                                 </Badge>
                                             )}
                                         </div>
@@ -105,7 +105,7 @@ export default function IntegrationsPage() {
                                         </p>
                                         {integration.lastSync && (
                                             <p className="text-xs text-muted-foreground mt-1">
-                                                Última sync: {formatDate(integration.lastSync)}
+                                                Last sync: {formatDate(integration.lastSync)}
                                             </p>
                                         )}
                                     </div>
@@ -125,7 +125,7 @@ export default function IntegrationsPage() {
                                     ) : (
                                         <Button size="sm">
                                             <ExternalLink className="h-4 w-4 mr-1" />
-                                            Conectar
+                                            Connect
                                         </Button>
                                     )}
                                 </div>
@@ -139,15 +139,15 @@ export default function IntegrationsPage() {
                 <CardHeader>
                     <CardTitle>API Keys</CardTitle>
                     <CardDescription>
-                        Gerencie chaves de API para acesso programático
+                        Manage API keys for programmatic access
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="text-center py-8 text-muted-foreground">
                         <Plug className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Nenhuma API key configurada</p>
+                        <p>No API keys configured</p>
                         <Button variant="outline" className="mt-4">
-                            Gerar API Key
+                            Generate API Key
                         </Button>
                     </div>
                 </CardContent>

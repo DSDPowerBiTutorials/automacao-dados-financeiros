@@ -13,12 +13,12 @@ import { useToast } from '@/hooks/use-toast'
 import { PageHeader } from '@/components/ui/page-header'
 
 const roleLabels: Record<string, { label: string; color: string }> = {
-    admin: { label: 'Administrador', color: 'bg-red-100 text-red-800' },
-    finance_manager: { label: 'Gerente Financeiro', color: 'bg-purple-100 text-purple-800' },
-    manager: { label: 'Gerente', color: 'bg-purple-100 text-purple-800' },
-    analyst: { label: 'Analista', color: 'bg-blue-100 text-blue-800' },
+    admin: { label: 'Admin', color: 'bg-red-100 text-red-800' },
+    finance_manager: { label: 'Finance Manager', color: 'bg-purple-100 text-purple-800' },
+    manager: { label: 'Manager', color: 'bg-purple-100 text-purple-800' },
+    analyst: { label: 'Analyst', color: 'bg-blue-100 text-blue-800' },
     editor: { label: 'Editor', color: 'bg-blue-100 text-blue-800' },
-    viewer: { label: 'Visualizador', color: 'bg-gray-100 text-gray-800' },
+    viewer: { label: 'Viewer', color: 'bg-gray-100 text-gray-800' },
 }
 
 export default function ProfilePage() {
@@ -36,7 +36,6 @@ export default function ProfilePage() {
         department: ''
     })
 
-    // Carregar dados do perfil quando disponível
     useEffect(() => {
         if (profile) {
             setFormData({
@@ -50,7 +49,7 @@ export default function ProfilePage() {
 
     async function handleSave() {
         if (!profile?.id) {
-            toast({ title: 'Erro', description: 'Usuário não autenticado', variant: 'destructive' })
+            toast({ title: 'Error', description: 'User not authenticated', variant: 'destructive' })
             return
         }
 
@@ -69,15 +68,14 @@ export default function ProfilePage() {
 
             if (error) throw error
 
-            // Atualizar contexto
             await refreshProfile()
 
-            toast({ title: 'Perfil atualizado com sucesso!' })
+            toast({ title: 'Profile updated successfully!' })
         } catch (error) {
-            console.error('Erro ao salvar perfil:', error)
+            console.error('Error saving profile:', error)
             toast({
-                title: 'Erro ao salvar',
-                description: error instanceof Error ? error.message : 'Erro desconhecido',
+                title: 'Error saving',
+                description: error instanceof Error ? error.message : 'Unknown error',
                 variant: 'destructive'
             })
         } finally {
@@ -93,18 +91,17 @@ export default function ProfilePage() {
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
         if (!allowedTypes.includes(file.type)) {
             toast({
-                title: 'Tipo inválido',
-                description: 'Apenas JPEG, PNG e WebP são permitidos',
+                title: 'Invalid type',
+                description: 'Only JPEG, PNG and WebP are allowed',
                 variant: 'destructive'
             })
             return
         }
 
-        // Validar tamanho (2MB)
         if (file.size > 2 * 1024 * 1024) {
             toast({
-                title: 'Arquivo muito grande',
-                description: 'Tamanho máximo: 2MB',
+                title: 'File too large',
+                description: 'Maximum size: 2MB',
                 variant: 'destructive'
             })
             return
@@ -115,7 +112,7 @@ export default function ProfilePage() {
         try {
             const { data: { session } } = await supabase.auth.getSession()
             if (!session?.access_token) {
-                throw new Error('Não autenticado')
+                throw new Error('Not authenticated')
             }
 
             const formDataUpload = new FormData()
@@ -132,18 +129,17 @@ export default function ProfilePage() {
             const result = await response.json()
 
             if (!response.ok) {
-                throw new Error(result.error || result.hint || 'Erro no upload')
+                throw new Error(result.error || result.hint || 'Upload error')
             }
 
-            // Atualizar contexto
             await refreshProfile()
 
-            toast({ title: 'Avatar atualizado!' })
+            toast({ title: 'Avatar updated!' })
         } catch (error) {
-            console.error('Erro no upload:', error)
+            console.error('Upload error:', error)
             toast({
-                title: 'Erro no upload',
-                description: error instanceof Error ? error.message : 'Erro desconhecido',
+                title: 'Upload error',
+                description: error instanceof Error ? error.message : 'Unknown error',
                 variant: 'destructive'
             })
         } finally {
@@ -170,14 +166,13 @@ export default function ProfilePage() {
             <PageHeader title="My Profile" subtitle="Account settings and preferences" />
             <Card>
                 <CardHeader>
-                    <CardTitle>Meu Perfil</CardTitle>
+                    <CardTitle>My Profile</CardTitle>
                     <CardDescription>
-                        Gerencie suas informações pessoais
+                        Manage your personal information
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-start gap-8">
-                        {/* Avatar */}
                         <div className="flex flex-col items-center gap-3">
                             <div className="relative">
                                 <UserAvatar
@@ -220,11 +215,10 @@ export default function ProfilePage() {
                             )}
                         </div>
 
-                        {/* Form */}
                         <div className="flex-1 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium">Nome</label>
+                                    <label className="text-sm font-medium">Name</label>
                                     <Input
                                         value={formData.name}
                                         onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -242,11 +236,11 @@ export default function ProfilePage() {
                                         />
                                     </div>
                                     <p className="text-xs text-muted-foreground">
-                                        Email não pode ser alterado
+                                        Email cannot be changed
                                     </p>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium">Telefone</label>
+                                    <label className="text-sm font-medium">Phone</label>
                                     <div className="relative">
                                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input
@@ -258,14 +252,14 @@ export default function ProfilePage() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium">Departamento</label>
+                                    <label className="text-sm font-medium">Department</label>
                                     <div className="relative">
                                         <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             value={formData.department}
                                             onChange={e => setFormData({ ...formData, department: e.target.value })}
                                             className="pl-10"
-                                            placeholder="Ex: Financeiro"
+                                            placeholder="e.g. Finance"
                                         />
                                     </div>
                                 </div>
@@ -278,16 +272,16 @@ export default function ProfilePage() {
                                     disabled={saving}
                                 >
                                     <RefreshCw className="h-4 w-4 mr-2" />
-                                    Recarregar
+                                    Reload
                                 </Button>
                                 <Button onClick={handleSave} disabled={saving}>
                                     {saving ? (
                                         <>
                                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                            Salvando...
+                                            Saving...
                                         </>
                                     ) : (
-                                        'Salvar Alterações'
+                                        'Save Changes'
                                     )}
                                 </Button>
                             </div>
@@ -296,10 +290,9 @@ export default function ProfilePage() {
                 </CardContent>
             </Card>
 
-            {/* Info adicional */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Informações da Conta</CardTitle>
+                    <CardTitle>Account Information</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-2 gap-4 text-sm">
@@ -308,23 +301,23 @@ export default function ProfilePage() {
                             <span className="ml-2 font-mono text-xs">{profile.id}</span>
                         </div>
                         <div>
-                            <span className="text-muted-foreground">Papel:</span>
+                            <span className="text-muted-foreground">Role:</span>
                             <span className="ml-2">{roleConfig.label}</span>
                         </div>
                         <div>
-                            <span className="text-muted-foreground">Último login:</span>
+                            <span className="text-muted-foreground">Last login:</span>
                             <span className="ml-2">
                                 {profile.last_login_at
-                                    ? new Date(profile.last_login_at).toLocaleString('pt-BR')
-                                    : 'Nunca'
+                                    ? new Date(profile.last_login_at).toLocaleString('en-US')
+                                    : 'Never'
                                 }
                             </span>
                         </div>
                         <div>
-                            <span className="text-muted-foreground">Criado em:</span>
+                            <span className="text-muted-foreground">Created at:</span>
                             <span className="ml-2">
                                 {profile.created_at
-                                    ? new Date(profile.created_at).toLocaleDateString('pt-BR')
+                                    ? new Date(profile.created_at).toLocaleDateString('en-US')
                                     : '-'
                                 }
                             </span>

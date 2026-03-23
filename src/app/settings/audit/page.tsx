@@ -46,29 +46,29 @@ interface AuditLog {
 }
 
 const actionLabels: Record<string, { label: string; color: string }> = {
-    create: { label: 'Criou', color: 'bg-green-100 text-green-800' },
-    update: { label: 'Atualizou', color: 'bg-blue-100 text-blue-800' },
-    delete: { label: 'Excluiu', color: 'bg-red-100 text-red-800' },
+    create: { label: 'Created', color: 'bg-green-100 text-green-800' },
+    update: { label: 'Updated', color: 'bg-blue-100 text-blue-800' },
+    delete: { label: 'Deleted', color: 'bg-red-100 text-red-800' },
     login: { label: 'Login', color: 'bg-purple-100 text-purple-800' },
     logout: { label: 'Logout', color: 'bg-gray-100 text-gray-800' },
-    export: { label: 'Exportou', color: 'bg-yellow-100 text-yellow-800' },
-    import: { label: 'Importou', color: 'bg-cyan-100 text-cyan-800' },
-    reconcile: { label: 'Reconciliou', color: 'bg-emerald-100 text-emerald-800' },
-    sync: { label: 'Sincronizou', color: 'bg-indigo-100 text-indigo-800' },
-    bot_task: { label: 'Tarefa Bot', color: 'bg-blue-100 text-blue-800' },
+    export: { label: 'Exported', color: 'bg-yellow-100 text-yellow-800' },
+    import: { label: 'Imported', color: 'bg-cyan-100 text-cyan-800' },
+    reconcile: { label: 'Reconciled', color: 'bg-emerald-100 text-emerald-800' },
+    sync: { label: 'Synced', color: 'bg-indigo-100 text-indigo-800' },
+    bot_task: { label: 'Bot Task', color: 'bg-blue-100 text-blue-800' },
 }
 
 const entityLabels: Record<string, string> = {
-    invoice: 'Fatura',
-    transaction: 'Transação',
-    user: 'Usuário',
-    settings: 'Configurações',
-    provider: 'Fornecedor',
-    bank_account: 'Conta Bancária',
-    csv_file: 'Arquivo CSV',
-    reconciliation: 'Reconciliação',
-    bot_task: 'Tarefa BOT',
-    notification: 'Notificação',
+    invoice: 'Invoice',
+    transaction: 'Transaction',
+    user: 'User',
+    settings: 'Settings',
+    provider: 'Provider',
+    bank_account: 'Bank Account',
+    csv_file: 'CSV File',
+    reconciliation: 'Reconciliation',
+    bot_task: 'BOT Task',
+    notification: 'Notification',
 }
 
 export default function AuditPage() {
@@ -88,14 +88,14 @@ export default function AuditPage() {
     async function loadLogs() {
         setLoading(true)
 
-        // Carregar logs de auditoria (usuários)
+        // Load audit logs
         const { data: auditData } = await supabase
             .from('audit_logs')
             .select('*')
             .order('created_at', { ascending: false })
             .limit(200)
 
-        // Carregar logs do BOTella
+        // Load BOTella logs
         const { data: botData } = await supabase
             .from('bot_logs')
             .select('*')
@@ -150,7 +150,7 @@ export default function AuditPage() {
     }
 
     function formatDate(date: string): string {
-        return new Date(date).toLocaleString('pt-BR', {
+        return new Date(date).toLocaleString('en-US', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
@@ -163,7 +163,7 @@ export default function AuditPage() {
     function exportToCSV() {
         const data = getAllLogs()
         const csv = [
-            ['Data', 'Usuário', 'Email', 'Ação', 'Entidade', 'Nome', 'IP'].join(','),
+            ['Date', 'User', 'Email', 'Action', 'Entity', 'Name', 'IP'].join(','),,
             ...data.map(log => [
                 formatDate(log.created_at),
                 log.user_name,
@@ -192,19 +192,19 @@ export default function AuditPage() {
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle>Logs de Auditoria</CardTitle>
+                            <CardTitle>Audit Logs</CardTitle>
                             <CardDescription>
-                                Histórico completo de ações no sistema (usuários + <strong>BOT</strong>ella)
+                                Complete history of system actions (users + <strong>BOT</strong>ella)
                             </CardDescription>
                         </div>
                         <div className="flex gap-2">
                             <Button variant="outline" size="sm" onClick={loadLogs}>
                                 <RefreshCw className="h-4 w-4 mr-2" />
-                                Atualizar
+                                Refresh
                             </Button>
                             <Button variant="outline" size="sm" onClick={exportToCSV}>
                                 <Download className="h-4 w-4 mr-2" />
-                                Exportar
+                                Export
                             </Button>
                         </div>
                     </div>
@@ -215,7 +215,7 @@ export default function AuditPage() {
                         <div className="relative flex-1 min-w-[200px]">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Buscar por usuário ou entidade..."
+                                placeholder="Search by user or entity..."
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                                 className="pl-10"
@@ -227,39 +227,39 @@ export default function AuditPage() {
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">Todos</SelectItem>
-                                <SelectItem value="users">Só Usuários</SelectItem>
-                                <SelectItem value="bot">Só BOTella</SelectItem>
+                                <SelectItem value="all">All</SelectItem>
+                                <SelectItem value="users">Users Only</SelectItem>
+                                <SelectItem value="bot">BOTella Only</SelectItem>
                             </SelectContent>
                         </Select>
 
                         <Select value={actionFilter} onValueChange={setActionFilter}>
                             <SelectTrigger className="w-[160px]">
                                 <Filter className="h-4 w-4 mr-2" />
-                                <SelectValue placeholder="Ação" />
+                                <SelectValue placeholder="Action" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">Todas ações</SelectItem>
-                                <SelectItem value="create">Criação</SelectItem>
-                                <SelectItem value="update">Atualização</SelectItem>
-                                <SelectItem value="delete">Exclusão</SelectItem>
+                                <SelectItem value="all">All Actions</SelectItem>
+                                <SelectItem value="create">Creation</SelectItem>
+                                <SelectItem value="update">Update</SelectItem>
+                                <SelectItem value="delete">Deletion</SelectItem>
                                 <SelectItem value="login">Login</SelectItem>
-                                <SelectItem value="export">Exportação</SelectItem>
-                                <SelectItem value="sync">Sincronização</SelectItem>
+                                <SelectItem value="export">Export</SelectItem>
+                                <SelectItem value="sync">Sync</SelectItem>
                             </SelectContent>
                         </Select>
 
                         <Select value={entityFilter} onValueChange={setEntityFilter}>
                             <SelectTrigger className="w-[160px]">
-                                <SelectValue placeholder="Entidade" />
+                                <SelectValue placeholder="Entity" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">Todas entidades</SelectItem>
-                                <SelectItem value="invoice">Faturas</SelectItem>
-                                <SelectItem value="transaction">Transações</SelectItem>
-                                <SelectItem value="user">Usuários</SelectItem>
-                                <SelectItem value="bot_task">Tarefas BOT</SelectItem>
-                                <SelectItem value="csv_file">Arquivos CSV</SelectItem>
+                                <SelectItem value="all">All Entities</SelectItem>
+                                <SelectItem value="invoice">Invoices</SelectItem>
+                                <SelectItem value="transaction">Transactions</SelectItem>
+                                <SelectItem value="user">Users</SelectItem>
+                                <SelectItem value="bot_task">BOT Tasks</SelectItem>
+                                <SelectItem value="csv_file">CSV Files</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -268,23 +268,23 @@ export default function AuditPage() {
                     <div className="grid grid-cols-4 gap-4 mb-6">
                         <div className="bg-gray-50 rounded-lg p-3 text-center">
                             <div className="text-2xl font-bold">{logs.length + botLogs.length}</div>
-                            <div className="text-xs text-muted-foreground">Total de Logs</div>
+                            <div className="text-xs text-muted-foreground">Total Logs</div>
                         </div>
                         <div className="bg-green-50 rounded-lg p-3 text-center">
                             <div className="text-2xl font-bold text-green-600">
                                 {[...logs, ...botLogs].filter(l => l.action === 'create' || l.action === 'sync').length}
                             </div>
-                            <div className="text-xs text-muted-foreground">Criações/Syncs</div>
+                            <div className="text-xs text-muted-foreground">Creations/Syncs</div>
                         </div>
                         <div className="bg-blue-50 rounded-lg p-3 text-center">
                             <div className="text-2xl font-bold text-blue-600">
                                 {logs.filter(l => l.action === 'update').length}
                             </div>
-                            <div className="text-xs text-muted-foreground">Atualizações</div>
+                            <div className="text-xs text-muted-foreground">Updates</div>
                         </div>
                         <div className="bg-purple-50 rounded-lg p-3 text-center">
                             <div className="text-2xl font-bold text-purple-600">{botLogs.length}</div>
-                            <div className="text-xs text-muted-foreground">Ações BOTella</div>
+                            <div className="text-xs text-muted-foreground">BOTella Actions</div>
                         </div>
                     </div>
 
@@ -296,7 +296,7 @@ export default function AuditPage() {
                             </div>
                         ) : filteredLogs.length === 0 ? (
                             <div className="text-center py-8 text-muted-foreground">
-                                Nenhum log encontrado
+                                No logs found
                             </div>
                         ) : (
                             filteredLogs.map(log => {
@@ -363,26 +363,26 @@ export default function AuditPage() {
             <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Detalhes do Log</DialogTitle>
+                        <DialogTitle>Log Details</DialogTitle>
                     </DialogHeader>
                     {selectedLog && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-sm font-medium text-muted-foreground">Usuário</label>
+                                    <label className="text-sm font-medium text-muted-foreground">User</label>
                                     <p className="font-medium">{selectedLog.user_name}</p>
                                     <p className="text-sm text-muted-foreground">{selectedLog.user_email}</p>
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium text-muted-foreground">Data/Hora</label>
+                                    <label className="text-sm font-medium text-muted-foreground">Date/Time</label>
                                     <p>{formatDate(selectedLog.created_at)}</p>
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium text-muted-foreground">Ação</label>
+                                    <label className="text-sm font-medium text-muted-foreground">Action</label>
                                     <p>{actionLabels[selectedLog.action]?.label || selectedLog.action}</p>
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium text-muted-foreground">Entidade</label>
+                                    <label className="text-sm font-medium text-muted-foreground">Entity</label>
                                     <p>{entityLabels[selectedLog.entity_type] || selectedLog.entity_type}</p>
                                     {selectedLog.entity_name && (
                                         <p className="text-sm text-muted-foreground">{selectedLog.entity_name}</p>
@@ -392,7 +392,7 @@ export default function AuditPage() {
 
                             {selectedLog.changes && (
                                 <div>
-                                    <label className="text-sm font-medium text-muted-foreground">Alterações</label>
+                                    <label className="text-sm font-medium text-muted-foreground">Changes</label>
                                     <pre className="mt-2 p-3 bg-gray-50 rounded-lg text-xs overflow-auto max-h-[200px]">
                                         {JSON.stringify(selectedLog.changes, null, 2)}
                                     </pre>
@@ -401,7 +401,7 @@ export default function AuditPage() {
 
                             {selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0 && (
                                 <div>
-                                    <label className="text-sm font-medium text-muted-foreground">Metadados</label>
+                                    <label className="text-sm font-medium text-muted-foreground">Metadata</label>
                                     <pre className="mt-2 p-3 bg-gray-50 rounded-lg text-xs overflow-auto max-h-[200px]">
                                         {JSON.stringify(selectedLog.metadata, null, 2)}
                                     </pre>

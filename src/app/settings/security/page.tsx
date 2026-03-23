@@ -22,9 +22,9 @@ export default function SecurityPage() {
             <PageHeader title="Security" subtitle="Authentication and access control" />
             <Card>
                 <CardHeader>
-                    <CardTitle>Autenticação</CardTitle>
+                    <CardTitle>Authentication</CardTitle>
                     <CardDescription>
-                        Configure as políticas de autenticação
+                        Configure authentication policies
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -32,8 +32,8 @@ export default function SecurityPage() {
                         <div className="flex items-center gap-3">
                             <Smartphone className="h-5 w-5 text-muted-foreground" />
                             <div>
-                                <p className="font-medium">Autenticação de Dois Fatores (2FA)</p>
-                                <p className="text-sm text-muted-foreground">Exigir 2FA para todos os usuários</p>
+                                <p className="font-medium">Two-Factor Authentication (2FA)</p>
+                                <p className="text-sm text-muted-foreground">Require 2FA for all users</p>
                             </div>
                         </div>
                         <Switch
@@ -46,8 +46,8 @@ export default function SecurityPage() {
                         <div className="flex items-center gap-3 mb-3">
                             <Clock className="h-5 w-5 text-muted-foreground" />
                             <div>
-                                <p className="font-medium">Timeout de Sessão</p>
-                                <p className="text-sm text-muted-foreground">Tempo em horas até exigir novo login</p>
+                                <p className="font-medium">Session Timeout</p>
+                                <p className="text-sm text-muted-foreground">Time in hours before requiring a new login</p>
                             </div>
                         </div>
                         <Input
@@ -64,9 +64,9 @@ export default function SecurityPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Política de Senhas</CardTitle>
+                    <CardTitle>Password Policy</CardTitle>
                     <CardDescription>
-                        Defina os requisitos mínimos para senhas
+                        Define minimum password requirements
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -74,8 +74,8 @@ export default function SecurityPage() {
                         <div className="flex items-center gap-3 mb-3">
                             <Key className="h-5 w-5 text-muted-foreground" />
                             <div>
-                                <p className="font-medium">Tamanho Mínimo</p>
-                                <p className="text-sm text-muted-foreground">Número mínimo de caracteres</p>
+                                <p className="font-medium">Minimum Length</p>
+                                <p className="text-sm text-muted-foreground">Minimum number of characters</p>
                             </div>
                         </div>
                         <Input
@@ -92,8 +92,8 @@ export default function SecurityPage() {
                         <div className="flex items-center gap-3">
                             <Shield className="h-5 w-5 text-muted-foreground" />
                             <div>
-                                <p className="font-medium">Caracteres Especiais</p>
-                                <p className="text-sm text-muted-foreground">Exigir pelo menos um caractere especial</p>
+                                <p className="font-medium">Special Characters</p>
+                                <p className="text-sm text-muted-foreground">Require at least one special character</p>
                             </div>
                         </div>
                         <Switch
@@ -106,52 +106,52 @@ export default function SecurityPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Sessões Ativas</CardTitle>
+                    <CardTitle>Active Sessions</CardTitle>
                     <CardDescription>
-                        Gerencie suas sessões ativas em outros dispositivos
+                        Manage your active sessions on other devices
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-3">
                         <div className="flex items-center justify-between p-4 border rounded-lg">
                             <div>
-                                <p className="font-medium">Este dispositivo</p>
-                                <p className="text-sm text-muted-foreground">Chrome • Linux • Agora</p>
+                                <p className="font-medium">This device</p>
+                                <p className="text-sm text-muted-foreground">Chrome • Linux • Now</p>
                             </div>
-                            <Badge className="bg-green-100 text-green-800">Ativo</Badge>
+                            <Badge className="bg-green-100 text-green-800">Active</Badge>
                         </div>
                     </div>
 
                     <Button variant="destructive" className="mt-4">
                         <AlertTriangle className="h-4 w-4 mr-2" />
-                        Encerrar Todas as Outras Sessões
+                        End All Other Sessions
                     </Button>
                 </CardContent>
             </Card>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Alterar Senha</CardTitle>
+                    <CardTitle>Change Password</CardTitle>
                     <CardDescription>
-                        Atualize sua senha de acesso
+                        Update your access password
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Senha Atual</label>
+                        <label className="text-sm font-medium">Current Password</label>
                         <Input type="password" />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Nova Senha</label>
+                        <label className="text-sm font-medium">New Password</label>
                         <Input type="password" />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Confirmar Nova Senha</label>
+                        <label className="text-sm font-medium">Confirm New Password</label>
                         <Input type="password" />
                     </div>
                     <Button>
                         <Lock className="h-4 w-4 mr-2" />
-                        Alterar Senha
+                        Change Password
                     </Button>
                 </CardContent>
             </Card>
