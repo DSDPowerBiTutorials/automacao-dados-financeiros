@@ -66,7 +66,6 @@ import BraintreeApiSync from "@/components/braintree/api-sync-button";
 import BraintreeUpdatePendingButton from "@/components/braintree/update-pending-button";
 import BraintreeSyncControls from "@/components/braintree/sync-controls";
 import { SyncStatusBadge } from "@/components/sync/SyncStatusBadge";
-import { PageHeader } from "@/components/ui/page-header";
 
 interface BraintreeEURRow {
   id: string;
@@ -231,7 +230,7 @@ export default function BraintreeEURPage() {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 150;
+  const rowsPerPage = 50;
 
   // Server-side fetch (incremental)
   const SERVER_PAGE_SIZE = 1000;
@@ -265,7 +264,7 @@ export default function BraintreeEURPage() {
   const [dateFilters, setDateFilters] = useState<{
     [key: string]: { start?: string; end?: string };
   }>(() => {
-    // Default: sempre desde Dez/2024 to hoje
+    // Default: sempre desde Dez/2024 até hoje
     return { date: { start: "2024-12-01" } };
   });
   const [statusFilter, setStatusFilter] = useState<string>("settled"); // Default to settled
@@ -360,7 +359,7 @@ export default function BraintreeEURPage() {
         loadData();
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Error initializing page";
+      const message = e instanceof Error ? e.message : "Erro ao inicializar a página";
       setLoadError(message);
       isLoadingRef.current = false;
       setIsLoading(false);
@@ -380,11 +379,9 @@ export default function BraintreeEURPage() {
         },
         (payload) => {
           // Filtrar manualmente já que filter complexo causa CHANNEL_ERROR
-          const newRecord = payload.new as any;
-          const oldRecord = payload.old as any;
-          const source = newRecord?.source || oldRecord?.source;
+          const source = payload.new?.source || payload.old?.source;
           if (source && (source.includes('braintree-api') || source === 'braintree-eur')) {
-            console.log('[Realtime Braintree EUR] ✅ Change detected:', payload.eventType, newRecord?.id);
+            console.log('[Realtime Braintree EUR] ✅ Change detected:', payload.eventType, payload.new?.id);
             // Evitar loop e rajada de reloads: debounce + não reexecuta auto reconcile aqui
             if (realtimeRefreshTimerRef.current) {
               clearTimeout(realtimeRefreshTimerRef.current);
@@ -422,7 +419,7 @@ export default function BraintreeEURPage() {
   useEffect(() => {
     const t = setTimeout(() => {
       if ((isLoadingRef.current || isLoadingStateRef.current) && rowsRef.current.length === 0) {
-        setLoadError("Timeout loading Braintree EUR. Try clicking Refresh.");
+        setLoadError("Timeout ao carregar Braintree EUR. Tente clicar em Recarregar.");
         isLoadingRef.current = false;
         setIsLoading(false);
         setIsLoadingMore(false);
@@ -435,7 +432,7 @@ export default function BraintreeEURPage() {
   useEffect(() => {
     if (!didInitRef.current) return;
     const t = setTimeout(() => {
-      // quando user mexe, recarrega sem auto-reconcile (manual via botão)
+      // quando usuário mexe, recarrega sem auto-reconcile (manual via botão)
       loadData({ runReconcile: false, force: true });
     }, 350);
     return () => clearTimeout(t);
@@ -459,7 +456,7 @@ export default function BraintreeEURPage() {
     disbursementFilter,
   ]);
 
-  // Function to carregar última data de sync
+  // Função para carregar última data de sync
   const loadLastSyncDate = async () => {
     try {
       const { data, error } = await supabase
@@ -477,25 +474,25 @@ export default function BraintreeEURPage() {
     }
   };
 
-  // Function to abrir seletor de colunas
+  // Função para abrir seletor de colunas
   const openColumnSelector = () => {
     setTempVisibleColumns(new Set(visibleColumns));
     setColumnSelectorOpen(true);
   };
 
-  // Function to cancelar seleção de colunas
+  // Função para cancelar seleção de colunas
   const cancelColumnSelection = () => {
     setTempVisibleColumns(new Set());
     setColumnSelectorOpen(false);
   };
 
-  // Function to aplicar seleção de colunas
+  // Função para aplicar seleção de colunas
   const applyColumnSelection = () => {
     setVisibleColumns(new Set(tempVisibleColumns));
     setColumnSelectorOpen(false);
   };
 
-  // Function to alternar coluna temporária
+  // Função para alternar coluna temporária
   const toggleTempColumn = (column: string) => {
     const newSet = new Set(tempVisibleColumns);
     if (newSet.has(column)) {
@@ -550,7 +547,7 @@ export default function BraintreeEURPage() {
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-56 p-2 bg-white dark:bg-black border border-gray-200 dark:border-slate-700 shadow-lg"
+          className="w-56 p-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-lg"
           align="start"
         >
           <div className="space-y-1">
@@ -577,7 +574,7 @@ export default function BraintreeEURPage() {
     );
   };
 
-  // Function to alternar ordenação
+  // Função para alternar ordenação
   const toggleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -587,7 +584,7 @@ export default function BraintreeEURPage() {
     }
   };
 
-  // Function to toggle de grupos de disbursement
+  // Função para toggle de grupos de disbursement
   const toggleGroup = (disbursementId: string) => {
     const newExpanded = new Set(expandedGroups);
     if (newExpanded.has(disbursementId)) {
@@ -598,7 +595,7 @@ export default function BraintreeEURPage() {
     setExpandedGroups(newExpanded);
   };
 
-  // 🆕 Function to toggle de settlement batch
+  // 🆕 Função para toggle de settlement batch
   const toggleSettlementBatch = (batchId: string) => {
     const newExpanded = new Set(expandedSettlementBatches);
     if (newExpanded.has(batchId)) {
@@ -609,10 +606,10 @@ export default function BraintreeEURPage() {
     setExpandedSettlementBatches(newExpanded);
   };
 
-  // ⚠️ NOTA: settlement_amount JÁ contém o valor líquido (fees already deducted pela Braintree)
-  // No é necessário cálculo adicional - usar settlement_amount diretamente
+  // ⚠️ NOTA: settlement_amount JÁ contém o valor líquido (fees já deduzidos pela Braintree)
+  // Não é necessário cálculo adicional - usar settlement_amount diretamente
 
-  // 💰 Function to calcular grupo de disbursement agregado
+  // 💰 Função para calcular grupo de disbursement agregado
   const calculateDisbursementGroup = (rows: BraintreeEURRow[]): DisbursementGroup | null => {
     if (!rows || rows.length === 0) return null;
 
@@ -628,7 +625,7 @@ export default function BraintreeEURPage() {
     };
   };
 
-  // Function to unconcile (clear reconciliation)
+  // Função para unconcile (limpar reconciliação)
   const handleUnconcile = async (rowId: string) => {
     if (!confirm("Are you sure you want to clear the reconciliation for this transaction?")) return;
 
@@ -637,7 +634,7 @@ export default function BraintreeEURPage() {
       const row = rows.find((r) => r.id === rowId);
       if (!row) return;
 
-      // Limpar fields of reconciliation
+      // Limpar campos de reconciliação
       const { error } = await supabase
         .from("csv_rows")
         .update({
@@ -674,7 +671,7 @@ export default function BraintreeEURPage() {
   // Quando houver dados do Bankinter, altere ENABLE_AUTO_RECONCILIATION para true
   const ENABLE_AUTO_RECONCILIATION = true;
 
-  // Function to verificar se duas datas estão dentro de ±3 dias
+  // Função para verificar se duas datas estão dentro de ±3 dias
   const isWithinDateRange = (
     date1: string,
     date2: string,
@@ -690,7 +687,7 @@ export default function BraintreeEURPage() {
   const reconcileBankStatements = async (
     braintreeRows: BraintreeEURRow[],
   ): Promise<BraintreeEURRow[]> => {
-    // Check if reconciliation automática is enabled
+    // Verifica se a reconciliação automática está habilitada
     if (!ENABLE_AUTO_RECONCILIATION) {
       console.log("Auto-reconciliation is currently disabled");
       return braintreeRows;
@@ -839,55 +836,28 @@ export default function BraintreeEURPage() {
 
       // Carregar dados da API Braintree (source: braintree-api-revenue)
       // Filtrar apenas EUR e dentro da janela de datas
-      const buildQuery = () => {
-        let q = supabase
-          .from("csv_rows")
-          .select("id,date,description,amount,source,custom_data,reconciled,created_at")
-          // Usar apenas braintree-api-revenue (otimiza índice)
-          .eq("source", "braintree-api-revenue")
-          .gte("date", dateStart)
-          .order("date", { ascending: false })
-          .range(from, to);
+      let query = supabase
+        .from("csv_rows")
+        .select("id,date,description,amount,source,custom_data,reconciled,currency,created_at")
+        // Evita OR: melhora uso de índice (source/date)
+        .in("source", ["braintree-api-revenue", "braintree-eur"])
+        .gte("date", dateStart)
+        .order("date", { ascending: false })
+        .range(from, to);
 
-        if (dateEnd) {
-          q = q.lte("date", dateEnd);
-        }
-        return q;
-      };
-
-      let rowsData: any[] | null = null;
-      let error: any = null;
-
-      // Tentar com retry automático
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          if (attempt > 0) {
-            console.log(`[Braintree EUR] Retry ${attempt}/2...`);
-            await new Promise(r => setTimeout(r, 1000 * attempt)); // Backoff
-          }
-
-          const q = buildQuery();
-          const result = await Promise.race([
-            q,
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error("Timeout after 30s")), 30000)
-            )
-          ]) as any;
-
-          rowsData = result.data;
-          error = result.error;
-          break; // Success, sair do loop
-        } catch (err) {
-          console.error(`[Braintree EUR] Attempt ${attempt + 1} failed:`, err);
-          if (attempt === 2) {
-            error = { message: err instanceof Error ? err.message : "Connection error" };
-          }
-        }
+      if (dateEnd) {
+        query = query.lte("date", dateEnd);
       }
+
+      const { data: rowsData, error } = await withTimeout(
+        query,
+        20000,
+        "Supabase load csv_rows (Braintree EUR)"
+      );
 
       if (error) {
         console.error("[Braintree EUR] Error loading data:", error);
-        setLoadError(error.message || "Error loading data from Supabase");
+        setLoadError(error.message || "Erro ao carregar dados do Supabase");
         if (!append) {
           setRows([]);
         }
@@ -907,75 +877,6 @@ export default function BraintreeEURPage() {
 
       console.log(`[Braintree EUR] Found ${rowsData.length} rows`);
 
-      // 🆕 Buscar mapeamentos order_id ↔ transaction_id (batch)
-      const txIdsForMapping = rowsData
-        .map((r) => r.custom_data?.transaction_id)
-        .filter(Boolean);
-
-      let orderMappings = new Map<string, string>();
-      let unmappedCount = 0;
-
-      if (txIdsForMapping.length > 0) {
-        try {
-          const mappingRes = await fetch("/api/order-mapping", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ transaction_ids: txIdsForMapping }),
-          });
-          const mappingData = await mappingRes.json();
-          if (mappingData.success && mappingData.data) {
-            orderMappings = new Map(Object.entries(mappingData.data));
-            console.log(`[Order Mapping] ✅ Loaded ${orderMappings.size} mappings`);
-          }
-        } catch (err) {
-          console.error("[Order Mapping] Failed to load mappings:", err);
-        }
-      }
-
-      // 🆕 Buscar order_id do HubSpot via hubspot_vid
-      const hubspotVids = rowsData
-        .map((r) => r.custom_data?.hubspot_vid)
-        .filter(Boolean);
-
-      let hubspotReferences = new Map<string, string>();
-
-      if (hubspotVids.length > 0) {
-        try {
-          const { data: hsDeals } = await supabase
-            .from("csv_rows")
-            .select("id, custom_data")
-            .eq("source", "hubspot-deals")
-            .in("custom_data->ID", hubspotVids);
-
-          if (hsDeals) {
-            hsDeals.forEach((deal) => {
-              const vid = deal.custom_data?.ID;
-              const ref = deal.custom_data?.reference || deal.custom_data?.Reference;
-              if (vid && ref) {
-                hubspotReferences.set(String(vid), ref);
-              }
-            });
-            console.log(`[HubSpot References] ✅ Loaded ${hubspotReferences.size} references`);
-          }
-        } catch (err) {
-          console.error("[HubSpot References] Failed to load:", err);
-        }
-      }
-
-      // 🆕 Count transactions without hubspot_vid to trigger auto-link
-      unmappedCount = rowsData.filter(
-        (r) => !r.custom_data?.hubspot_vid && !r.custom_data?.order_id
-      ).length;
-
-      if (unmappedCount > 0 && !append) {
-        console.log(`[Auto-Link] Detected ${unmappedCount} unmapped transactions, triggering background linking...`);
-        // Disparar auto-link em background (não esperar resposta)
-        fetch("/api/order-mapping/auto-link", {
-          method: "POST",
-        }).catch((err) => console.error("[Auto-Link] Failed to trigger:", err));
-      }
-
-      // Filtrar por EUR e mapear para interface
       const mappedRows: BraintreeEURRow[] = rowsData
         .filter((row) => {
           const merchantAccount = row.custom_data?.merchant_account_id;
@@ -1024,19 +925,7 @@ export default function BraintreeEURPage() {
 
             // Campos adicionais da Braintree
             transaction_id: row.custom_data?.transaction_id,
-            order_id: (() => {
-              const txId = row.custom_data?.transaction_id || "";
-              const vid = row.custom_data?.hubspot_vid;
-
-              // Prioridade: 1) HubSpot reference, 2) order_transaction_mapping, 3) custom_data->order_id
-              if (vid && hubspotReferences.has(String(vid))) {
-                return hubspotReferences.get(String(vid)) || null;
-              }
-              if (orderMappings.has(txId)) {
-                return orderMappings.get(txId) || null;
-              }
-              return row.custom_data?.order_id || null;
-            })(),
+            order_id: row.custom_data?.order_id || null,
             hubspot_order_code: row.custom_data?.hubspot_order_code || null,
             hubspot_deal_id: row.custom_data?.hubspot_deal_id || null,
             hubspot_row_id: row.custom_data?.hubspot_row_id || null,
@@ -1065,10 +954,10 @@ export default function BraintreeEURPage() {
             settlement_batch_id: row.custom_data?.settlement_batch_id || (row as any).settlement_batch_id,
             settlement_date: settlementDate, // 🆕 Agora usa a variável com extração do batch_id
 
-            // 🔑 ID do payout grouped
+            // 🔑 ID do payout agrupado
             disbursement_id: row.custom_data?.disbursement_id,
 
-            // 🏦 Information do match bancário
+            // 🏦 Informações do match bancário
             bank_match_id: row.custom_data?.bank_match_id,
             bank_match_date: row.custom_data?.bank_match_date,
             bank_match_amount:
@@ -1271,7 +1160,7 @@ export default function BraintreeEURPage() {
       }
     } catch (error) {
       console.error("[Braintree EUR] Unexpected error:", error);
-      const message = error instanceof Error ? error.message : "Unexpected error loading";
+      const message = error instanceof Error ? error.message : "Erro inesperado ao carregar";
       setLoadError(message);
       if (!append) setRows([]);
     } finally {
@@ -1313,7 +1202,7 @@ export default function BraintreeEURPage() {
     if (!editingRow) return;
 
     // Atualizar conciliado se destinationAccount foi definido
-    const shouldBeReconciled =
+    const shouldBeConciliado =
       editedData.destinationAccount !== null &&
       editedData.destinationAccount !== undefined &&
       editedData.destinationAccount !== "";
@@ -1323,7 +1212,7 @@ export default function BraintreeEURPage() {
         ? {
           ...row,
           ...editedData,
-          conciliado: shouldBeReconciled,
+          conciliado: shouldBeConciliado,
           reconciliationType: "manual" as const,
         }
         : row,
@@ -1420,7 +1309,7 @@ export default function BraintreeEURPage() {
   const processedRows = useMemo(() => {
     const filtered = rows
       .filter((row) => {
-        // Filter by busca
+        // Filtro de busca
         if (searchTerm) {
           const search = searchTerm.toLowerCase();
           const matchesSearch =
@@ -1448,7 +1337,7 @@ export default function BraintreeEURPage() {
           }
         }
 
-        // Filter by status (padrão: settled)
+        // Filtro de status (padrão: settled)
         if (statusFilter && statusFilter !== "all") {
           if (statusFilter === "settled") {
             // Match both "settled" and "settled_successfully"
@@ -1458,28 +1347,28 @@ export default function BraintreeEURPage() {
           }
         }
 
-        // Filter by merchant account
+        // Filtro de merchant account
         if (merchantFilter && merchantFilter !== "all") {
           if (!row.merchant_account_id || row.merchant_account_id !== merchantFilter) return false;
         }
 
-        // Filter by tipo
+        // Filtro de tipo
         if (typeFilter && typeFilter !== "all") {
           if (!row.type || row.type !== typeFilter) return false;
         }
 
-        // Filter by currency
+        // Filtro de currency
         if (currencyFilter && currencyFilter !== "all") {
           const rowCurrency = row.currency || "EUR";
           if (rowCurrency !== currencyFilter) return false;
         }
 
-        // Filter by payment method
+        // Filtro de payment method
         if (paymentMethodFilter && paymentMethodFilter !== "all") {
           if (!row.payment_method || row.payment_method !== paymentMethodFilter) return false;
         }
 
-        // Filter by valor
+        // Filtro de valor
         if (amountFilter) {
           const { operator, value } = amountFilter;
           switch (operator) {
@@ -1501,7 +1390,7 @@ export default function BraintreeEURPage() {
           }
         }
 
-        // Filter by data
+        // Filtro de data
         if (dateFilters.date) {
           const rowDate = new Date(row.date);
           if (dateFilters.date.start) {
@@ -1514,7 +1403,7 @@ export default function BraintreeEURPage() {
           }
         }
 
-        // 🆕 Filter by settlement batch
+        // 🆕 Filtro de settlement batch
         if (settlementBatchFilter && settlementBatchFilter !== "all") {
           if (settlementBatchFilter === "no-batch") {
             if (row.settlement_batch_id) return false;
@@ -1526,7 +1415,7 @@ export default function BraintreeEURPage() {
         return true;
       });
 
-    // 🆕 Group por disbursement_id e calcular totais
+    // 🆕 Agrupar por disbursement_id e calcular totais
     const grouped = filtered.reduce((acc: Record<string, BraintreeEURRow[]>, row: BraintreeEURRow) => {
       const disbursementId = row.disbursement_id || 'ungrouped';
       if (!acc[disbursementId]) {
@@ -1560,7 +1449,7 @@ export default function BraintreeEURPage() {
         (r.disbursement_id || 'ungrouped') === disbursementId
       ) === index;
 
-      // 🆕 Information de Settlement Batch
+      // 🆕 Informações de Settlement Batch
       const batchId = row.settlement_batch_id || 'no-batch';
       const batchRows = settlementBatches.get(batchId) || [];
       const batchSize = batchRows.length;
@@ -1633,7 +1522,7 @@ export default function BraintreeEURPage() {
     expandedGroups,
   ]);
 
-  // Pagination (memoizada para evitar recálculos)
+  // Paginação (memoizada para evitar recálculos)
   const { totalPages, adjustedCurrentPage, paginatedRows, startIndex, endIndex } = useMemo(() => {
     const totalPages = Math.ceil(processedRows.length / rowsPerPage);
     const adjustedCurrentPage =
@@ -1653,7 +1542,7 @@ export default function BraintreeEURPage() {
     if (!account)
       return {
         bg: "bg-gray-100",
-        text: "text-gray-500 dark:text-gray-400",
+        text: "text-gray-400",
         border: "border-gray-200",
       };
     return (
@@ -1667,84 +1556,110 @@ export default function BraintreeEURPage() {
 
   if (isLoading && rows.length === 0) {
     return (
-      <div className="min-h-full flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-[#1a2b4a]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-full">
+    <div className="min-h-screen bg-white">
 
       <div
         className={` transition-all duration-300 ${splitScreenUrl ? "md:pr-[50%]" : ""}`}
       >
-        <PageHeader title="Braintree EUR - Payment Source" subtitle={`${processedRows.length} records (loaded: ${rows.length}${hasMoreServerRows ? "+" : ""})`}>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => loadData()}
-              disabled={isLoading || isLoadingMore}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              title="Force data refresh"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            <BraintreeSyncControls />
-            <BraintreeUpdatePendingButton />
-            <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export Data
-            </Button>
-          </div>
-        </PageHeader>
-
-        <div className="px-6">
-          {ENABLE_AUTO_RECONCILIATION && (
-            <div className="mt-3 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-              <Badge variant="outline" className="border-emerald-300 text-emerald-700 bg-emerald-500/20">
-                ⚡ Auto reconciliation active
-              </Badge>
-              {isReconciling ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Reconciling settlement batches with Bankinter EUR...</span>
+        <header className="border-b border-[#0f1c34] bg-[#1a2b4a] text-white shadow-lg sticky top-0 z-30">
+          <div className="container mx-auto px-6 py-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Link href="/">
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <ArrowLeft className="h-4 w-4" />
+                    Back
+                  </Button>
+                </Link>
+                <div>
+                  <h1 className="text-2xl font-bold text-white mb-2">
+                    Braintree EUR - Payment Source
+                  </h1>
+                  <SyncStatusBadge source="braintree-eur" />
+                  <div className="text-sm text-white/80 mt-1">
+                    {processedRows.length} records (carregados: {rows.length}{hasMoreServerRows ? "+" : ""})
+                  </div>
                 </div>
-              ) : autoReconcileSummary ? (
-                <span>{autoReconcileSummary}</span>
-              ) : (
-                <span>Will run when loading data.</span>
-              )}
+              </div>
+              <div className="flex gap-2">
+                {/* Botão de Forçar Atualização */}
+                <Button
+                  onClick={loadData}
+                  disabled={isLoading || isLoadingMore}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-white text-white hover:bg-white/10"
+                  title="Forçar atualização dos dados"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Recarregar
+                </Button>
+
+                {/* Controles de Sincronização */}
+                <BraintreeSyncControls />
+
+                {/* Update Pending/Force Update com timestamps */}
+                <BraintreeUpdatePendingButton />
+
+                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                  <Download className="h-4 w-4" />
+                  Export Data
+                </Button>
+              </div>
             </div>
-          )}
 
-          {saveSuccess && (
-            <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20">
-              <CheckCircle className="h-5 w-5 text-emerald-600" />
-              <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
-                ✅ All changes saved successfully to database! Last saved:{" "}
-                {lastSaved}
-              </AlertDescription>
-            </Alert>
-          )}
+            {/* Status da conciliação automática */}
+            {ENABLE_AUTO_RECONCILIATION && (
+              <div className="mt-3 flex items-center gap-3 text-sm text-white/80">
+                <Badge variant="outline" className="border-emerald-300 text-emerald-50 bg-emerald-500/20">
+                  ⚡ Auto conciliação ativa
+                </Badge>
+                {isReconciling ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Reconciling settlement batches with Bankinter EUR...</span>
+                  </div>
+                ) : autoReconcileSummary ? (
+                  <span>{autoReconcileSummary}</span>
+                ) : (
+                  <span>Será executada ao carregar os dados.</span>
+                )}
+              </div>
+            )}
 
-          {loadError && (
-            <Alert className="mt-4 border-2 border-red-500 bg-red-50 dark:bg-red-900/20">
-              <XCircle className="h-5 w-5 text-red-600" />
-              <AlertDescription className="text-red-800 dark:text-red-200 font-medium">
-                ❌ Error loading Braintree EUR: {loadError}
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
+            {saveSuccess && (
+              <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20">
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
+                  ✅ All changes saved successfully to database! Last saved:{" "}
+                  {lastSaved}
+                </AlertDescription>
+              </Alert>
+            )}
 
-        <div className="px-6 py-8">
+            {loadError && (
+              <Alert className="mt-4 border-2 border-red-500 bg-red-50 dark:bg-red-900/20">
+                <XCircle className="h-5 w-5 text-red-600" />
+                <AlertDescription className="text-red-800 dark:text-red-200 font-medium">
+                  ❌ Erro ao carregar Braintree EUR: {loadError}
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        </header>
+
+        <div className="container mx-auto px-6 py-8">
           <Card className="shadow-xl">
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Source Details</CardTitle>
-              <CardDescription className="text-gray-900 dark:text-white/80">
+              <CardDescription className="text-white/80">
                 Manage Braintree EUR transactions with filtering and sorting
               </CardDescription>
             </CardHeader>
@@ -1777,7 +1692,7 @@ export default function BraintreeEURPage() {
                       <Button
                         variant={columnSelectorOpen ? "default" : "outline"}
                         size="sm"
-                        className={`relative overflow-visible ${columnSelectorOpen ? "bg-gray-50 dark:bg-black hover:bg-gray-100 dark:hover:bg-[#1a2530] text-gray-900 dark:text-white" : ""}`}
+                        className={`relative overflow-visible ${columnSelectorOpen ? "bg-[#243140] hover:bg-[#1a2530] text-white" : ""}`}
                       >
                         <Columns3 className="h-4 w-4 mr-2" />
                         Select Columns
@@ -1794,22 +1709,22 @@ export default function BraintreeEURPage() {
                             >
                               <X className="h-3 w-3" />
                             </span>
-                            <span className="absolute -top-2 -right-2 bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
+                            <span className="absolute -top-2 -right-2 bg-[#243140] text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
                               {visibleColumns.size}/{TOTAL_COLUMNS}
                             </span>
                           </>
                         )}
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="!bg-white dark:!bg-black text-slate-900 dark:text-slate-50 flex flex-col">
-                      <DialogHeader className="bg-white dark:bg-black">
-                        <DialogTitle className="text-slate-900 dark:text-slate-50">Select Visible Columns</DialogTitle>
+                    <DialogContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-50 flex flex-col">
+                      <DialogHeader>
+                        <DialogTitle>Select Visible Columns</DialogTitle>
                       </DialogHeader>
                       {/*
                         Nota: evitamos a classe 'grid' aqui porque o Tabler pode redefinir '.grid'
                         e quebrar o layout (lista fica "vazia").
                       */}
-                      <div className="flex flex-col gap-3 py-4 max-h-[60vh] overflow-y-auto pr-1 bg-white dark:bg-black">
+                      <div className="flex flex-col gap-3 py-4 max-h-[60vh] overflow-y-auto pr-1">
                         {[
                           { id: "id", label: "ID" },
                           { id: "date", label: "📅 Created Date" },
@@ -1840,7 +1755,7 @@ export default function BraintreeEURPage() {
                           { id: "settlement_currency_iso_code", label: "🌍 Settlement Currency (Real)" },
                           { id: "settlement_currency_exchange_rate", label: "💱 FX Exchange Rate" },
                         ].map((column) => {
-                          // Adicionar descrições explicativas para fields of data
+                          // Adicionar descrições explicativas para campos de data
                           const descriptions: { [key: string]: string } = {
                             date: "When customer paid",
                             settlement_date: "When bank confirmed",
@@ -1874,7 +1789,7 @@ export default function BraintreeEURPage() {
                           )
                         })}
                       </div>
-                      <div className="flex justify-end gap-2 bg-white dark:bg-black pt-4 border-t border-gray-200 dark:border-slate-700">
+                      <div className="flex justify-end gap-2">
                         <Button
                           variant="outline"
                           onClick={cancelColumnSelection}
@@ -1889,7 +1804,7 @@ export default function BraintreeEURPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => loadData()}
+                    onClick={loadData}
                     className="gap-2"
                   >
                     <RefreshCw className="h-4 w-4" />
@@ -2039,7 +1954,7 @@ export default function BraintreeEURPage() {
               <div className="overflow-x-auto">{/* Tabela aqui */}
                 <table className="w-full min-w-max table-auto">
                   <thead>
-                    <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gray-50 dark:bg-black">
+                    <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gray-50 dark:bg-slate-800">
                       {visibleColumns.has("id") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white w-24">
                           <button
@@ -2347,7 +2262,7 @@ export default function BraintreeEURPage() {
                         return (
                           <tr
                             key={row.id}
-                            className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-[#111111]/50"
+                            className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-slate-800/50"
                           >
                             {visibleColumns.has("id") && (
                               <td className="py-3 px-4 text-sm font-bold">
@@ -2423,9 +2338,7 @@ export default function BraintreeEURPage() {
                                     {(() => {
                                       const link = hubspotLinksByOrderId.get(row.order_id || "");
                                       const dealId = row.hubspot_deal_id || link?.hubspot_deal_id;
-                                      const hasHubspotVid = row.custom_data?.hubspot_vid;
-
-                                      if (link?.linked || dealId || hasHubspotVid) {
+                                      if (link?.linked || dealId) {
                                         return (
                                           <Badge
                                             variant="secondary"
@@ -2436,13 +2349,19 @@ export default function BraintreeEURPage() {
                                           </Badge>
                                         );
                                       }
-
-                                      // No mostrar "sem HS" - auto-link vai resolver em background
-                                      return null;
+                                      return (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-gray-500"
+                                          title="Sem vínculo HubSpot (order_code não encontrado)"
+                                        >
+                                          sem HS
+                                        </Badge>
+                                      );
                                     })()}
                                   </div>
                                 ) : (
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">—</span>
+                                  <span className="text-xs text-gray-400">—</span>
                                 )}
                               </td>
                             )}
@@ -2485,7 +2404,7 @@ export default function BraintreeEURPage() {
                                     {row.destinationAccount}
                                   </button>
                                 ) : (
-                                  <span className="text-gray-500 dark:text-gray-400 text-xs">
+                                  <span className="text-gray-400 text-xs">
                                     N/A
                                   </span>
                                 )}
@@ -2498,7 +2417,7 @@ export default function BraintreeEURPage() {
                                     {row.reconciliationType === "automatic" ? (
                                       <div className="relative group">
                                         <Zap className="h-5 w-5 text-green-600 mx-auto" />
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg min-w-[220px]">
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg min-w-[220px]">
                                           <div className="font-bold mb-2 text-green-400">⚡ Auto-Reconciled</div>
                                           {row.bank_match_date && (
                                             <div className="flex items-center gap-1 mb-1">
@@ -2521,7 +2440,7 @@ export default function BraintreeEURPage() {
                                             </div>
                                           )}
                                           {row.settlement_batch_id && (
-                                            <div className="flex items-center gap-1 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                            <div className="flex items-center gap-1 mt-2 pt-2 border-t border-gray-700">
                                               <Key className="h-3 w-3" />
                                               <span className="text-[10px] font-mono">
                                                 {row.settlement_batch_id.substring(0, 20)}...
@@ -2533,14 +2452,14 @@ export default function BraintreeEURPage() {
                                     ) : (
                                       <div className="relative group">
                                         <User className="h-5 w-5 text-blue-600 mx-auto" />
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                           👤 Manual reconciliation
                                         </div>
                                       </div>
                                     )}
                                   </div>
                                 ) : (
-                                  <XCircle className="h-5 w-5 text-gray-500 dark:text-gray-400 mx-auto" />
+                                  <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
                                 )}
                               </td>
                             )}
@@ -2607,7 +2526,7 @@ export default function BraintreeEURPage() {
                                     {row.status || "N/A"}
                                   </Badge>
 
-                                  {/* 👁️ Eye icon with status history */}
+                                  {/* 👁️ Ícone "Olho" com histórico de status */}
                                   {row.status_history && row.status_history.length > 0 && (
                                     <Popover>
                                       <PopoverTrigger asChild>
@@ -2620,19 +2539,19 @@ export default function BraintreeEURPage() {
                                         </Button>
                                       </PopoverTrigger>
                                       <PopoverContent
-                                        className="w-80 p-0 !bg-white dark:!bg-black text-slate-900 dark:text-slate-50 border border-gray-200 dark:border-slate-700 shadow-xl !opacity-100"
+                                        className="w-80 p-0 !bg-white dark:!bg-slate-900 text-slate-900 dark:text-slate-50 border border-gray-200 dark:border-slate-700 shadow-xl opacity-100"
                                         align="end"
                                       >
-                                        <div className="bg-gradient-to-r from-blue-600 to-blue-800 dark:from-[#1a2b4a] dark:to-[#2c3e5f] text-white px-4 py-3 rounded-t-lg">
+                                        <div className="bg-gradient-to-r !from-[#1a2b4a] !to-[#2c3e5f] from-[#1a2b4a] to-[#2c3e5f] text-white px-4 py-3 rounded-t-lg">
                                           <h4 className="font-bold flex items-center gap-2">
                                             <Eye className="h-4 w-4" />
                                             Status History
                                           </h4>
-                                          <p className="text-xs text-gray-900 dark:text-white/80 mt-1">
+                                          <p className="text-xs text-white/80 mt-1">
                                             Transaction: {row.transaction_id}
                                           </p>
                                         </div>
-                                        <div className="p-4 max-h-[300px] overflow-y-auto bg-white dark:bg-black">
+                                        <div className="p-4 max-h-[300px] overflow-y-auto">
                                           <div className="space-y-3">
                                             {row.status_history
                                               .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -2685,270 +2604,270 @@ export default function BraintreeEURPage() {
                                                   </div>
                                                 );
                                               })}
+                                      </div>
+                                    </div>
+                                        {row.settlement_batch_id && (
+                                    <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 bg-gray-50 dark:bg-slate-800/50 rounded-b-lg">
+                                      <div className="flex items-start gap-2">
+                                        <Key className="h-3 w-3 text-gray-500 mt-0.5 flex-shrink-0" />
+                                        <div className="min-w-0 flex-1">
+                                          <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">
+                                            Settlement Batch ID:
+                                          </div>
+                                          <div className="font-mono text-xs text-gray-700 dark:text-gray-300 break-all">
+                                            {row.settlement_batch_id}
                                           </div>
                                         </div>
-                                        {row.settlement_batch_id && (
-                                          <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 bg-gray-50 dark:bg-black/50 rounded-b-lg">
-                                            <div className="flex items-start gap-2">
-                                              <Key className="h-3 w-3 text-gray-500 mt-0.5 flex-shrink-0" />
-                                              <div className="min-w-0 flex-1">
-                                                <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">
-                                                  Settlement Batch ID:
-                                                </div>
-                                                <div className="font-mono text-xs text-gray-700 dark:text-gray-300 break-all">
-                                                  {row.settlement_batch_id}
-                                                </div>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </PopoverContent>
-                                    </Popover>
+                                      </div>
+                                    </div>
                                   )}
-                                </div>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </div>
                               </td>
                             )}
-                            {visibleColumns.has("type") && (
-                              <td className="py-3 px-4 text-center text-sm">
-                                {row.type || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("currency") && (
-                              <td className="py-3 px-4 text-center text-sm font-bold">
-                                {row.currency || "EUR"}
-                              </td>
-                            )}
-                            {visibleColumns.has("settlement_batch_id") && (
-                              <td className="py-3 px-4 text-xs font-mono">
-                                {row.settlement_batch_id ? (
-                                  <span className="text-gray-700 dark:text-gray-300" title={row.settlement_batch_id}>
-                                    {row.settlement_batch_id.substring(0, 16)}...
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-500 dark:text-gray-400">N/A</span>
-                                )}
-                              </td>
-                            )}
-                            {visibleColumns.has("settlement_date") && (
-                              <td className="py-3 px-4 text-sm">
-                                {row.settlement_date ? (
-                                  <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">
-                                    {formatDate(row.settlement_date)}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-500 dark:text-gray-400 text-xs">Not settled</span>
-                                )}
-                              </td>
-                            )}
-                            {visibleColumns.has("settlement_currency_iso_code") && (
-                              <td className="py-3 px-4 text-sm">
-                                {row.settlement_currency_iso_code && row.currency &&
-                                  row.settlement_currency_iso_code !== row.currency ? (
-                                  <Badge
-                                    variant="outline"
-                                    className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800"
-                                  >
-                                    {row.currency} → {row.settlement_currency_iso_code}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-gray-600 dark:text-gray-400">
-                                    {row.settlement_currency_iso_code || row.currency || "N/A"}
-                                  </span>
-                                )}
-                              </td>
-                            )}
-                            {visibleColumns.has("settlement_currency_exchange_rate") && (
-                              <td className="py-3 px-4 text-right text-sm">
-                                {(() => {
-                                  const rate = row.settlement_currency_exchange_rate != null
-                                    ? toNumber(row.settlement_currency_exchange_rate, 1)
-                                    : null;
+                  {visibleColumns.has("type") && (
+                    <td className="py-3 px-4 text-center text-sm">
+                      {row.type || "N/A"}
+                    </td>
+                  )}
+                  {visibleColumns.has("currency") && (
+                    <td className="py-3 px-4 text-center text-sm font-bold">
+                      {row.currency || "EUR"}
+                    </td>
+                  )}
+                  {visibleColumns.has("settlement_batch_id") && (
+                    <td className="py-3 px-4 text-xs font-mono">
+                      {row.settlement_batch_id ? (
+                        <span className="text-gray-700 dark:text-gray-300" title={row.settlement_batch_id}>
+                          {row.settlement_batch_id.substring(0, 16)}...
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">N/A</span>
+                      )}
+                    </td>
+                  )}
+                  {visibleColumns.has("settlement_date") && (
+                    <td className="py-3 px-4 text-sm">
+                      {row.settlement_date ? (
+                        <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">
+                          {formatDate(row.settlement_date)}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">Not settled</span>
+                      )}
+                    </td>
+                  )}
+                  {visibleColumns.has("settlement_currency_iso_code") && (
+                    <td className="py-3 px-4 text-sm">
+                      {row.settlement_currency_iso_code && row.currency &&
+                        row.settlement_currency_iso_code !== row.currency ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800"
+                        >
+                          {row.currency} → {row.settlement_currency_iso_code}
+                        </Badge>
+                      ) : (
+                        <span className="text-gray-600 dark:text-gray-400">
+                          {row.settlement_currency_iso_code || row.currency || "N/A"}
+                        </span>
+                      )}
+                    </td>
+                  )}
+                  {visibleColumns.has("settlement_currency_exchange_rate") && (
+                    <td className="py-3 px-4 text-right text-sm">
+                      {(() => {
+                        const rate = row.settlement_currency_exchange_rate != null
+                          ? toNumber(row.settlement_currency_exchange_rate, 1)
+                          : null;
 
-                                  if (rate && rate !== 1) {
-                                    return (
-                                      <span className="text-blue-600 dark:text-blue-400 font-mono">
-                                        {rate.toFixed(5)}
-                                      </span>
-                                    );
-                                  }
+                        if (rate && rate !== 1) {
+                          return (
+                            <span className="text-blue-600 dark:text-blue-400 font-mono">
+                              {rate.toFixed(5)}
+                            </span>
+                          );
+                        }
 
-                                  return <span className="text-gray-500 dark:text-gray-400">1.00000</span>;
-                                })()}
-                              </td>
-                            )}
-                            {visibleColumns.has("customer_name") && (
-                              <td className="py-3 px-4 text-sm">
-                                {row.customer_name || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("customer_email") && (
-                              <td className="py-3 px-4 text-sm text-blue-600">
-                                {row.customer_email || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("payment_method") && (
-                              <td className="py-3 px-4 text-sm">
-                                {(() => {
-                                  const paymentMethod = row.payment_method;
-                                  if (!paymentMethod || paymentMethod === "N/A") return "N/A";
+                        return <span className="text-gray-400">1.00000</span>;
+                      })()}
+                    </td>
+                  )}
+                  {visibleColumns.has("customer_name") && (
+                    <td className="py-3 px-4 text-sm">
+                      {row.customer_name || "N/A"}
+                    </td>
+                  )}
+                  {visibleColumns.has("customer_email") && (
+                    <td className="py-3 px-4 text-sm text-blue-600">
+                      {row.customer_email || "N/A"}
+                    </td>
+                  )}
+                  {visibleColumns.has("payment_method") && (
+                    <td className="py-3 px-4 text-sm">
+                      {(() => {
+                        const paymentMethod = row.payment_method;
+                        if (!paymentMethod || paymentMethod === "N/A") return "N/A";
 
-                                  // Extrair apenas a bandeira do cartão (antes do espaço/dígitos)
-                                  const cleanMethod = paymentMethod
-                                    .replace(/\s*(ending in|\*\*\*\*|\d{4}).*$/i, '')
-                                    .trim();
+                        // Extrair apenas a bandeira do cartão (antes do espaço/dígitos)
+                        const cleanMethod = paymentMethod
+                          .replace(/\s*(ending in|\*\*\*\*|\d{4}).*$/i, '')
+                          .trim();
 
-                                  // Se for PayPal, manter como está
-                                  if (cleanMethod.toLowerCase().includes('paypal')) {
-                                    return (
-                                      <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">
-                                        PayPal
-                                      </Badge>
-                                    );
-                                  }
+                        // Se for PayPal, manter como está
+                        if (cleanMethod.toLowerCase().includes('paypal')) {
+                          return (
+                            <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">
+                              PayPal
+                            </Badge>
+                          );
+                        }
 
-                                  // Para cartões, mostrar badge com cor específica
-                                  const cardBrandColors: { [key: string]: string } = {
-                                    'visa': 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
-                                    'mastercard': 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800',
-                                    'amex': 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-                                    'discover': 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
-                                  };
+                        // Para cartões, mostrar badge com cor específica
+                        const cardBrandColors: { [key: string]: string } = {
+                          'visa': 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
+                          'mastercard': 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+                          'amex': 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+                          'discover': 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+                        };
 
-                                  const brandLower = cleanMethod.toLowerCase();
-                                  const colorClass = Object.keys(cardBrandColors).find(brand =>
-                                    brandLower.includes(brand)
-                                  );
-
-                                  return (
-                                    <Badge
-                                      variant="outline"
-                                      className={colorClass ? cardBrandColors[colorClass] : 'bg-gray-50 dark:bg-black/20 text-gray-700 dark:text-gray-400'}
-                                    >
-                                      {cleanMethod || "Card"}
-                                    </Badge>
-                                  );
-                                })()}
-                              </td>
-                            )}
-                            {visibleColumns.has("merchant_account_id") && (
-                              <td className="py-3 px-4 text-sm font-mono text-xs">
-                                {row.merchant_account_id || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("disbursement_date") && (
-                              <td className="py-3 px-4 text-sm">
-                                {row.disbursement_date ? formatDate(row.disbursement_date) : "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("settlement_amount") && (
-                              <td className="py-3 px-4 text-right text-sm font-bold text-green-600">
-                                {row.settlement_amount ? formatCurrency(row.settlement_amount) : "N/A"}
-                              </td>
-                            )}
-                          </tr>
+                        const brandLower = cleanMethod.toLowerCase();
+                        const colorClass = Object.keys(cardBrandColors).find(brand =>
+                          brandLower.includes(brand)
                         );
+
+                        return (
+                          <Badge
+                            variant="outline"
+                            className={colorClass ? cardBrandColors[colorClass] : 'bg-gray-50 dark:bg-gray-900/20 text-gray-700 dark:text-gray-400'}
+                          >
+                            {cleanMethod || "Card"}
+                          </Badge>
+                        );
+                      })()}
+                    </td>
+                  )}
+                  {visibleColumns.has("merchant_account_id") && (
+                    <td className="py-3 px-4 text-sm font-mono text-xs">
+                      {row.merchant_account_id || "N/A"}
+                    </td>
+                  )}
+                  {visibleColumns.has("disbursement_date") && (
+                    <td className="py-3 px-4 text-sm">
+                      {row.disbursement_date ? formatDate(row.disbursement_date) : "N/A"}
+                    </td>
+                  )}
+                  {visibleColumns.has("settlement_amount") && (
+                    <td className="py-3 px-4 text-right text-sm font-bold text-green-600">
+                      {row.settlement_amount ? formatCurrency(row.settlement_amount) : "N/A"}
+                    </td>
+                  )}
+                </tr>
+                );
                       })
                     )}
-                  </tbody>
-                </table>
-              </div>
+              </tbody>
+            </table>
+        </div>
 
-              {/* Pagination Controls */}
-              <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 dark:bg-black rounded-lg border border-gray-200 dark:border-slate-700">
-                <div className="text-sm text-gray-600 dark:text-gray-300">
-                  Showing {processedRows.length === 0 ? 0 : startIndex + 1} to {Math.min(endIndex, processedRows.length)} of {processedRows.length} results
-                  {hasMoreServerRows ? " (more on server)" : ""}
-                </div>
-                <div className="flex gap-2">
-                  {hasMoreServerRows && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => loadData({ runReconcile: false, append: true })}
-                      disabled={isLoading || isLoadingMore}
-                      className="gap-2"
-                      title="Load more rows from selected period"
-                    >
-                      {isLoadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
-                      Load more
-                    </Button>
-                  )}
+        {/* Pagination Controls */}
+        <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+          <div className="text-sm text-gray-600 dark:text-gray-300">
+            Showing {processedRows.length === 0 ? 0 : startIndex + 1} to {Math.min(endIndex, processedRows.length)} of {processedRows.length} results
+            {hasMoreServerRows ? " (há mais no servidor)" : ""}
+          </div>
+          <div className="flex gap-2">
+            {hasMoreServerRows && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => loadData({ runReconcile: false, append: true })}
+                disabled={isLoading || isLoadingMore}
+                className="gap-2"
+                title="Carregar mais linhas do período selecionado"
+              >
+                {isLoadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
+                Carregar mais
+              </Button>
+            )}
 
-                  {totalPages > 1 && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(1)}
-                        disabled={currentPage === 1}
-                      >
-                        First
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(currentPage - 1)}
-                        disabled={currentPage === 1}
-                      >
-                        Previous
-                      </Button>
-                      <div className="flex items-center gap-2 px-3">
-                        <span className="text-sm font-medium">
-                          Page {adjustedCurrentPage} of {totalPages}
-                        </span>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                      >
-                        Next
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(totalPages)}
-                        disabled={currentPage === totalPages}
-                      >
-                        Last
-                      </Button>
-                    </>
-                  )}
+            {totalPages > 1 && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                >
+                  First
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <div className="flex items-center gap-2 px-3">
+                  <span className="text-sm font-medium">
+                    Page {adjustedCurrentPage} of {totalPages}
+                  </span>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                >
+                  Last
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
         </div >
       </div >
 
-      {/* Split Screen Panel */}
-      {
-        splitScreenUrl && (
-          <div className="fixed top-0 right-0 w-1/2 h-screen bg-white dark:bg-black shadow-2xl z-40 border-l-4 border-blue-500">
-            <div className="h-full flex flex-col">
-              <div className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white p-4 flex items-center justify-between">
-                <h2 className="text-lg font-bold">Bank Statement Details</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={closeSplitScreen}
-                  className="text-gray-900 dark:text-white hover:bg-white/10"
-                >
-                  <XIcon className="h-5 w-5" />
-                </Button>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <iframe
-                  src={splitScreenUrl}
-                  className="w-full h-full border-0"
-                  title="Bank Statement"
-                />
-              </div>
-            </div>
+    {/* Split Screen Panel */ }
+  {
+    splitScreenUrl && (
+      <div className="fixed top-0 right-0 w-1/2 h-screen bg-white dark:bg-slate-900 shadow-2xl z-40 border-l-4 border-blue-500">
+        <div className="h-full flex flex-col">
+          <div className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white p-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold">Bank Statement Details</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={closeSplitScreen}
+              className="text-white hover:bg-white/10"
+            >
+              <XIcon className="h-5 w-5" />
+            </Button>
           </div>
-        )
-      }
+          <div className="flex-1 overflow-hidden">
+            <iframe
+              src={splitScreenUrl}
+              className="w-full h-full border-0"
+              title="Bank Statement"
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
     </div >
   );
 }

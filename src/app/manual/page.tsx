@@ -32,6 +32,7 @@ import {
     Eye,
     Link2,
     Compass,
+    Lightbulb,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -1040,6 +1041,31 @@ function TechSpecs({ lang }: { lang: Lang }) {
     );
 }
 
+function WhatsNewSection({ lang }: { lang: Lang }) {
+    return (
+        <>
+            <p>{t(lang,
+                "The What's New page (/whats-new) provides a chronological feed of new features, improvements, and fixes added to DSD Finance Hub. A lightbulb icon in the top navigation bar shows a notification badge when unread updates are available.",
+                "La página Novedades (/whats-new) muestra un listado cronológico de nuevas funcionalidades, mejoras y correcciones añadidas a DSD Finance Hub. Un icono de bombilla en la barra de navegación superior muestra una notificación cuando hay actualizaciones sin leer."
+            )}</p>
+
+            <h4 className="font-semibold mt-4 mb-2">{t(lang, "How It Works", "Cómo Funciona")}</h4>
+            <ol className="list-decimal pl-5 space-y-1 text-sm">
+                <li>{t(lang, "A lightbulb icon (💡) appears next to the Product Manual icon in the header", "Un icono de bombilla (💡) aparece junto al icono del Manual en la cabecera")}</li>
+                <li>{t(lang, "An amber badge appears when new updates have been posted since your last visit", "Un indicador ámbar aparece cuando se han publicado actualizaciones desde tu última visita")}</li>
+                <li>{t(lang, "Click the lightbulb to open the What's New page", "Haz clic en la bombilla para abrir la página de Novedades")}</li>
+                <li>{t(lang, "Once you view the page, the badge clears automatically", "Una vez que veas la página, el indicador desaparece automáticamente")}</li>
+            </ol>
+
+            <h4 className="font-semibold mt-4 mb-2">{t(lang, "Release Notes Content", "Contenido de Notas de Versión")}</h4>
+            <p className="text-sm">{t(lang,
+                "Each entry includes a date, tag (New Feature / Improvement / Bug Fix), title, description, and a detailed list of changes. All content is presented in English.",
+                "Cada entrada incluye fecha, etiqueta (Nueva Funcionalidad / Mejora / Corrección), título, descripción y una lista detallada de cambios. Todo el contenido se presenta en inglés."
+            )}</p>
+        </>
+    );
+}
+
 function QuickReference({ lang }: { lang: Lang }) {
     return (
         <InfoTable
@@ -1255,6 +1281,75 @@ function DataFlows({ lang }: { lang: Lang }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  DSD B-i (Business Intelligence)                                    */
+/* ------------------------------------------------------------------ */
+
+function DSDBusinessIntelligence({ lang }: { lang: Lang }) {
+    return (
+        <>
+            <p>{t(lang,
+                "DSD B-i is a full BI Dashboard Builder platform accessible via the header icon. It allows users to create, customize, save, and share interactive dashboards with drag-and-drop measures, 14 chart types, and an AI assistant (DSD Intelligence).",
+                "DSD B-i es una plataforma completa de construcción de dashboards BI accesible desde el icono del header. Permite crear, personalizar, guardar y compartir dashboards interactivos con medidas drag-and-drop, 14 tipos de gráficos y un asistente IA (DSD Intelligence)."
+            )}</p>
+
+            <h4 className="font-semibold mt-4 mb-2">{t(lang, "Access & Navigation", "Acceso y Navegación")}</h4>
+            <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                <li>{t(lang, "Header icon (BarChart) → opens dropdown with: Build Dashboard, Ours Dashboards (public), My Dashboards (private)", "Icono del header (BarChart) → abre dropdown con: Build Dashboard, Ours Dashboards (públicos), My Dashboards (privados)")}</li>
+                <li>{t(lang, "Routes: /bi/build (new), /bi/build/[id] (edit), /bi/view/[id] (read-only)", "Rutas: /bi/build (nuevo), /bi/build/[id] (editar), /bi/view/[id] (solo lectura)")}</li>
+            </ul>
+
+            <h4 className="font-semibold mt-4 mb-2">{t(lang, "Dashboard Canvas", "Canvas del Dashboard")}</h4>
+            <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                <li>{t(lang, "4 horizontal slots, each configurable with layout options", "4 slots horizontales, cada uno configurable con opciones de layout")}</li>
+                <li>{t(lang, "Standard layouts: 5 Cards, 4 Cards, 2 Cards + 1 Chart, 1 Card + 1 Chart", "Layouts estándar: 5 Cards, 4 Cards, 2 Cards + 1 Chart, 1 Card + 1 Chart")}</li>
+                <li>{t(lang, "Expanded layouts (double height): 5 Cards + 1/2 Charts, 4 Cards + 1 Chart, 3 Cards + 1 Chart, 2 Cards + 2 Charts", "Layouts expandidos (doble altura): 5 Cards + 1/2 Charts, 4 Cards + 1 Chart, 3 Cards + 1 Chart, 2 Cards + 2 Charts")}</li>
+                <li>{t(lang, "Slots can be merged (expand to double size) for larger visualizations", "Los slots se pueden fusionar (expandir al doble) para visualizaciones más grandes")}</li>
+            </ul>
+
+            <h4 className="font-semibold mt-4 mb-2">{t(lang, "Chart Types (14)", "Tipos de Gráfico (14)")}</h4>
+            <p className="text-sm text-gray-700 dark:text-gray-300">{t(lang,
+                "Bar, Bar Horizontal, Bar Stacked, Line, Area, Area Stacked, Pie, Donut, Combo (Bar + Line), Radar, Treemap, Funnel, Scatter, Waterfall",
+                "Barras, Barras Horizontales, Barras Apiladas, Líneas, Área, Área Apilada, Circular, Donut, Combo (Barras + Líneas), Radar, Treemap, Embudo, Dispersión, Cascada"
+            )}</p>
+
+            <h4 className="font-semibold mt-4 mb-2">{t(lang, "Measure System (Power BI-style)", "Sistema de Medidas (estilo Power BI)")}</h4>
+            <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                <li>{t(lang, "40+ measures across 6 categories: Aggregation, Math, Time Intelligence, Comparison, Statistical, Logical", "40+ medidas en 6 categorías: Agregación, Matemáticas, Time Intelligence, Comparación, Estadísticas, Lógicas")}</li>
+                <li>{t(lang, "Drag measures from right sidebar onto Cards or Charts", "Arrastrar medidas del sidebar derecho a Cards o Charts")}</li>
+                <li>{t(lang, "Create custom measures via Measure Creator popup with configurable parameters", "Crear medidas personalizadas via popup Measure Creator con parámetros configurables")}</li>
+                <li>{t(lang, "Measures can be saved as public (shared) or private", "Las medidas se pueden guardar como públicas (compartidas) o privadas")}</li>
+            </ul>
+
+            <h4 className="font-semibold mt-4 mb-2">{t(lang, "Sidebars", "Barras Laterales")}</h4>
+            <InfoTable
+                headers={[t(lang, "Sidebar", "Sidebar"), t(lang, "Contents", "Contenido")]}
+                rows={[
+                    [t(lang, "Left — Actions", "Izquierdo — Acciones"), t(lang, "New, Clone, Save Private, Save Public, Close, Close & Save", "Nuevo, Clonar, Guardar Privado, Guardar Público, Cerrar, Cerrar y Guardar")],
+                    [t(lang, "Left — Comments", "Izquierdo — Comentarios"), t(lang, "Nested comment threads per dashboard", "Hilos de comentarios anidados por dashboard")],
+                    [t(lang, "Right — Variables & Measures", "Derecho — Variables y Medidas"), t(lang, "Catalog browse, search, drag-and-drop, create new", "Navegar catálogo, buscar, drag-and-drop, crear nuevo")],
+                    [t(lang, "Right — Filters", "Derecho — Filtros"), t(lang, "Date Range, Currency, Scope, Source quick filters", "Rango de Fechas, Moneda, Alcance, Filtros rápidos por Fuente")],
+                    [t(lang, "Right — Data Sources", "Derecho — Fuentes de Datos"), t(lang, "Available Supabase tables: csv_rows (by source), hubspot_deals, revenue_entries", "Tablas Supabase disponibles: csv_rows (por fuente), hubspot_deals, revenue_entries")],
+                    [t(lang, "Right — DSD Intelligence AI", "Derecho — DSD Intelligence IA"), t(lang, "AI chat: analyze data, suggest charts, create measures (OpenAI GPT-4o-mini)", "Chat IA: analizar datos, sugerir gráficos, crear medidas (OpenAI GPT-4o-mini)")],
+                ]}
+            />
+
+            <h4 className="font-semibold mt-4 mb-2">{t(lang, "Data Sources", "Fuentes de Datos")}</h4>
+            <InfoTable
+                headers={[t(lang, "Data", "Datos"), t(lang, "Source Table", "Tabla Fuente"), t(lang, "Filter", "Filtro")]}
+                rows={[
+                    [t(lang, "Revenue", "Ingresos"), "csv_rows", "source = invoice-orders / invoice-orders-usd"],
+                    [t(lang, "Expenses", "Gastos"), "invoices", "dre_impact = true, invoice_type ≠ BUDGET"],
+                    ["Bankinter EUR/USD", "csv_rows", "source = bankinter-eur / bankinter-usd"],
+                    ["Braintree EUR/USD", "csv_rows", "source = braintree-eur / braintree-usd"],
+                    ["Stripe / GoCardless", "csv_rows", "source = stripe / gocardless"],
+                    ["HubSpot", "hubspot_deals", "—"],
+                ]}
+            />
+        </>
+    );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main Page                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -1273,6 +1368,7 @@ export default function ManualPage() {
         { id: "ap", title: t(lang, "3.5 Accounts Payable", "3.5 Cuentas por Pagar"), icon: <Receipt size={18} />, content: <AccountsPayable lang={lang} /> },
         { id: "api", title: t(lang, "3.6 API Integrations", "3.6 Integraciones API"), icon: <Zap size={18} />, content: <APIIntegrations lang={lang} /> },
         { id: "reports", title: t(lang, "4. Reports & Dashboards", "4. Informes y Cuadros de Mando"), icon: <BarChart3 size={18} />, content: <ReportsSection lang={lang} /> },
+        { id: "bi", title: t(lang, "4.1 DSD B-i (Business Intelligence)", "4.1 DSD B-i (Inteligencia de Negocios)"), icon: <BarChart3 size={18} />, content: <DSDBusinessIntelligence lang={lang} /> },
         { id: "ar-recon", title: t(lang, "5.1 AR Reconciliation", "5.1 Conciliación de CC"), icon: <GitMerge size={18} />, content: <ARReconciliation lang={lang} /> },
         { id: "ap-recon", title: t(lang, "5.2 AP Reconciliation", "5.2 Conciliación de CP"), icon: <ArrowLeftRight size={18} />, content: <APReconciliation lang={lang} /> },
         { id: "ic-recon", title: t(lang, "5.3 Intercompany Reconciliation", "5.3 Conciliación Intercompañía"), icon: <Building2 size={18} />, content: <IntercompanyReconciliation lang={lang} /> },
@@ -1281,6 +1377,7 @@ export default function ManualPage() {
         { id: "settings", title: t(lang, "9. Settings & Administration", "9. Configuración y Administración"), icon: <Settings size={18} />, content: <SettingsAdmin lang={lang} /> },
         { id: "tech", title: t(lang, "10. Technical Specifications", "10. Especificaciones Técnicas"), icon: <Server size={18} />, content: <TechSpecs lang={lang} /> },
         { id: "tours", title: t(lang, "11. Guided Tours", "11. Tours Guiados"), icon: <Compass size={18} />, content: <GuidedToursSection lang={lang} /> },
+        { id: "whatsnew", title: t(lang, "12. What's New", "12. Novedades"), icon: <Lightbulb size={18} />, content: <WhatsNewSection lang={lang} /> },
         { id: "quickref", title: t(lang, "Quick Reference — What to Prepare", "Referencia Rápida — Qué Preparar"), icon: <CheckCircle2 size={18} />, content: <QuickReference lang={lang} /> },
     ];
 

@@ -12,6 +12,8 @@ import { useGlobalScope } from "@/contexts/global-scope-context";
 import { SCOPE_CONFIG } from "@/lib/scope-utils";
 import { ChevronDown, ChevronUp, Search, KanbanSquare, BookOpen } from "lucide-react";
 import { TourMenu } from "@/components/tour/TourMenu";
+import { WhatsNewIndicator } from "@/components/whats-new/WhatsNewIndicator";
+import { BIHeaderMenu } from "@/components/bi/BIHeaderMenu";
 
 export function TablerTopbar({
   mobileOpen,
@@ -77,7 +79,7 @@ export function TablerTopbar({
         <div className="app-container d-flex align-items-center justify-content-between w-100">
 
           {/* Lado Esquerdo: Logo + Nome */}
-          <div className="d-flex align-items-center">
+          <div className="d-flex align-items-center" style={{ flex: 1, minWidth: 0 }}>
             <button
               className="navbar-toggler border-gray-300 dark:border-gray-600 d-md-none me-2"
               type="button"
@@ -99,7 +101,7 @@ export function TablerTopbar({
           </div>
 
           {/* Centro: Toggle Menu + Search + Scope Selector + Label */}
-          <div className="d-none d-md-flex align-items-center gap-3 mx-3">
+          <div className="d-none d-md-flex align-items-center gap-3" style={{ flex: 0, whiteSpace: 'nowrap' }}>
             {/* Toggle Menu Button */}
             <button
               type="button"
@@ -156,7 +158,7 @@ export function TablerTopbar({
           </div>
 
           {/* Lado Direito: Workstream + Mailbox + Avatar */}
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center gap-2" style={{ flex: 1, minWidth: 0, justifyContent: 'flex-end' }}>
             {/* Workstream Link */}
             <Link
               href="/workstream"
@@ -181,6 +183,9 @@ export function TablerTopbar({
               <span className="d-none d-md-inline">DSD Workstream</span>
             </Link>
 
+            {/* DSD B-i Dashboard Builder */}
+            <BIHeaderMenu />
+
             {/* Guided Tours */}
             <TourMenu />
 
@@ -193,6 +198,9 @@ export function TablerTopbar({
             >
               <BookOpen size={20} className="text-gray-700 dark:text-gray-300" />
             </Link>
+
+            {/* What's New */}
+            <WhatsNewIndicator />
 
             {/* Mailbox (Notificações) */}
             <span data-tour="notifications"><NotificationBell /></span>
@@ -210,7 +218,7 @@ export function TablerTopbar({
       {navVisible && (
         <header className="navbar navbar-expand-md d-print-none" style={{ background: 'var(--nav-bg)', borderBottom: '1px solid var(--nav-border)' }}>
           <div className="app-container">
-            <div id="navbar-menu" className={"navbar-collapse " + (mobileOpen ? "d-block " : "d-none ") + "d-md-flex"}>
+            <div id="navbar-menu" className={"navbar-collapse " + (mobileOpen ? "d-block " : "d-none ") + "d-md-flex justify-content-center"}>
               {/* Mobile Search & Scope */}
               <div className="d-md-none py-2">
                 <div className="row g-2 align-items-center">

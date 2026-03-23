@@ -1,14 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Settings2, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { PayrollConceptMapping } from "@/components/app/payroll-concept-mapping";
 
 interface PayrollDataInput {
     period: string;
+    company?: string;
+    currency?: string;
+    departments?: any[];
+    employees?: any[];
+    totals?: any;
 }
 
 interface GenerateResponse {
@@ -47,6 +53,11 @@ export function PayrollInvoiceGenerator({
     const [targetYear, setTargetYear] = useState<number>(selectedYear);
     const [targetMonth, setTargetMonth] = useState<number>(parsedPeriod.month);
     const [mode, setMode] = useState<"create" | "overwrite">("create");
+    const [conceptMappingOpen, setConceptMappingOpen] = useState(false);
+
+    const hasFullData = Boolean(
+        payrollData?.employees?.length && payrollData?.departments?.length && payrollData?.totals,
+    );
 
     useEffect(() => {
         setTargetYear(selectedYear);
@@ -148,8 +159,18 @@ export function PayrollInvoiceGenerator({
                         </SelectContent>
                     </Select>
 
-                    <div className="md:col-span-1 flex items-center justify-end">
-                        <Button className="bg-violet-600 hover:bg-violet-700 text-white w-full" onClick={handleGenerate} disabled={generateLoading}>
+                    <div className="md:col-span-1 flex items-center justify-end gap-2">
+                        <Button
+                            variant="outline"
+                            className="border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-300 dark:hover:bg-violet-950/20"
+                            onClick={() => setConceptMappingOpen(true)}
+                            disabled={!hasFullData || generateLoading}
+                            title={!hasFullData ? "Upload payroll data first" : "Map concepts, review allocations and create invoices"}
+                        >
+                            <Settings2 className="h-4 w-4 mr-1" />
+                            Map & Create
+                        </Button>
+                        <Button className="bg-violet-600 hover:bg-violet-700 text-white" onClick={handleGenerate} disabled={generateLoading}>
                             {generateLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
                             Create Invoices
                         </Button>
@@ -159,6 +180,15 @@ export function PayrollInvoiceGenerator({
                 {errorMessage && <p className="text-sm text-red-500">{errorMessage}</p>}
                 {resultMessage && <p className="text-sm text-emerald-500">{resultMessage}</p>}
             </CardContent>
+
+            {hasFullData && (
+                <PayrollConceptMapping
+                    payrollData={payrollData as any}
+                    selectedYear={targetYear}
+                    open={conceptMappingOpen}
+                    onOpenChange={setConceptMappingOpen}
+                />
+            )}
         </Card>
     );
 }

@@ -135,7 +135,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                 </div>
                 <span className="truncate flex-1">{project.name}</span>
                 <button
-                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 transition-opacity"
+                    className="p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                     onClick={(e) => {
                         e.stopPropagation();
                         const rect = (e.target as HTMLElement).getBoundingClientRect();
@@ -391,15 +391,15 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                         <Archive className="h-3.5 w-3.5" /> Archive
                                     </button>
                                     {canDelete && (
-                                    <>
-                                    <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-                                    <button
-                                        className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-red-400 hover:bg-red-900/20 transition-colors"
-                                        onClick={() => deleteProjectById(project.id)}
-                                    >
-                                        <Trash2 className="h-3.5 w-3.5" /> Delete
-                                    </button>
-                                    </>
+                                        <>
+                                            <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+                                            <button
+                                                className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-red-400 hover:bg-red-900/20 transition-colors"
+                                                onClick={() => deleteProjectById(project.id)}
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" /> Delete
+                                            </button>
+                                        </>
                                     )}
                                 </>
                             );

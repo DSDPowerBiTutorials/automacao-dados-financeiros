@@ -18,6 +18,7 @@ Version 2.0 · March 2026
    - 3.5 [Accounts Payable Invoices](#35-accounts-payable-invoices)
    - 3.6 [API Integrations (Automated Sync)](#36-api-integrations-automated-sync)
 4. [Reports & Dashboards](#4-reports--dashboards)
+   - 4.1 [DSD B-i (Business Intelligence)](#41-dsd-b-i-business-intelligence)
 5. [Reconciliation Engine](#5-reconciliation-engine)
 6. [Master Data Management](#6-master-data-management)
 7. [Integrations](#7-integrations)
@@ -905,6 +906,69 @@ Watch how to use the Payment Schedule to track due dates, manage collaborators, 
 
 ---
 
+### 4.1 DSD B-i (BI Dashboard Builder)
+
+**Routes:** `/bi/build` (new dashboard), `/bi/build/[id]` (edit), `/bi/view/[id]` (read-only)
+
+DSD B-i is a full BI Dashboard Builder platform accessible via the **header icon** (BarChart). It allows users to create, customize, save, and share interactive dashboards with drag-and-drop measures, 14 chart types, and an AI assistant (DSD Intelligence).
+
+**Access & Navigation:**
+- Header icon → dropdown with: **Build Dashboard**, **Ours Dashboards** (public list), **My Dashboards** (private list)
+- No longer in the sidebar navigation — accessible exclusively via the header icon
+
+**Dashboard Canvas:**
+- 4 horizontal slots, each configurable with layout options
+- Standard layouts: 5 Cards, 4 Cards, 2 Cards + 1 Chart, 1 Card + 1 Chart
+- Expanded layouts (double height): 5 Cards + 1/2 Charts, 4 Cards + 1 Chart, 3 Cards + 1 Chart, 2 Cards + 2 Charts
+- Slots can be merged (expand to double size) for larger visualizations
+
+**Chart Types (14):**
+Bar, Bar Horizontal, Bar Stacked, Line, Area, Area Stacked, Pie, Donut, Combo (Bar + Line), Radar, Treemap, Funnel, Scatter, Waterfall
+
+**Measure System (Power BI-style):**
+- 40+ measures across 6 categories: Aggregation, Math, Time Intelligence, Comparison, Statistical, Logical
+- Drag measures from right sidebar onto Cards or Charts
+- Create custom measures via Measure Creator popup with configurable parameters
+- Measures can be saved as public (shared) or private
+
+**Sidebars:**
+
+| Sidebar | Contents |
+|---------|----------|
+| Left — Actions | New, Clone, Save Private, Save Public, Close, Close & Save |
+| Left — Comments | Nested comment threads per dashboard |
+| Right — Variables & Measures | Catalog browse, search, drag-and-drop, create new |
+| Right — Filters | Date Range, Currency, Scope, Source quick filters |
+| Right — Data Sources | Available Supabase tables: csv_rows (by source), hubspot_deals, revenue_entries |
+| Right — DSD Intelligence AI | AI chat: analyze data, suggest charts, create measures (OpenAI GPT-4o-mini) |
+
+**Data Sources:**
+
+| Data | Source Table | Filter |
+|------|-------------|--------|
+| Revenue | `csv_rows` | `source = invoice-orders / invoice-orders-usd` |
+| Expenses | `invoices` | `dre_impact = true`, `invoice_type ≠ BUDGET` |
+| Bankinter EUR/USD | `csv_rows` | `source = bankinter-eur / bankinter-usd` |
+| Braintree EUR/USD | `csv_rows` | `source = braintree-eur / braintree-usd` |
+| Stripe / GoCardless | `csv_rows` | `source = stripe / gocardless` |
+| HubSpot | `hubspot_deals` | — |
+
+**API Endpoints:**
+- `GET/POST /api/bi/dashboards` — List/create dashboards
+- `GET/PUT/DELETE /api/bi/dashboards/[id]` — Single dashboard CRUD
+- `POST /api/bi/dashboards/[id]/clone` — Clone dashboard
+- `GET/POST /api/bi/dashboards/[id]/comments` — Comment threads
+- `GET/POST /api/bi/measures` — List/create measures
+- `PUT/DELETE /api/bi/measures/[id]` — Update/delete measures
+- `POST /api/bi/ai/chat` — DSD Intelligence AI chat
+
+**Database Tables:**
+- `bi_dashboards` — Dashboard metadata + slots (JSONB)
+- `bi_measures` — User-created measures with config (JSONB)
+- `bi_dashboard_comments` — Nested comments with parent_id
+
+---
+
 ## 5. Reconciliation Engine
 
 The reconciliation engine is the core intelligence of FinanceFlow. It automatically matches transactions across different data sources to verify that every payment received matches a bank deposit, and every expense recorded has a corresponding bank debit.
@@ -1395,6 +1459,34 @@ Sales Insights pages show revenue breakdown per segment
 | **Sales Insights** | Invoice Orders imported with product descriptions (for auto FA classification) |
 | **P&L Report** | AP invoices (expenses) + AR/invoice data (revenue) imported |
 | **Cash Management** | Bank accounts configured + bank statements imported |
+
+---
+
+## 12. What's New
+
+The **What's New** page (`/whats-new`) provides a chronological feed of new features, improvements, and fixes added to DSD Finance Hub.
+
+### Lightbulb Indicator
+
+A **💡 lightbulb icon** appears in the top navigation bar, next to the Product Manual icon. When new updates have been posted since your last visit, an **amber badge** appears on the icon to alert you.
+
+### How It Works
+
+1. The lightbulb icon appears next to the Product Manual (📖) icon in the header
+2. An amber notification dot appears when there are unread updates
+3. Click the lightbulb to open the What's New page
+4. Once you view the page, the badge clears automatically (tracked via browser local storage)
+
+### Release Notes Content
+
+Each entry on the What's New page includes:
+- **Date** — When the update was released
+- **Tag** — New Feature / Improvement / Bug Fix
+- **Title** — Brief name of the change
+- **Description** — Summary of what changed and why
+- **Feature list** — Detailed bullet points of all changes included
+
+All content is presented in **English**.
 
 ---
 

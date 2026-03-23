@@ -76,6 +76,7 @@ export const NAV: NavGroup[] = withUnderConstruction([
         href: "/dashboard",
         icon: Home
       },
+
       {
         title: "Executive",
         href: "/executive",
@@ -303,75 +304,6 @@ export const NAV: NavGroup[] = withUnderConstruction([
         title: "Master Data",
         href: "/people/payroll/master-data",
         icon: Boxes
-      }
-    ]
-  },
-  {
-    label: "Integrations",
-    items: [
-      {
-        title: "QuickBooks Dashboard",
-        href: "/reports/quickbooks-usd",
-        icon: DollarSign,
-        children: [
-          {
-            title: "📊 All Transactions",
-            href: "/reports/quickbooks-usd",
-            icon: FileText
-          },
-          {
-            title: "📄 Invoices (A/R)",
-            href: "/reports/quickbooks-usd?tab=invoices",
-            icon: FileText
-          },
-          {
-            title: "💰 Payments Received",
-            href: "/reports/quickbooks-usd?tab=payments",
-            icon: DollarSign
-          },
-          {
-            title: "📋 Bills (A/P)",
-            href: "/reports/quickbooks-usd?tab=bills",
-            icon: CreditCard
-          },
-          {
-            title: "💸 Expenses",
-            href: "/reports/quickbooks-usd?tab=expenses",
-            icon: TrendingDown
-          }
-        ]
-      },
-      {
-        title: "HubSpot",
-        href: "/hubspot",
-        icon: Users2,
-        children: [
-          {
-            title: "Web Orders",
-            href: "/reports/hubspot",
-            icon: Briefcase
-          },
-          {
-            title: "Contacts",
-            href: "/hubspot/contacts",
-            icon: Contact
-          },
-          {
-            title: "Companies",
-            href: "/hubspot/companies",
-            icon: Company
-          },
-          {
-            title: "Pipeline Analytics",
-            href: "/hubspot/pipeline",
-            icon: BarChart4
-          },
-          {
-            title: "Sync Settings",
-            href: "/hubspot/settings",
-            icon: Settings2
-          }
-        ]
       }
     ]
   }
