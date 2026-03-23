@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getOpenAIClient() {
+    return new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? "" });
+}
 
 const SYSTEM_PROMPT = `You are DSD Intelligence, an AI assistant embedded in a BI Dashboard Builder.
 You help users analyze financial data, suggest chart types, create measures, and design dashboard layouts.
@@ -33,7 +35,7 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        const completion = await openai.chat.completions.create({
+        const completion = await getOpenAIClient().chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
                 { role: "system", content: SYSTEM_PROMPT },
