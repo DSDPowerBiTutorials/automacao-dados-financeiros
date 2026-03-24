@@ -14,7 +14,7 @@ import { SCOPE_CONFIG } from "@/lib/scope-utils";
 import { ChevronDown, ChevronUp, Search, KanbanSquare, BookOpen } from "lucide-react";
 import { TourMenu } from "@/components/tour/TourMenu";
 import { WhatsNewIndicator } from "@/components/whats-new/WhatsNewIndicator";
-import { BIHeaderMenu } from "@/components/bi/BIHeaderMenu";
+
 
 export function TablerTopbar({
   mobileOpen,
@@ -188,8 +188,7 @@ export function TablerTopbar({
               <span className="d-none d-md-inline">DSD Workstream</span>
             </Link>
 
-            {/* DSD B-i Dashboard Builder */}
-            <BIHeaderMenu />
+
 
             {/* Guided Tours */}
             <TourMenu />

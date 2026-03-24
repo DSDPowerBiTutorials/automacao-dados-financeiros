@@ -29,6 +29,7 @@ import {
   Contact,
   Building2 as Company,
   BarChart4,
+  Plus,
   Settings2,
   Package,
   Plug,
@@ -111,6 +112,23 @@ export const NAV: NavGroup[] = withUnderConstruction([
             href: "/executive/reports",
             icon: FileText,
             underConstruction: true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    label: "DSD B-i",
+    items: [
+      {
+        title: "DSD B-i",
+        href: "/bi",
+        icon: BarChart4,
+        children: [
+          {
+            title: "Build Dashboard",
+            href: "/bi/build",
+            icon: Plus
           }
         ]
       }
