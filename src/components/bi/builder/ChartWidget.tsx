@@ -56,6 +56,8 @@ export function ChartWidget({ config, onUpdate, height = 200, dropId }: ChartWid
         data: { type: "chart", onDrop: (measureId: string) => onUpdate({ measureIds: [...config.measureIds, measureId] }) },
     });
 
+    const isEmpty = config.measureIds.length === 0;
+
     const renderChart = () => {
         const commonAxis = { tick: { fontSize: 9, fill: "#9ca3af" }, axisLine: false, tickLine: false };
 
@@ -216,6 +218,55 @@ export function ChartWidget({ config, onUpdate, height = 200, dropId }: ChartWid
                 );
         }
     };
+
+    if (isEmpty) {
+        return (
+            <div ref={setNodeRef} className="relative" style={{ height }}>
+                <div
+                    className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center gap-2 h-full transition-all cursor-pointer
+                        ${isOver ? "border-[#FF7300] bg-[#FF7300]/10" : "border-gray-300 dark:border-gray-700 hover:border-[#FF7300] bg-gray-50/50 dark:bg-gray-900/50"}`}
+                    onClick={() => setShowConfig(true)}
+                >
+                    <BarChart3 size={20} className="text-gray-300 dark:text-gray-600" />
+                    <span className="text-[9px] text-gray-400">Drop measure or click to configure chart</span>
+                </div>
+                {showConfig && (
+                    <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 max-h-60 overflow-y-auto">
+                        <input
+                            type="text"
+                            value={config.title ?? ""}
+                            onChange={(e) => onUpdate({ title: e.target.value })}
+                            placeholder="Chart title"
+                            className="w-full text-xs px-2 py-1.5 mb-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-[#FF7300] outline-none"
+                        />
+                        <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Chart Type</p>
+                        <div className="grid grid-cols-3 gap-1.5">
+                            {CHART_TYPE_OPTIONS.map((opt) => {
+                                const Icon = opt.icon;
+                                return (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => onUpdate({ chartType: opt.value })}
+                                        className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-medium transition-colors
+                                            ${config.chartType === opt.value
+                                                ? "bg-[#FF7300] text-white"
+                                                : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            }`}
+                                    >
+                                        <Icon size={10} />
+                                        {opt.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <button onClick={() => setShowConfig(false)} className="w-full mt-2 text-[10px] text-[#FF7300] hover:underline font-medium">
+                            Done
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div
