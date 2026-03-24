@@ -4,6 +4,8 @@ import { useState } from "react";
 import { TrendingUp, DollarSign, Hash, Percent, GripVertical, Settings } from "lucide-react";
 import { type CardWidgetConfig } from "@/lib/bi-types";
 import { useDroppable } from "@dnd-kit/core";
+import { MeasureSelector } from "@/components/bi/builder/MeasureSelector";
+import { FilterBuilder } from "@/components/bi/builder/FilterBuilder";
 
 interface CardWidgetProps {
     config: CardWidgetConfig;
@@ -40,7 +42,7 @@ export function CardWidget({ config, onUpdate, dropId }: CardWidgetProps) {
                     <span className="text-[9px] text-gray-400">Drop measure or click to configure</span>
                 </div>
                 {editing && (
-                    <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 space-y-2">
+                    <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 space-y-2 max-h-[320px] overflow-y-auto">
                         <input
                             type="text"
                             value={config.label}
@@ -48,6 +50,10 @@ export function CardWidget({ config, onUpdate, dropId }: CardWidgetProps) {
                             placeholder="Card label"
                             className="w-full text-xs px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-[#FF7300] outline-none"
                             autoFocus
+                        />
+                        <MeasureSelector
+                            selectedId={config.measureId}
+                            onSelect={(id, label) => onUpdate({ measureId: id, label })}
                         />
                         <select
                             value={config.format ?? "currency"}
@@ -58,6 +64,10 @@ export function CardWidget({ config, onUpdate, dropId }: CardWidgetProps) {
                             <option value="number">Number</option>
                             <option value="percent">Percent (%)</option>
                         </select>
+                        <FilterBuilder
+                            filters={config.filters ?? []}
+                            onChange={(filters) => onUpdate({ filters })}
+                        />
                         <button onClick={() => setEditing(false)} className="w-full text-[10px] text-[#FF7300] hover:underline font-medium">
                             Done
                         </button>
@@ -94,13 +104,17 @@ export function CardWidget({ config, onUpdate, dropId }: CardWidgetProps) {
             </p>
 
             {editing && (
-                <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 space-y-2">
+                <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 space-y-2 max-h-[320px] overflow-y-auto">
                     <input
                         type="text"
                         value={config.label}
                         onChange={(e) => onUpdate({ label: e.target.value })}
                         placeholder="Card label"
                         className="w-full text-xs px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-[#FF7300] outline-none"
+                    />
+                    <MeasureSelector
+                        selectedId={config.measureId}
+                        onSelect={(id, label) => onUpdate({ measureId: id, label })}
                     />
                     <select
                         value={config.format ?? "currency"}
@@ -111,6 +125,10 @@ export function CardWidget({ config, onUpdate, dropId }: CardWidgetProps) {
                         <option value="number">Number</option>
                         <option value="percent">Percent (%)</option>
                     </select>
+                    <FilterBuilder
+                        filters={config.filters ?? []}
+                        onChange={(filters) => onUpdate({ filters })}
+                    />
                     <button onClick={() => setEditing(false)} className="w-full text-[10px] text-[#FF7300] hover:underline font-medium">
                         Done
                     </button>

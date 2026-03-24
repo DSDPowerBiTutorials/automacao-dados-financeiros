@@ -5,7 +5,9 @@ import {
     PanelLeftClose, PanelLeftOpen,
     Plus, Copy, Save, Globe, Lock, X, LogOut,
     Loader2, MessageSquare, Send, User,
+    ChevronDown, ChevronRight, FileText,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface LeftSidebarProps {
     open: boolean;
@@ -18,6 +20,7 @@ interface LeftSidebarProps {
     onClose: () => void;
     onCloseSaved: () => void;
     saving: boolean;
+    userId?: string;
 }
 
 interface Comment {
@@ -32,18 +35,26 @@ interface Comment {
 export function BuilderLeftSidebar({
     open, onToggle, dashboardId,
     onNew, onClone, onSavePrivate, onSavePublic, onClose, onCloseSaved,
-    saving,
+    saving, userId,
 }: LeftSidebarProps) {
+    const router = useRouter();
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState("");
     const [loadingComments, setLoadingComments] = useState(false);
     const [replyTo, setReplyTo] = useState<string | null>(null);
+    const [myDashboards, setMyDashboards] = useState<{id: string; title: string; updatedAt: string}[]>([]);
+    const [publicDashboards, setPublicDashboards] = useState<{id: string; title: string; authorName: string; updatedAt: string}[]>([]);
+    const [loadingDashboards, setLoadingDashboards] = useState(false);
+    const [myOpen, setMyOpen] = useState(true);
+    const [publicOpen, setPublicOpen] = useState(false);
 
     useEffect(() => {
         if (dashboardId && open) {
             loadComments();
         }
     }, [dashboardId, open]);
+
+    useEffect(() => { if (open) loadDashboards(); }, [open, userId]);
 
     async function loadComments() {
         if (!dashboardId) return;
@@ -75,6 +86,23 @@ export function BuilderLeftSidebar({
         } catch {
             // silently fail
         }
+    }
+
+    async function loadDashboards() {
+        setLoadingDashboards(true);
+        try {
+            const [mineRes, pubRes] = await Promise.all([
+                userId ? fetch(`/api/bi/dashboards?filter=mine&userId=${encodeURIComponent(userId)}`) : Promise.resolve(null),
+                fetch(`/api/bi/dashboards?filter=public`),
+            ]);
+            if (mineRes) {
+                const d = await mineRes.json();
+                if (d.success) setMyDashboards(d.dashboards ?? []);
+            }
+            const p = await pubRes.json();
+            if (p.success) setPublicDashboards(p.dashboards ?? []);
+        } catch { /* silently fail */ }
+        finally { setLoadingDashboards(false); }
     }
 
     if (!open) {
@@ -124,6 +152,63 @@ export function BuilderLeftSidebar({
                     onClick={onCloseSaved}
                     variant="ghost"
                 />
+            </div>
+
+            {/* Dashboard Lists */}
+            <div className="border-b border-gray-200 dark:border-gray-800">
+                <button onClick={() => setMyOpen(!myOpen)}
+                    className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                        <Lock size={10} /> My Dashboards
+                    </span>
+                    {myOpen ? <ChevronDown size={10} className="text-gray-400" /> : <ChevronRight size={10} className="text-gray-400" />}
+                </button>
+                {myOpen && (
+                    <div className="px-3 pb-2 space-y-0.5 max-h-[160px] overflow-y-auto">
+                        {loadingDashboards ? (
+                            <div className="flex justify-center py-2"><Loader2 size={12} className="animate-spin text-gray-400" /></div>
+                        ) : myDashboards.length === 0 ? (
+                            <p className="text-[9px] text-gray-400 text-center py-2">No private dashboards</p>
+                        ) : myDashboards.map(d => (
+                            <button key={d.id} onClick={() => router.push(`/bi/build/${d.id}`)}
+                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-colors
+                                    ${d.id === dashboardId ? "bg-[#FF7300]/10 text-[#FF7300]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                                <FileText size={10} className="shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] font-medium truncate">{d.title}</p>
+                                    <p className="text-[8px] text-gray-400">{new Date(d.updatedAt).toLocaleDateString("en-GB",{day:"2-digit",month:"short"})}</p>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                <button onClick={() => setPublicOpen(!publicOpen)}
+                    className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                        <Globe size={10} /> Public Dashboards
+                    </span>
+                    {publicOpen ? <ChevronDown size={10} className="text-gray-400" /> : <ChevronRight size={10} className="text-gray-400" />}
+                </button>
+                {publicOpen && (
+                    <div className="px-3 pb-2 space-y-0.5 max-h-[160px] overflow-y-auto">
+                        {loadingDashboards ? (
+                            <div className="flex justify-center py-2"><Loader2 size={12} className="animate-spin text-gray-400" /></div>
+                        ) : publicDashboards.length === 0 ? (
+                            <p className="text-[9px] text-gray-400 text-center py-2">No public dashboards</p>
+                        ) : publicDashboards.map(d => (
+                            <button key={d.id} onClick={() => router.push(`/bi/build/${d.id}`)}
+                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-colors
+                                    ${d.id === dashboardId ? "bg-[#FF7300]/10 text-[#FF7300]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                                <FileText size={10} className="shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] font-medium truncate">{d.title}</p>
+                                    <p className="text-[8px] text-gray-400">{d.authorName} · {new Date(d.updatedAt).toLocaleDateString("en-GB",{day:"2-digit",month:"short"})}</p>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Comments Section */}

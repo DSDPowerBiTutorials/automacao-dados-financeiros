@@ -154,6 +154,7 @@ export default function BuildDashboardPage() {
                 onClose={handleClose}
                 onCloseSaved={async () => { await handleSave(dashboard.isPublic); handleClose(); }}
                 saving={saving}
+                userId={user?.id}
             />
 
             {/* Main Canvas */}

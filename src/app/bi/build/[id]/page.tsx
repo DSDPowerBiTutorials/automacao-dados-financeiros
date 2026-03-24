@@ -163,6 +163,7 @@ export default function EditDashboardPage({ params }: { params: Promise<{ id: st
                     onClose={handleClose}
                     onCloseSaved={async () => { await handleSave(); handleClose(); }}
                     saving={saving}
+                    userId={user?.id}
                 />
 
                 <div className="flex-1 overflow-y-auto">

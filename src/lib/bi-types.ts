@@ -88,6 +88,7 @@ export interface CardWidgetConfig {
     icon?: string;
     color?: string;
     format?: "currency" | "number" | "percent";
+    filters?: WidgetFilter[];
 }
 
 export interface ChartWidgetConfig {
@@ -96,6 +97,7 @@ export interface ChartWidgetConfig {
     title?: string;
     showLegend?: boolean;
     showGrid?: boolean;
+    filters?: WidgetFilter[];
 }
 
 export interface DashboardSlotConfig {
@@ -204,3 +206,25 @@ export interface UserMeasure {
 // ─── Right Sidebar Tabs ────────────────────────────────────────────
 
 export type RightSidebarTab = "variables" | "filters" | "datasources" | "ai";
+
+// ─── Widget-level Filters ──────────────────────────────────────────
+
+export type FilterOperator = "=" | "!=" | ">" | ">=" | "<" | "<=" | "contains" | "in";
+
+export interface WidgetFilter {
+    id: string;
+    fieldKey: string;
+    operator: FilterOperator;
+    value: string;
+}
+
+export const FILTER_OPERATORS: { value: FilterOperator; label: string; types: string[] }[] = [
+    { value: "=", label: "Equals", types: ["number", "text", "date", "boolean", "currency"] },
+    { value: "!=", label: "Not equals", types: ["number", "text", "date", "boolean", "currency"] },
+    { value: ">", label: "Greater than", types: ["number", "date", "currency"] },
+    { value: ">=", label: "Greater or equal", types: ["number", "date", "currency"] },
+    { value: "<", label: "Less than", types: ["number", "date", "currency"] },
+    { value: "<=", label: "Less or equal", types: ["number", "date", "currency"] },
+    { value: "contains", label: "Contains", types: ["text"] },
+    { value: "in", label: "In list", types: ["text"] },
+];

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Settings, BarChart3, LineChart, AreaChart as AreaChartIcon, PieChart as PieChartIcon } from "lucide-react";
 import { type ChartWidgetConfig, type ChartType } from "@/lib/bi-types";
 import { useDroppable } from "@dnd-kit/core";
+import { MeasureSelector } from "@/components/bi/builder/MeasureSelector";
+import { FilterBuilder } from "@/components/bi/builder/FilterBuilder";
 import {
     BarChart, Bar, LineChart as RechartsLineChart, Line,
     AreaChart, Area, PieChart, Pie, Cell,
@@ -231,15 +233,21 @@ export function ChartWidget({ config, onUpdate, height = 200, dropId }: ChartWid
                     <span className="text-[9px] text-gray-400">Drop measure or click to configure chart</span>
                 </div>
                 {showConfig && (
-                    <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 max-h-60 overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 max-h-[400px] overflow-y-auto space-y-2">
                         <input
                             type="text"
                             value={config.title ?? ""}
                             onChange={(e) => onUpdate({ title: e.target.value })}
                             placeholder="Chart title"
-                            className="w-full text-xs px-2 py-1.5 mb-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-[#FF7300] outline-none"
+                            className="w-full text-xs px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-[#FF7300] outline-none"
                         />
-                        <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Chart Type</p>
+                        <MeasureSelector
+                            multiple
+                            selectedIds={config.measureIds}
+                            onAdd={(id) => onUpdate({ measureIds: [...config.measureIds, id] })}
+                            onRemove={(id) => onUpdate({ measureIds: config.measureIds.filter(m => m !== id) })}
+                        />
+                        <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Chart Type</p>
                         <div className="grid grid-cols-3 gap-1.5">
                             {CHART_TYPE_OPTIONS.map((opt) => {
                                 const Icon = opt.icon;
@@ -259,7 +267,11 @@ export function ChartWidget({ config, onUpdate, height = 200, dropId }: ChartWid
                                 );
                             })}
                         </div>
-                        <button onClick={() => setShowConfig(false)} className="w-full mt-2 text-[10px] text-[#FF7300] hover:underline font-medium">
+                        <FilterBuilder
+                            filters={config.filters ?? []}
+                            onChange={(filters) => onUpdate({ filters })}
+                        />
+                        <button onClick={() => setShowConfig(false)} className="w-full text-[10px] text-[#FF7300] hover:underline font-medium">
                             Done
                         </button>
                     </div>
@@ -295,17 +307,22 @@ export function ChartWidget({ config, onUpdate, height = 200, dropId }: ChartWid
                 </ResponsiveContainer>
             </div>
 
-            {/* Chart type config panel */}
             {showConfig && (
-                <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 max-h-60 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 max-h-[400px] overflow-y-auto space-y-2">
                     <input
                         type="text"
                         value={config.title ?? ""}
                         onChange={(e) => onUpdate({ title: e.target.value })}
                         placeholder="Chart title"
-                        className="w-full text-xs px-2 py-1.5 mb-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-[#FF7300] outline-none"
+                        className="w-full text-xs px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-[#FF7300] outline-none"
                     />
-                    <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Chart Type</p>
+                    <MeasureSelector
+                        multiple
+                        selectedIds={config.measureIds}
+                        onAdd={(id) => onUpdate({ measureIds: [...config.measureIds, id] })}
+                        onRemove={(id) => onUpdate({ measureIds: config.measureIds.filter(m => m !== id) })}
+                    />
+                    <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Chart Type</p>
                     <div className="grid grid-cols-3 gap-1.5">
                         {CHART_TYPE_OPTIONS.map((opt) => {
                             const Icon = opt.icon;
@@ -325,27 +342,21 @@ export function ChartWidget({ config, onUpdate, height = 200, dropId }: ChartWid
                             );
                         })}
                     </div>
-                    <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-3 pt-1 border-t border-gray-200 dark:border-gray-700">
                         <label className="flex items-center gap-1.5 text-[9px] text-gray-500">
-                            <input
-                                type="checkbox"
-                                checked={config.showLegend ?? true}
-                                onChange={(e) => onUpdate({ showLegend: e.target.checked })}
-                                className="rounded border-gray-300"
-                            />
+                            <input type="checkbox" checked={config.showLegend ?? true} onChange={(e) => onUpdate({ showLegend: e.target.checked })} className="rounded border-gray-300" />
                             Legend
                         </label>
                         <label className="flex items-center gap-1.5 text-[9px] text-gray-500">
-                            <input
-                                type="checkbox"
-                                checked={config.showGrid ?? true}
-                                onChange={(e) => onUpdate({ showGrid: e.target.checked })}
-                                className="rounded border-gray-300"
-                            />
+                            <input type="checkbox" checked={config.showGrid ?? true} onChange={(e) => onUpdate({ showGrid: e.target.checked })} className="rounded border-gray-300" />
                             Grid
                         </label>
                     </div>
-                    <button onClick={() => setShowConfig(false)} className="w-full mt-2 text-[10px] text-[#FF7300] hover:underline font-medium">
+                    <FilterBuilder
+                        filters={config.filters ?? []}
+                        onChange={(filters) => onUpdate({ filters })}
+                    />
+                    <button onClick={() => setShowConfig(false)} className="w-full text-[10px] text-[#FF7300] hover:underline font-medium">
                         Done
                     </button>
                 </div>
