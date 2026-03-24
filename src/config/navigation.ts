@@ -78,7 +78,18 @@ export const NAV: NavGroup[] = withUnderConstruction([
         href: "/dashboard",
         icon: Home
       },
-
+      {
+        title: "DSD B-i",
+        href: "/bi",
+        icon: BarChart4,
+        children: [
+          {
+            title: "Build Dashboard",
+            href: "/bi/build",
+            icon: Plus
+          }
+        ]
+      },
       {
         title: "Executive",
         href: "/executive",
@@ -112,23 +123,6 @@ export const NAV: NavGroup[] = withUnderConstruction([
             href: "/executive/reports",
             icon: FileText,
             underConstruction: true
-          }
-        ]
-      }
-    ]
-  },
-  {
-    label: "DSD B-i",
-    items: [
-      {
-        title: "DSD B-i",
-        href: "/bi",
-        icon: BarChart4,
-        children: [
-          {
-            title: "Build Dashboard",
-            href: "/bi/build",
-            icon: Plus
           }
         ]
       }
