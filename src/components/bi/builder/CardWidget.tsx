@@ -8,12 +8,13 @@ import { useDroppable } from "@dnd-kit/core";
 interface CardWidgetProps {
     config: CardWidgetConfig;
     onUpdate: (updates: Partial<CardWidgetConfig>) => void;
+    dropId: string;
 }
 
-export function CardWidget({ config, onUpdate }: CardWidgetProps) {
+export function CardWidget({ config, onUpdate, dropId }: CardWidgetProps) {
     const [editing, setEditing] = useState(false);
     const { setNodeRef, isOver } = useDroppable({
-        id: `card-drop-${Math.random().toString(36).slice(2)}`,
+        id: dropId,
         data: { type: "card", onDrop: (measureId: string, label: string) => onUpdate({ measureId, label }) },
     });
 

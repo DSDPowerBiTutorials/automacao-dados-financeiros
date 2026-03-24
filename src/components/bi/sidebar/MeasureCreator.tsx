@@ -75,13 +75,12 @@ function FieldPickerDropdown({ value, onChange, exclude }: { value: string; onCh
                                                         onChange(field.key);
                                                         setOpen(false);
                                                     }}
-                                                    className={`w-full text-left px-6 py-1.5 text-[11px] transition-colors ${
-                                                        isExcluded
+                                                    className={`w-full text-left px-6 py-1.5 text-[11px] transition-colors ${isExcluded
                                                             ? "text-gray-300 dark:text-gray-600 cursor-not-allowed"
                                                             : value === field.key
                                                                 ? "bg-[#FF7300]/10 text-[#FF7300] font-medium"
                                                                 : "text-gray-700 dark:text-gray-300 hover:bg-[#FF7300]/10"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {field.label}
                                                     <span className="ml-1.5 text-[9px] text-gray-400">{field.dataType}</span>

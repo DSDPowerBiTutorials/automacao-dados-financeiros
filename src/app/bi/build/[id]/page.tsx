@@ -9,6 +9,7 @@ import { DashboardCanvas } from "@/components/bi/builder/DashboardCanvas";
 import { DashboardHeader } from "@/components/bi/builder/DashboardHeader";
 import { BuilderLeftSidebar } from "@/components/bi/sidebar/LeftSidebar";
 import { BuilderRightSidebar } from "@/components/bi/sidebar/RightSidebar";
+import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 
 export default function EditDashboardPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -19,6 +20,24 @@ export default function EditDashboardPage({ params }: { params: Promise<{ id: st
     const [saving, setSaving] = useState(false);
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(true);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    );
+
+    const handleDragEnd = useCallback((event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over) return;
+        const dragData = active.data.current as { type: string; measureId: string; label: string } | undefined;
+        const dropData = over.data.current as { type: string; onDrop: (...args: string[]) => void } | undefined;
+        if (!dragData || !dropData || dragData.type !== "measure") return;
+
+        if (dropData.type === "card" && typeof dropData.onDrop === "function") {
+            dropData.onDrop(dragData.measureId, dragData.label);
+        } else if (dropData.type === "chart" && typeof dropData.onDrop === "function") {
+            dropData.onDrop(dragData.measureId);
+        }
+    }, []);
 
     useEffect(() => {
         async function load() {
@@ -122,50 +141,52 @@ export default function EditDashboardPage({ params }: { params: Promise<{ id: st
     }
 
     return (
-        <div className="flex h-[calc(100vh-120px)] bg-gray-50 dark:bg-[#0a0a0a] overflow-hidden">
-            <BuilderLeftSidebar
-                open={leftOpen}
-                onToggle={() => setLeftOpen(!leftOpen)}
-                dashboardId={dashboard.id}
-                onNew={handleNew}
-                onClone={handleClone}
-                onSavePrivate={() => handleSave(false)}
-                onSavePublic={() => handleSave(true)}
-                onClose={handleClose}
-                onCloseSaved={async () => { await handleSave(); handleClose(); }}
-                saving={saving}
-            />
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <div className="flex h-[calc(100vh-120px)] bg-gray-50 dark:bg-[#0a0a0a] overflow-hidden">
+                <BuilderLeftSidebar
+                    open={leftOpen}
+                    onToggle={() => setLeftOpen(!leftOpen)}
+                    dashboardId={dashboard.id}
+                    onNew={handleNew}
+                    onClone={handleClone}
+                    onSavePrivate={() => handleSave(false)}
+                    onSavePublic={() => handleSave(true)}
+                    onClose={handleClose}
+                    onCloseSaved={async () => { await handleSave(); handleClose(); }}
+                    saving={saving}
+                />
 
-            <div className="flex-1 overflow-y-auto">
-                <div className="max-w-[1400px] mx-auto p-4 md:p-6 space-y-4">
-                    <DashboardHeader
-                        title={dashboard.title}
-                        authorName={dashboard.authorName}
-                        createdAt={dashboard.createdAt}
-                        updatedAt={dashboard.updatedAt}
-                        onTitleChange={(title) => setDashboard((prev) => prev ? { ...prev, title } : prev)}
-                    />
+                <div className="flex-1 overflow-y-auto">
+                    <div className="max-w-[1400px] mx-auto p-4 md:p-6 space-y-4">
+                        <DashboardHeader
+                            title={dashboard.title}
+                            authorName={dashboard.authorName}
+                            createdAt={dashboard.createdAt}
+                            updatedAt={dashboard.updatedAt}
+                            onTitleChange={(title) => setDashboard((prev) => prev ? { ...prev, title } : prev)}
+                        />
 
-                    {saving && (
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <Loader2 size={14} className="animate-spin" />
-                            Saving...
-                        </div>
-                    )}
+                        {saving && (
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <Loader2 size={14} className="animate-spin" />
+                                Saving...
+                            </div>
+                        )}
 
-                    <DashboardCanvas
-                        slots={dashboard.slots}
-                        onUpdateSlot={updateSlot}
-                        onExpandSlot={expandSlot}
-                    />
+                        <DashboardCanvas
+                            slots={dashboard.slots}
+                            onUpdateSlot={updateSlot}
+                            onExpandSlot={expandSlot}
+                        />
+                    </div>
                 </div>
-            </div>
 
-            <BuilderRightSidebar
-                open={rightOpen}
-                onToggle={() => setRightOpen(!rightOpen)}
-                dashboardId={dashboard.id}
-            />
-        </div>
+                <BuilderRightSidebar
+                    open={rightOpen}
+                    onToggle={() => setRightOpen(!rightOpen)}
+                    dashboardId={dashboard.id}
+                />
+            </div>
+        </DndContext>
     );
 }

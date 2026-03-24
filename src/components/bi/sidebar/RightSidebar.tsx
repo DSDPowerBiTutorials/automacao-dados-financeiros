@@ -11,6 +11,7 @@ import { type RightSidebarTab, type UserMeasure, type MeasureDefinition } from "
 import { MEASURE_CATALOG } from "@/lib/bi-measure-catalog";
 import { useDraggable } from "@dnd-kit/core";
 import { MeasureCreator } from "./MeasureCreator";
+import { MeasureDetailDialog } from "./MeasureDetailDialog";
 
 interface RightSidebarProps {
     open: boolean;
@@ -85,6 +86,8 @@ function VariablesTab({ dashboardId }: { dashboardId: string }) {
     const [measures, setMeasures] = useState<UserMeasure[]>([]);
     const [showCreator, setShowCreator] = useState(false);
     const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+    const [inspectCatalog, setInspectCatalog] = useState<MeasureDefinition | null>(null);
+    const [inspectUser, setInspectUser] = useState<UserMeasure | null>(null);
 
     useEffect(() => {
         loadMeasures();
@@ -136,7 +139,7 @@ function VariablesTab({ dashboardId }: { dashboardId: string }) {
                     <h4 className="text-[9px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 px-1">My Measures</h4>
                     <div className="space-y-0.5">
                         {measures.map((m) => (
-                            <DraggableMeasureItem key={m.id} id={m.id} label={m.name} icon="📐" />
+                            <DraggableMeasureItem key={m.id} id={m.id} label={m.name} icon="📐" onClick={() => setInspectUser(m)} />
                         ))}
                     </div>
                 </div>
@@ -160,7 +163,7 @@ function VariablesTab({ dashboardId }: { dashboardId: string }) {
                             {isExpanded && (
                                 <div className="mt-0.5 space-y-0.5 ml-2">
                                     {items.map((m) => (
-                                        <DraggableMeasureItem key={m.type} id={m.type} label={m.label} icon={m.icon} />
+                                        <DraggableMeasureItem key={m.type} id={m.type} label={m.label} icon={m.icon} onClick={() => setInspectCatalog(m)} />
                                     ))}
                                 </div>
                             )}
@@ -175,11 +178,18 @@ function VariablesTab({ dashboardId }: { dashboardId: string }) {
                     onCreated={() => { setShowCreator(false); loadMeasures(); }}
                 />
             )}
+
+            {inspectCatalog && (
+                <MeasureDetailDialog catalogMeasure={inspectCatalog} onClose={() => setInspectCatalog(null)} />
+            )}
+            {inspectUser && (
+                <MeasureDetailDialog userMeasure={inspectUser} onClose={() => setInspectUser(null)} />
+            )}
         </div>
     );
 }
 
-function DraggableMeasureItem({ id, label, icon }: { id: string; label: string; icon: string }) {
+function DraggableMeasureItem({ id, label, icon, onClick }: { id: string; label: string; icon: string; onClick?: () => void }) {
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: `measure-${id}`,
         data: { type: "measure", measureId: id, label },
@@ -188,14 +198,16 @@ function DraggableMeasureItem({ id, label, icon }: { id: string; label: string; 
     return (
         <div
             ref={setNodeRef}
-            {...listeners}
-            {...attributes}
-            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-grab text-[10px] transition-all
+            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-[10px] transition-all
                 ${isDragging ? "opacity-50 bg-[#FF7300]/10" : "hover:bg-gray-50 dark:hover:bg-gray-800"}`}
         >
-            <GripVertical size={8} className="text-gray-300" />
-            <span>{icon}</span>
-            <span className="text-gray-700 dark:text-gray-300 truncate">{label}</span>
+            <span {...listeners} {...attributes} className="cursor-grab touch-none">
+                <GripVertical size={8} className="text-gray-300" />
+            </span>
+            <button type="button" onClick={onClick} className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer">
+                <span>{icon}</span>
+                <span className="text-gray-700 dark:text-gray-300 truncate">{label}</span>
+            </button>
         </div>
     );
 }

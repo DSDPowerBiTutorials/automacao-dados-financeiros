@@ -13,6 +13,7 @@ interface SlotRendererProps {
 
 export function SlotRenderer({ slot, onUpdateSlot, onClear }: SlotRendererProps) {
     const { config, layoutType, slotSize } = slot;
+    const sid = slot.id; // stable prefix for drop IDs
 
     const updateCard = (cardIndex: number, updates: Partial<CardWidgetConfig>) => {
         const newCards = [...config.cards];
@@ -32,7 +33,7 @@ export function SlotRenderer({ slot, onUpdateSlot, onClear }: SlotRendererProps)
                 return (
                     <div className="grid grid-cols-5 gap-3">
                         {config.cards.map((card, i) => (
-                            <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} />
+                            <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} dropId={`${sid}-card-${i}`} />
                         ))}
                     </div>
                 );
@@ -41,7 +42,7 @@ export function SlotRenderer({ slot, onUpdateSlot, onClear }: SlotRendererProps)
                 return (
                     <div className="grid grid-cols-4 gap-3">
                         {config.cards.map((card, i) => (
-                            <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} />
+                            <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} dropId={`${sid}-card-${i}`} />
                         ))}
                     </div>
                 );
@@ -51,12 +52,12 @@ export function SlotRenderer({ slot, onUpdateSlot, onClear }: SlotRendererProps)
                     <div className="grid grid-cols-3 gap-3">
                         <div className="col-span-1 flex flex-col gap-3">
                             {config.cards.map((card, i) => (
-                                <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} />
+                                <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} dropId={`${sid}-card-${i}`} />
                             ))}
                         </div>
                         <div className="col-span-2">
                             {config.charts[0] && (
-                                <ChartWidget config={config.charts[0]} onUpdate={(u) => updateChart(0, u)} height={slotSize === 2 ? 350 : 180} />
+                                <ChartWidget config={config.charts[0]} onUpdate={(u) => updateChart(0, u)} height={slotSize === 2 ? 350 : 180} dropId={`${sid}-chart-0`} />
                             )}
                         </div>
                     </div>
@@ -65,8 +66,8 @@ export function SlotRenderer({ slot, onUpdateSlot, onClear }: SlotRendererProps)
             case "1card-1chart":
                 return (
                     <div className="grid grid-cols-2 gap-3">
-                        <div>{config.cards[0] && <CardWidget config={config.cards[0]} onUpdate={(u) => updateCard(0, u)} />}</div>
-                        <div>{config.charts[0] && <ChartWidget config={config.charts[0]} onUpdate={(u) => updateChart(0, u)} height={slotSize === 2 ? 350 : 180} />}</div>
+                        <div>{config.cards[0] && <CardWidget config={config.cards[0]} onUpdate={(u) => updateCard(0, u)} dropId={`${sid}-card-0`} />}</div>
+                        <div>{config.charts[0] && <ChartWidget config={config.charts[0]} onUpdate={(u) => updateChart(0, u)} height={slotSize === 2 ? 350 : 180} dropId={`${sid}-chart-0`} />}</div>
                     </div>
                 );
 
@@ -75,11 +76,11 @@ export function SlotRenderer({ slot, onUpdateSlot, onClear }: SlotRendererProps)
                     <div className="space-y-3">
                         <div className="grid grid-cols-5 gap-3">
                             {config.cards.map((card, i) => (
-                                <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} />
+                                <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} dropId={`${sid}-card-${i}`} />
                             ))}
                         </div>
                         {config.charts[0] && (
-                            <ChartWidget config={config.charts[0]} onUpdate={(u) => updateChart(0, u)} height={260} />
+                            <ChartWidget config={config.charts[0]} onUpdate={(u) => updateChart(0, u)} height={260} dropId={`${sid}-chart-0`} />
                         )}
                     </div>
                 );
@@ -89,12 +90,12 @@ export function SlotRenderer({ slot, onUpdateSlot, onClear }: SlotRendererProps)
                     <div className="space-y-3">
                         <div className="grid grid-cols-5 gap-3">
                             {config.cards.map((card, i) => (
-                                <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} />
+                                <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} dropId={`${sid}-card-${i}`} />
                             ))}
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             {config.charts.map((chart, i) => (
-                                <ChartWidget key={i} config={chart} onUpdate={(u) => updateChart(i, u)} height={220} />
+                                <ChartWidget key={i} config={chart} onUpdate={(u) => updateChart(i, u)} height={220} dropId={`${sid}-chart-${i}`} />
                             ))}
                         </div>
                     </div>
@@ -105,11 +106,11 @@ export function SlotRenderer({ slot, onUpdateSlot, onClear }: SlotRendererProps)
                     <div className="space-y-3">
                         <div className="grid grid-cols-4 gap-3">
                             {config.cards.map((card, i) => (
-                                <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} />
+                                <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} dropId={`${sid}-card-${i}`} />
                             ))}
                         </div>
                         {config.charts[0] && (
-                            <ChartWidget config={config.charts[0]} onUpdate={(u) => updateChart(0, u)} height={260} />
+                            <ChartWidget config={config.charts[0]} onUpdate={(u) => updateChart(0, u)} height={260} dropId={`${sid}-chart-0`} />
                         )}
                     </div>
                 );
@@ -119,12 +120,12 @@ export function SlotRenderer({ slot, onUpdateSlot, onClear }: SlotRendererProps)
                     <div className="grid grid-cols-4 gap-3">
                         <div className="col-span-2 flex flex-col gap-3">
                             {config.cards.map((card, i) => (
-                                <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} />
+                                <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} dropId={`${sid}-card-${i}`} />
                             ))}
                         </div>
                         <div className="col-span-2">
                             {config.charts[0] && (
-                                <ChartWidget config={config.charts[0]} onUpdate={(u) => updateChart(0, u)} height={slotSize === 2 ? 350 : 200} />
+                                <ChartWidget config={config.charts[0]} onUpdate={(u) => updateChart(0, u)} height={slotSize === 2 ? 350 : 200} dropId={`${sid}-chart-0`} />
                             )}
                         </div>
                     </div>
@@ -135,12 +136,12 @@ export function SlotRenderer({ slot, onUpdateSlot, onClear }: SlotRendererProps)
                     <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                             {config.cards.map((card, i) => (
-                                <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} />
+                                <CardWidget key={i} config={card} onUpdate={(u) => updateCard(i, u)} dropId={`${sid}-card-${i}`} />
                             ))}
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             {config.charts.map((chart, i) => (
-                                <ChartWidget key={i} config={chart} onUpdate={(u) => updateChart(i, u)} height={220} />
+                                <ChartWidget key={i} config={chart} onUpdate={(u) => updateChart(i, u)} height={220} dropId={`${sid}-chart-${i}`} />
                             ))}
                         </div>
                     </div>

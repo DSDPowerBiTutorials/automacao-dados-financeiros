@@ -17,6 +17,7 @@ interface ChartWidgetProps {
     config: ChartWidgetConfig;
     onUpdate: (updates: Partial<ChartWidgetConfig>) => void;
     height?: number;
+    dropId: string;
 }
 
 const CHART_TYPE_OPTIONS: { value: ChartType; label: string; icon: React.ElementType }[] = [
@@ -48,10 +49,10 @@ const SAMPLE_DATA = [
 
 const COLORS = ["#FF7300", "#10b981", "#3b82f6", "#8b5cf6", "#ef4444", "#f59e0b"];
 
-export function ChartWidget({ config, onUpdate, height = 200 }: ChartWidgetProps) {
+export function ChartWidget({ config, onUpdate, height = 200, dropId }: ChartWidgetProps) {
     const [showConfig, setShowConfig] = useState(false);
     const { setNodeRef, isOver } = useDroppable({
-        id: `chart-drop-${Math.random().toString(36).slice(2)}`,
+        id: dropId,
         data: { type: "chart", onDrop: (measureId: string) => onUpdate({ measureIds: [...config.measureIds, measureId] }) },
     });
 
