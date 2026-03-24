@@ -11,7 +11,6 @@ import {
   TrendingUp,
   BarChart3,
   LineChart,
-  PieChart,
   Activity,
   Target,
   TrendingDown,
@@ -81,11 +80,6 @@ export const NAV: NavGroup[] = withUnderConstruction([
         title: "Custom Dashboards",
         href: "/bi/build",
         icon: BarChart4
-      },
-      {
-        title: "Field",
-        href: "/bi",
-        icon: PieChart
       },
       {
         title: "Executive",

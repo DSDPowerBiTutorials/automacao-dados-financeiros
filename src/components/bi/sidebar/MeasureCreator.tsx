@@ -1,13 +1,94 @@
 "use client";
 
 import { useState } from "react";
-import { X, Plus, Check, Loader2 } from "lucide-react";
-import { type MeasureDefinition, type MeasureParam } from "@/lib/bi-types";
+import { X, Check, Loader2, ChevronDown, Database } from "lucide-react";
+import { type MeasureDefinition } from "@/lib/bi-types";
 import { MEASURE_CATALOG } from "@/lib/bi-measure-catalog";
+import { FIELD_CATALOG } from "@/lib/bi-field-catalog";
 
 interface MeasureCreatorProps {
     onClose: () => void;
     onCreated: () => void;
+}
+
+/* ── Field Picker (hierarchical: source → column) ── */
+function FieldPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    const [open, setOpen] = useState(false);
+    const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+
+    // Resolve display label for current value
+    const displayLabel = (() => {
+        if (!value) return null;
+        for (const group of FIELD_CATALOG) {
+            const field = group.fields.find((f) => f.key === value);
+            if (field) {
+                const prefix = group.parentLabel ? `${group.parentLabel} › ${group.label}` : group.label;
+                return `${prefix} › ${field.label}`;
+            }
+        }
+        return value;
+    })();
+
+    return (
+        <div className="relative">
+            <button
+                type="button"
+                onClick={() => setOpen(!open)}
+                className="w-full flex items-center justify-between gap-2 text-xs px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white hover:border-[#FF7300] transition-colors text-left"
+            >
+                {displayLabel ? (
+                    <span className="truncate">{displayLabel}</span>
+                ) : (
+                    <span className="text-gray-400">Select a field…</span>
+                )}
+                <ChevronDown size={12} className={`text-gray-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+            </button>
+
+            {open && (
+                <div className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] shadow-lg">
+                    {FIELD_CATALOG.map((group) => {
+                        const groupLabel = group.parentLabel ? `${group.parentLabel} › ${group.label}` : group.label;
+                        const isExpanded = expandedGroup === group.id;
+                        return (
+                            <div key={group.id}>
+                                <button
+                                    type="button"
+                                    onClick={() => setExpandedGroup(isExpanded ? null : group.id)}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                >
+                                    <Database size={10} className="shrink-0" />
+                                    <span className="truncate">{groupLabel}</span>
+                                    <ChevronDown size={10} className={`ml-auto shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                                </button>
+                                {isExpanded && (
+                                    <div className="pb-1">
+                                        {group.fields.map((field) => (
+                                            <button
+                                                key={field.key}
+                                                type="button"
+                                                onClick={() => {
+                                                    onChange(field.key);
+                                                    setOpen(false);
+                                                }}
+                                                className={`w-full text-left px-6 py-1.5 text-[11px] hover:bg-[#FF7300]/10 transition-colors ${
+                                                    value === field.key
+                                                        ? "bg-[#FF7300]/10 text-[#FF7300] font-medium"
+                                                        : "text-gray-700 dark:text-gray-300"
+                                                }`}
+                                            >
+                                                {field.label}
+                                                <span className="ml-1.5 text-[9px] text-gray-400">{field.dataType}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
 }
 
 export function MeasureCreator({ onClose, onCreated }: MeasureCreatorProps) {
@@ -126,7 +207,12 @@ export function MeasureCreator({ onClose, onCreated }: MeasureCreatorProps) {
                                     {param.label} {param.required && <span className="text-red-400">*</span>}
                                 </label>
                                 <p className="text-[8px] text-gray-400 mb-1">{param.description}</p>
-                                {param.type === "select" && param.options ? (
+                                {param.type === "field" ? (
+                                    <FieldPicker
+                                        value={paramValues[param.name] ?? ""}
+                                        onChange={(v) => setParamValues({ ...paramValues, [param.name]: v })}
+                                    />
+                                ) : param.type === "select" && param.options ? (
                                     <select
                                         value={paramValues[param.name] ?? param.defaultValue ?? ""}
                                         onChange={(e) => setParamValues({ ...paramValues, [param.name]: e.target.value })}
