@@ -13,38 +13,38 @@ export const MEASURE_CATALOG: MeasureDefinition[] = [
     // ── Aggregation ──────────────────────────────────────────
     {
         type: "SUM", label: "Sum", category: "aggregation", icon: "Plus",
-        description: "Sum of all values in a field",
-        params: [{ name: "field", label: "Field", type: "field", required: true }],
+        description: "Sum of values across one or more fields",
+        params: [{ name: "fields", label: "Fields", type: "fields", required: true, description: "Select one or more fields to sum" }],
     },
     {
         type: "AVERAGE", label: "Average", category: "aggregation", icon: "Minus",
-        description: "Average (mean) of values in a field",
-        params: [{ name: "field", label: "Field", type: "field", required: true }],
+        description: "Average (mean) of values across one or more fields",
+        params: [{ name: "fields", label: "Fields", type: "fields", required: true, description: "Select one or more fields to average" }],
     },
     {
         type: "COUNT", label: "Count", category: "aggregation", icon: "Hash",
-        description: "Count of rows",
-        params: [{ name: "field", label: "Field", type: "field", required: false }],
+        description: "Count of rows across one or more fields",
+        params: [{ name: "fields", label: "Fields", type: "fields", required: false, description: "Select fields to count (leave empty for all rows)" }],
     },
     {
         type: "COUNTDISTINCT", label: "Count Distinct", category: "aggregation", icon: "Hash",
-        description: "Count of unique values",
-        params: [{ name: "field", label: "Field", type: "field", required: true }],
+        description: "Count of unique values across one or more fields",
+        params: [{ name: "fields", label: "Fields", type: "fields", required: true, description: "Select one or more fields to count distinct values" }],
     },
     {
         type: "MIN", label: "Minimum", category: "aggregation", icon: "ChevronDown",
-        description: "Minimum value in a field",
-        params: [{ name: "field", label: "Field", type: "field", required: true }],
+        description: "Minimum value across one or more fields",
+        params: [{ name: "fields", label: "Fields", type: "fields", required: true, description: "Select one or more fields" }],
     },
     {
         type: "MAX", label: "Maximum", category: "aggregation", icon: "ChevronUp",
-        description: "Maximum value in a field",
-        params: [{ name: "field", label: "Field", type: "field", required: true }],
+        description: "Maximum value across one or more fields",
+        params: [{ name: "fields", label: "Fields", type: "fields", required: true, description: "Select one or more fields" }],
     },
     {
         type: "MEDIAN", label: "Median", category: "aggregation", icon: "AlignCenter",
-        description: "Median (50th percentile) of values",
-        params: [{ name: "field", label: "Field", type: "field", required: true }],
+        description: "Median (50th percentile) of values across one or more fields",
+        params: [{ name: "fields", label: "Fields", type: "fields", required: true, description: "Select one or more fields" }],
     },
 
     // ── Mathematical ─────────────────────────────────────────

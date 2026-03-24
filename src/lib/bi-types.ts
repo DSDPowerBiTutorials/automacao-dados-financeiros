@@ -183,7 +183,7 @@ export interface MeasureParam {
     name: string;
     label: string;
     description?: string;
-    type: "field" | "number" | "date" | "period" | "measure" | "text" | "select";
+    type: "field" | "fields" | "number" | "date" | "period" | "measure" | "text" | "select";
     required: boolean;
     options?: string[];
     defaultValue?: string;

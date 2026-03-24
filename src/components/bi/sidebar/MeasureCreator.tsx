@@ -1,33 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import { X, Check, Loader2, ChevronDown, Database } from "lucide-react";
+import { X, Check, Loader2, ChevronDown, Database, Plus, Trash2, AlertCircle } from "lucide-react";
 import { type MeasureDefinition } from "@/lib/bi-types";
 import { MEASURE_CATALOG } from "@/lib/bi-measure-catalog";
 import { FIELD_CATALOG } from "@/lib/bi-field-catalog";
+import { useAuth } from "@/contexts/auth-context";
 
 interface MeasureCreatorProps {
     onClose: () => void;
     onCreated: () => void;
 }
 
-/* ── Field Picker (hierarchical: source → column) ── */
-function FieldPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+/* ── Resolve display label for a field key ── */
+function resolveFieldLabel(key: string): string {
+    for (const group of FIELD_CATALOG) {
+        const field = group.fields.find((f) => f.key === key);
+        if (field) {
+            const prefix = group.parentLabel ? `${group.parentLabel} › ${group.label}` : group.label;
+            return `${prefix} › ${field.label}`;
+        }
+    }
+    return key;
+}
+
+/* ── Field Picker Dropdown (hierarchical: source → column) ── */
+function FieldPickerDropdown({ value, onChange, exclude }: { value: string; onChange: (v: string) => void; exclude?: string[] }) {
     const [open, setOpen] = useState(false);
     const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
 
-    // Resolve display label for current value
-    const displayLabel = (() => {
-        if (!value) return null;
-        for (const group of FIELD_CATALOG) {
-            const field = group.fields.find((f) => f.key === value);
-            if (field) {
-                const prefix = group.parentLabel ? `${group.parentLabel} › ${group.label}` : group.label;
-                return `${prefix} › ${field.label}`;
-            }
-        }
-        return value;
-    })();
+    const displayLabel = value ? resolveFieldLabel(value) : null;
 
     return (
         <div className="relative">
@@ -62,24 +64,30 @@ function FieldPicker({ value, onChange }: { value: string; onChange: (v: string)
                                 </button>
                                 {isExpanded && (
                                     <div className="pb-1">
-                                        {group.fields.map((field) => (
-                                            <button
-                                                key={field.key}
-                                                type="button"
-                                                onClick={() => {
-                                                    onChange(field.key);
-                                                    setOpen(false);
-                                                }}
-                                                className={`w-full text-left px-6 py-1.5 text-[11px] hover:bg-[#FF7300]/10 transition-colors ${
-                                                    value === field.key
-                                                        ? "bg-[#FF7300]/10 text-[#FF7300] font-medium"
-                                                        : "text-gray-700 dark:text-gray-300"
-                                                }`}
-                                            >
-                                                {field.label}
-                                                <span className="ml-1.5 text-[9px] text-gray-400">{field.dataType}</span>
-                                            </button>
-                                        ))}
+                                        {group.fields.map((field) => {
+                                            const isExcluded = exclude?.includes(field.key);
+                                            return (
+                                                <button
+                                                    key={field.key}
+                                                    type="button"
+                                                    disabled={isExcluded}
+                                                    onClick={() => {
+                                                        onChange(field.key);
+                                                        setOpen(false);
+                                                    }}
+                                                    className={`w-full text-left px-6 py-1.5 text-[11px] transition-colors ${
+                                                        isExcluded
+                                                            ? "text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                                                            : value === field.key
+                                                                ? "bg-[#FF7300]/10 text-[#FF7300] font-medium"
+                                                                : "text-gray-700 dark:text-gray-300 hover:bg-[#FF7300]/10"
+                                                    }`}
+                                                >
+                                                    {field.label}
+                                                    <span className="ml-1.5 text-[9px] text-gray-400">{field.dataType}</span>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
@@ -91,39 +99,130 @@ function FieldPicker({ value, onChange }: { value: string; onChange: (v: string)
     );
 }
 
+/* ── Multi-Field Picker (add/remove multiple fields, Power BI style) ── */
+function MultiFieldPicker({ values, onChange }: { values: string[]; onChange: (v: string[]) => void }) {
+    function addField() {
+        onChange([...values, ""]);
+    }
+    function removeField(idx: number) {
+        onChange(values.filter((_, i) => i !== idx));
+    }
+    function updateField(idx: number, val: string) {
+        const next = [...values];
+        next[idx] = val;
+        onChange(next);
+    }
+
+    const selectedKeys = values.filter(Boolean);
+
+    return (
+        <div className="space-y-1.5">
+            {values.map((v, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                    <div className="flex-1">
+                        <FieldPickerDropdown
+                            value={v}
+                            onChange={(val) => updateField(idx, val)}
+                            exclude={selectedKeys.filter((k) => k !== v)}
+                        />
+                    </div>
+                    {values.length > 1 && (
+                        <button
+                            type="button"
+                            onClick={() => removeField(idx)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        >
+                            <Trash2 size={12} />
+                        </button>
+                    )}
+                </div>
+            ))}
+            <button
+                type="button"
+                onClick={addField}
+                className="flex items-center gap-1.5 text-[10px] font-medium text-[#FF7300] hover:text-[#e66800] transition-colors mt-1"
+            >
+                <Plus size={10} />
+                Add Field
+            </button>
+            {selectedKeys.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                    {selectedKeys.map((key) => (
+                        <span key={key} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FF7300]/10 text-[#FF7300] text-[9px] font-medium">
+                            {resolveFieldLabel(key).split(" › ").pop()}
+                        </span>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function MeasureCreator({ onClose, onCreated }: MeasureCreatorProps) {
+    const { user, profile } = useAuth();
     const [step, setStep] = useState<"select" | "configure">("select");
     const [selected, setSelected] = useState<MeasureDefinition | null>(null);
     const [name, setName] = useState("");
     const [paramValues, setParamValues] = useState<Record<string, string>>({});
+    const [multiFieldValues, setMultiFieldValues] = useState<Record<string, string[]>>({});
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
 
     const categories = [...new Set(MEASURE_CATALOG.map((m) => m.category))];
 
     async function handleCreate() {
         if (!selected || !name.trim()) return;
+        setError(null);
         setSaving(true);
         try {
+            const config: Record<string, unknown> = { params: { ...paramValues } };
+            for (const [key, vals] of Object.entries(multiFieldValues)) {
+                const filtered = vals.filter(Boolean);
+                if (filtered.length > 0) {
+                    config.params = { ...(config.params as Record<string, string>), [key]: filtered };
+                }
+            }
+
             const res = await fetch("/api/bi/measures", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: name.trim(),
                     measureType: selected.type,
-                    config: { params: paramValues },
+                    config,
                     isPublic: false,
+                    authorId: user?.id ?? "",
+                    authorName: profile?.name ?? profile?.email ?? "",
                 }),
             });
             const data = await res.json();
             if (data.success) {
                 onCreated();
+            } else {
+                setError(data.error || "Failed to create measure");
             }
         } catch (err) {
             console.error("Create measure error:", err);
+            setError("Network error — please try again");
         } finally {
             setSaving(false);
         }
+    }
+
+    function handleSelectMeasure(m: MeasureDefinition) {
+        setSelected(m);
+        setName(m.label);
+        setError(null);
+        const mfv: Record<string, string[]> = {};
+        for (const p of m.params) {
+            if (p.type === "fields") {
+                mfv[p.name] = [""];
+            }
+        }
+        setMultiFieldValues(mfv);
+        setParamValues({});
+        setStep("configure");
     }
 
     return (
@@ -167,11 +266,7 @@ export function MeasureCreator({ onClose, onCreated }: MeasureCreatorProps) {
                                         {items.map((m) => (
                                             <button
                                                 key={m.type}
-                                                onClick={() => {
-                                                    setSelected(m);
-                                                    setName(m.label);
-                                                    setStep("configure");
-                                                }}
+                                                onClick={() => handleSelectMeasure(m)}
                                                 className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-[#FF7300] hover:bg-[#FF7300]/5 transition-all text-left"
                                             >
                                                 <span className="text-sm">{m.icon}</span>
@@ -207,8 +302,14 @@ export function MeasureCreator({ onClose, onCreated }: MeasureCreatorProps) {
                                     {param.label} {param.required && <span className="text-red-400">*</span>}
                                 </label>
                                 <p className="text-[8px] text-gray-400 mb-1">{param.description}</p>
-                                {param.type === "field" ? (
-                                    <FieldPicker
+
+                                {param.type === "fields" ? (
+                                    <MultiFieldPicker
+                                        values={multiFieldValues[param.name] ?? [""]}
+                                        onChange={(vals) => setMultiFieldValues({ ...multiFieldValues, [param.name]: vals })}
+                                    />
+                                ) : param.type === "field" ? (
+                                    <FieldPickerDropdown
                                         value={paramValues[param.name] ?? ""}
                                         onChange={(v) => setParamValues({ ...paramValues, [param.name]: v })}
                                     />
@@ -240,10 +341,18 @@ export function MeasureCreator({ onClose, onCreated }: MeasureCreatorProps) {
                             </div>
                         ))}
 
+                        {/* Error message */}
+                        {error && (
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                                <AlertCircle size={12} className="text-red-500 shrink-0" />
+                                <p className="text-[10px] text-red-600 dark:text-red-400">{error}</p>
+                            </div>
+                        )}
+
                         {/* Actions */}
                         <div className="flex gap-2 pt-2">
                             <button
-                                onClick={() => setStep("select")}
+                                onClick={() => { setStep("select"); setError(null); }}
                                 className="px-4 py-2 rounded-lg text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                             >
                                 Back
