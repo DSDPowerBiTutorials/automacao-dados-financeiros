@@ -198,16 +198,15 @@ function DraggableMeasureItem({ id, label, icon, onClick }: { id: string; label:
     return (
         <div
             ref={setNodeRef}
-            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-[10px] transition-all
-                ${isDragging ? "opacity-50 bg-[#FF7300]/10" : "hover:bg-gray-50 dark:hover:bg-gray-800"}`}
+            {...listeners}
+            {...attributes}
+            onClick={() => onClick?.()}
+            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-[10px] cursor-grab touch-none transition-all
+                ${isDragging ? "opacity-50 bg-[#FF7300]/10 shadow-lg" : "hover:bg-gray-50 dark:hover:bg-gray-800"}`}
         >
-            <span {...listeners} {...attributes} className="cursor-grab touch-none">
-                <GripVertical size={8} className="text-gray-300" />
-            </span>
-            <button type="button" onClick={onClick} className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer">
-                <span>{icon}</span>
-                <span className="text-gray-700 dark:text-gray-300 truncate">{label}</span>
-            </button>
+            <GripVertical size={8} className="text-gray-300 shrink-0" />
+            <span>{icon}</span>
+            <span className="text-gray-700 dark:text-gray-300 truncate">{label}</span>
         </div>
     );
 }

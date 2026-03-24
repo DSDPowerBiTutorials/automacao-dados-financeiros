@@ -9,7 +9,7 @@ import { DashboardCanvas } from "@/components/bi/builder/DashboardCanvas";
 import { DashboardHeader } from "@/components/bi/builder/DashboardHeader";
 import { BuilderLeftSidebar } from "@/components/bi/sidebar/LeftSidebar";
 import { BuilderRightSidebar } from "@/components/bi/sidebar/RightSidebar";
-import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent, type DragStartEvent, DragOverlay, PointerSensor, useSensor, useSensors, rectIntersection } from "@dnd-kit/core";
 
 export default function EditDashboardPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -20,12 +20,21 @@ export default function EditDashboardPage({ params }: { params: Promise<{ id: st
     const [saving, setSaving] = useState(false);
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(true);
+    const [activeDrag, setActiveDrag] = useState<{ id: string; label: string; icon?: string } | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     );
 
+    const handleDragStart = useCallback((event: DragStartEvent) => {
+        const data = event.active.data.current as { type: string; measureId: string; label: string } | undefined;
+        if (data?.type === "measure") {
+            setActiveDrag({ id: data.measureId, label: data.label });
+        }
+    }, []);
+
     const handleDragEnd = useCallback((event: DragEndEvent) => {
+        setActiveDrag(null);
         const { active, over } = event;
         if (!over) return;
         const dragData = active.data.current as { type: string; measureId: string; label: string } | undefined;
@@ -141,7 +150,7 @@ export default function EditDashboardPage({ params }: { params: Promise<{ id: st
     }
 
     return (
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={rectIntersection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="flex h-[calc(100vh-120px)] bg-gray-50 dark:bg-[#0a0a0a] overflow-hidden">
                 <BuilderLeftSidebar
                     open={leftOpen}
@@ -187,6 +196,14 @@ export default function EditDashboardPage({ params }: { params: Promise<{ id: st
                     dashboardId={dashboard.id}
                 />
             </div>
+            <DragOverlay dropAnimation={null}>
+                {activeDrag ? (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 shadow-xl border border-[#FF7300] text-[11px] font-medium text-gray-700 dark:text-gray-200 pointer-events-none">
+                        <span className="text-[#FF7300]">⬡</span>
+                        {activeDrag.label}
+                    </div>
+                ) : null}
+            </DragOverlay>
         </DndContext>
     );
 }

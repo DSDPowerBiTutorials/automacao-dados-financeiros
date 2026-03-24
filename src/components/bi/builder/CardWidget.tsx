@@ -30,14 +30,39 @@ export function CardWidget({ config, onUpdate, dropId }: CardWidgetProps) {
 
     if (isEmpty) {
         return (
-            <div
-                ref={setNodeRef}
-                className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 min-h-[80px] transition-all cursor-pointer
-                    ${isOver ? "border-[#FF7300] bg-[#FF7300]/10" : "border-gray-300 dark:border-gray-700 hover:border-[#FF7300] bg-gray-50/50 dark:bg-gray-900/50"}`}
-                onClick={() => setEditing(true)}
-            >
-                <TrendingUp size={16} className="text-gray-300 dark:text-gray-600" />
-                <span className="text-[9px] text-gray-400">Drop measure or click to configure</span>
+            <div ref={setNodeRef} className="relative">
+                <div
+                    className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 min-h-[80px] transition-all cursor-pointer
+                        ${isOver ? "border-[#FF7300] bg-[#FF7300]/10" : "border-gray-300 dark:border-gray-700 hover:border-[#FF7300] bg-gray-50/50 dark:bg-gray-900/50"}`}
+                    onClick={() => setEditing(true)}
+                >
+                    <TrendingUp size={16} className="text-gray-300 dark:text-gray-600" />
+                    <span className="text-[9px] text-gray-400">Drop measure or click to configure</span>
+                </div>
+                {editing && (
+                    <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 space-y-2">
+                        <input
+                            type="text"
+                            value={config.label}
+                            onChange={(e) => onUpdate({ label: e.target.value })}
+                            placeholder="Card label"
+                            className="w-full text-xs px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-[#FF7300] outline-none"
+                            autoFocus
+                        />
+                        <select
+                            value={config.format ?? "currency"}
+                            onChange={(e) => onUpdate({ format: e.target.value as "currency" | "number" | "percent" })}
+                            className="w-full text-xs px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white"
+                        >
+                            <option value="currency">Currency (€)</option>
+                            <option value="number">Number</option>
+                            <option value="percent">Percent (%)</option>
+                        </select>
+                        <button onClick={() => setEditing(false)} className="w-full text-[10px] text-[#FF7300] hover:underline font-medium">
+                            Done
+                        </button>
+                    </div>
+                )}
             </div>
         );
     }
