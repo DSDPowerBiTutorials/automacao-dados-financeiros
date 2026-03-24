@@ -1,36 +1,89 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ChevronRight, Search, X } from "lucide-react";
-import { MEASURE_CATALOG, MEASURE_CATEGORIES } from "@/lib/bi-measure-catalog";
+import { useState, useEffect, useCallback } from "react";
+import { ChevronDown, Search, X, Loader2 } from "lucide-react";
+import { type UserMeasure } from "@/lib/bi-types";
+import { MEASURE_CATALOG } from "@/lib/bi-measure-catalog";
+import { useAuth } from "@/contexts/auth-context";
 
 interface MeasureSelectorProps {
     selectedId?: string | null;
     selectedIds?: string[];
     multiple?: boolean;
-    onSelect?: (measureType: string, label: string) => void;
-    onAdd?: (measureType: string) => void;
-    onRemove?: (measureType: string) => void;
+    onSelect?: (measureId: string, label: string) => void;
+    onAdd?: (measureId: string) => void;
+    onRemove?: (measureId: string) => void;
 }
 
 export function MeasureSelector({ selectedId, selectedIds, multiple, onSelect, onAdd, onRemove }: MeasureSelectorProps) {
+    const { user } = useAuth();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
-    const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set(["aggregation"]));
+    const [measures, setMeasures] = useState<UserMeasure[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [loaded, setLoaded] = useState(false);
 
-    const toggleCat = (cat: string) => {
-        setExpandedCats(prev => {
-            const next = new Set(prev);
-            next.has(cat) ? next.delete(cat) : next.add(cat);
-            return next;
-        });
-    };
+    const loadMeasures = useCallback(async () => {
+        if (loaded) return;
+        setLoading(true);
+        try {
+            const res = await fetch("/api/bi/measures");
+            const data = await res.json();
+            if (data.success) setMeasures(data.measures ?? []);
+        } catch { /* network error — silent */ }
+        setLoading(false);
+        setLoaded(true);
+    }, [loaded]);
+
+    // Load on mount to resolve selected labels, and also when dropdown opens
+    useEffect(() => { loadMeasures(); }, [loadMeasures]);
 
     const filtered = search.trim()
-        ? MEASURE_CATALOG.filter(m => m.label.toLowerCase().includes(search.toLowerCase()) || m.description.toLowerCase().includes(search.toLowerCase()))
-        : MEASURE_CATALOG;
+        ? measures.filter(m =>
+            m.name.toLowerCase().includes(search.toLowerCase()) ||
+            m.measureType.toLowerCase().includes(search.toLowerCase()))
+        : measures;
 
-    const selectedLabel = selectedId ? MEASURE_CATALOG.find(m => m.type === selectedId)?.label ?? selectedId : null;
+    const myMeasures = filtered.filter(m => m.authorId === user?.id);
+    const publicMeasures = filtered.filter(m => m.authorId !== user?.id && m.isPublic);
+
+    const selectedLabel = selectedId
+        ? measures.find(m => m.id === selectedId)?.name ?? null
+        : null;
+
+    function renderSection(title: string, items: UserMeasure[]) {
+        if (items.length === 0) return null;
+        return (
+            <div>
+                <div className="px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-gray-500 bg-gray-50/50 dark:bg-gray-800/50">
+                    {title} ({items.length})
+                </div>
+                {items.map(m => {
+                    const isSelected = multiple ? selectedIds?.includes(m.id) : selectedId === m.id;
+                    const catalogDef = MEASURE_CATALOG.find(c => c.type === m.measureType);
+                    return (
+                        <button
+                            key={m.id}
+                            onClick={() => {
+                                if (multiple) {
+                                    if (isSelected) onRemove?.(m.id);
+                                    else onAdd?.(m.id);
+                                } else {
+                                    onSelect?.(m.id, m.name);
+                                    setOpen(false);
+                                }
+                            }}
+                            className={`w-full flex items-center justify-between px-3 py-1.5 text-[9px] transition-colors text-left
+                                ${isSelected ? "bg-[#FF7300]/10 text-[#FF7300]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
+                        >
+                            <span className="truncate">{m.name}</span>
+                            <span className="text-[7px] font-mono text-gray-400 ml-2 shrink-0">{catalogDef?.label ?? m.measureType}</span>
+                        </button>
+                    );
+                })}
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-1">
@@ -39,10 +92,10 @@ export function MeasureSelector({ selectedId, selectedIds, multiple, onSelect, o
             {multiple && selectedIds && selectedIds.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-1">
                     {selectedIds.map(id => {
-                        const m = MEASURE_CATALOG.find(c => c.type === id);
+                        const m = measures.find(c => c.id === id);
                         return (
                             <span key={id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#FF7300]/10 text-[#FF7300] text-[8px] font-medium">
-                                {m?.label ?? id}
+                                {m?.name ?? id}
                                 <button onClick={() => onRemove?.(id)} className="hover:text-red-500"><X size={8} /></button>
                             </span>
                         );
@@ -74,43 +127,27 @@ export function MeasureSelector({ selectedId, selectedIds, multiple, onSelect, o
                         </div>
                     </div>
 
-                    {MEASURE_CATEGORIES.map(cat => {
-                        const items = filtered.filter(m => m.category === cat.id);
-                        if (items.length === 0) return null;
-                        const isExpanded = expandedCats.has(cat.id);
-                        return (
-                            <div key={cat.id}>
-                                <button
-                                    onClick={() => toggleCat(cat.id)}
-                                    className="w-full flex items-center gap-1.5 px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
-                                >
-                                    {isExpanded ? <ChevronDown size={8} /> : <ChevronRight size={8} />}
-                                    {cat.label} ({items.length})
-                                </button>
-                                {isExpanded && items.map(m => {
-                                    const isSelected = multiple ? selectedIds?.includes(m.type) : selectedId === m.type;
-                                    return (
-                                        <button
-                                            key={m.type}
-                                            onClick={() => {
-                                                if (multiple) {
-                                                    if (isSelected) onRemove?.(m.type);
-                                                    else onAdd?.(m.type);
-                                                } else {
-                                                    onSelect?.(m.type, m.label);
-                                                    setOpen(false);
-                                                }
-                                            }}
-                                            className={`w-full flex items-center gap-2 px-3 py-1 text-[9px] transition-colors text-left
-                                                ${isSelected ? "bg-[#FF7300]/10 text-[#FF7300]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
-                                        >
-                                            <span className="truncate">{m.label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        );
-                    })}
+                    {loading ? (
+                        <div className="py-4 flex items-center justify-center">
+                            <Loader2 size={14} className="animate-spin text-gray-400" />
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <div className="py-4 px-3 text-center">
+                            <p className="text-[9px] text-gray-400">
+                                {search ? "No measures found" : "No measures created yet"}
+                            </p>
+                            {!search && (
+                                <p className="text-[8px] text-gray-400 mt-1">
+                                    Create measures in the Variables tab →
+                                </p>
+                            )}
+                        </div>
+                    ) : (
+                        <>
+                            {renderSection("My Measures", myMeasures)}
+                            {renderSection("Public Measures", publicMeasures)}
+                        </>
+                    )}
                 </div>
             )}
         </div>
