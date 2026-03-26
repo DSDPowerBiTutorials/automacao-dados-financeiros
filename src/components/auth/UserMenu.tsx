@@ -75,11 +75,11 @@ export function UserMenu() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push('/profile')}>
                     <User className="mr-2 h-4 w-4" />
-                    <span>Meu Perfil</span>
+                    <span>My Profile</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/settings')}>
                     <Settings className="mr-2 h-4 w-4" />
-                    <span>Configurações</span>
+                    <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={toggleTheme}>
                     {theme === 'dark' ? (
@@ -87,7 +87,7 @@ export function UserMenu() {
                     ) : (
                         <Moon className="mr-2 h-4 w-4" />
                     )}
-                    <span>{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
+                    <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

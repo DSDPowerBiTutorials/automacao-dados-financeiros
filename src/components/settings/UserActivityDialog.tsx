@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -119,14 +119,20 @@ export function UserActivityDialog({
         }
     }
 
-    function handleOpenChange(isOpen: boolean) {
-        onOpenChange(isOpen)
-        if (isOpen && userId) {
+    // Load activity when dialog opens (controlled mode: onOpenChange is NOT called when open prop changes)
+    useEffect(() => {
+        if (open && userId && accessToken) {
             loadActivity()
-        } else {
+        }
+        if (!open) {
             setData(null)
             setError(null)
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, userId])
+
+    function handleOpenChange(isOpen: boolean) {
+        onOpenChange(isOpen)
     }
 
     function formatDate(date: string) {
