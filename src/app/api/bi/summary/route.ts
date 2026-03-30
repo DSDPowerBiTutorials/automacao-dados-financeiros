@@ -114,12 +114,12 @@ export async function GET(request: NextRequest) {
                 .lte("date", endDate)
                 .range(revenueOffset, revenueOffset + pageSize - 1);
 
-            if (scope === "ES") {
-                query = query.eq("source", "invoice-orders");
-            } else if (scope === "US") {
+            // Revenue Import.csv contains ALL revenue (ES + US) in EUR.
+            // GLOBAL and ES both use invoice-orders; US uses invoice-orders-usd for USD-only view.
+            if (scope === "US") {
                 query = query.eq("source", "invoice-orders-usd");
             } else {
-                query = query.in("source", ["invoice-orders", "invoice-orders-usd"]);
+                query = query.eq("source", "invoice-orders");
             }
 
             const { data, error } = await query;

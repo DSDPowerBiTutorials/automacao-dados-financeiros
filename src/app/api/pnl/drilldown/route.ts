@@ -198,13 +198,12 @@ export async function GET(request: NextRequest) {
                 .order("amount", { ascending: false })
                 .range(startIndex, endIndex);
 
-            // Scope filtering via source field
-            if (scope === "ES") {
-                revQuery = revQuery.eq("source", "invoice-orders");
-            } else if (scope === "US") {
+            // Revenue Import.csv contains ALL revenue (ES + US) in EUR.
+            // GLOBAL and ES both use invoice-orders; US uses invoice-orders-usd for USD-only view.
+            if (scope === "US") {
                 revQuery = revQuery.eq("source", "invoice-orders-usd");
             } else {
-                revQuery = revQuery.in("source", ["invoice-orders", "invoice-orders-usd"]);
+                revQuery = revQuery.eq("source", "invoice-orders");
             }
 
             if (isRevenueParent) {
@@ -233,13 +232,11 @@ export async function GET(request: NextRequest) {
                 .neq("amount", 0)
                 .not("custom_data->>order_status", "in", "(Cancelled,Refunded,Expired,cancelled,refunded,expired)");
 
-            // Scope filtering via source field
-            if (scope === "ES") {
-                totalQuery = totalQuery.eq("source", "invoice-orders");
-            } else if (scope === "US") {
+            // Revenue Import.csv contains ALL revenue (ES + US) in EUR.
+            if (scope === "US") {
                 totalQuery = totalQuery.eq("source", "invoice-orders-usd");
             } else {
-                totalQuery = totalQuery.in("source", ["invoice-orders", "invoice-orders-usd"]);
+                totalQuery = totalQuery.eq("source", "invoice-orders");
             }
 
             if (isRevenueParent) {
