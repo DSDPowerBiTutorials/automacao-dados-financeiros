@@ -33,6 +33,7 @@ import {
   Plug,
   UserCheck,
   GraduationCap,
+  Flame,
   type LucideIcon
 } from "lucide-react"
 
@@ -116,6 +117,11 @@ export const NAV: NavGroup[] = withUnderConstruction([
             underConstruction: true
           }
         ]
+      },
+      {
+        title: "Customer Lifecycle",
+        href: "/executive-insights/customer-lifecycle",
+        icon: Flame
       }
     ]
   },
