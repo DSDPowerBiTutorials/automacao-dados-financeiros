@@ -20,26 +20,13 @@ interface CustomerData {
     segment: "HOT" | "WARM" | "COLD";
 }
 
-function calculateSegment(data: {
-    daysSinceLastPurchase: number;
-    orderCount: number;
-    totalQuantity: number;
-    averageQtyPerOrder: number;
-}): "HOT" | "WARM" | "COLD" {
-    // HOT: Recent (< 90 days) + Frequent (avg > 2 qty/order) or (total qty > 10)
-    if (
-        data.daysSinceLastPurchase <= 90 &&
-        (data.averageQtyPerOrder > 2 || data.totalQuantity > 10)
-    ) {
-        return "HOT";
-    }
-
-    // WARM: Recent (< 180 days) OR decent activity (total qty >= 5)
-    if (data.daysSinceLastPurchase <= 180 || data.totalQuantity >= 5) {
-        return "WARM";
-    }
-
-    // COLD: Older than 180 days OR low activity
+function calculateSegment(
+    daysSinceLastPurchase: number,
+    hotThreshold: number,
+    warmThreshold: number
+): "HOT" | "WARM" | "COLD" {
+    if (daysSinceLastPurchase <= hotThreshold) return "HOT";
+    if (daysSinceLastPurchase <= warmThreshold) return "WARM";
     return "COLD";
 }
 
@@ -64,6 +51,8 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get("sortBy") || "lastPurchase"; // lastPurchase, quantity, orderCount
     const limit = parseInt(searchParams.get("limit") || "500");
     const maxDays = searchParams.get("maxDays") ? parseInt(searchParams.get("maxDays")!) : null;
+    const hotThreshold = parseInt(searchParams.get("hotThreshold") || "90");
+    const warmThreshold = Math.max(hotThreshold, parseInt(searchParams.get("warmThreshold") || "180"));
 
     try {
         // 1. Find the most recent order_date across ALL ar_invoices (reference date)
@@ -160,7 +149,7 @@ export async function GET(request: NextRequest) {
             ));
             c.averageQtyPerOrder =
                 Math.round((c.totalQuantity / c.orderCount) * 100) / 100;
-            c.segment = calculateSegment(c);
+            c.segment = calculateSegment(c.daysSinceLastPurchase, hotThreshold, warmThreshold);
             return c;
         });
 

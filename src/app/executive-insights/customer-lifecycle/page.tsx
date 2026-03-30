@@ -85,6 +85,8 @@ export default function CustomerLifecyclePage() {
     const [segment, setSegment] = useState("all");
     const [sortBy, setSortBy] = useState("lastPurchase");
     const [maxDays, setMaxDays] = useState(365);
+    const [hotThreshold, setHotThreshold] = useState(90);
+    const [warmThreshold, setWarmThreshold] = useState(180);
     const [mostRecentOrderDate, setMostRecentOrderDate] = useState<string | null>(null);
 
     const loadData = async () => {
@@ -95,6 +97,8 @@ export default function CustomerLifecyclePage() {
             params.append("sortBy", sortBy);
             params.append("limit", "500");
             params.append("maxDays", String(maxDays));
+            params.append("hotThreshold", String(hotThreshold));
+            params.append("warmThreshold", String(warmThreshold));
 
             const res = await fetch(
                 `/api/executive-insights/customer-lifecycle?${params}`,
@@ -128,7 +132,7 @@ export default function CustomerLifecyclePage() {
 
     useEffect(() => {
         loadData();
-    }, [segment, sortBy, maxDays]);
+    }, [segment, sortBy, maxDays, hotThreshold, warmThreshold]);
 
     const getSegmentStats = () => {
         if (!stats) return [];
@@ -194,10 +198,11 @@ export default function CustomerLifecyclePage() {
                                 <span className="text-xs text-gray-500">10</span>
                                 <input
                                     type="range"
-                                    min={0}
-                                    max={DAY_INTERVALS.length - 1}
-                                    value={DAY_INTERVALS.indexOf(maxDays)}
-                                    onChange={(e) => setMaxDays(DAY_INTERVALS[parseInt(e.target.value)])}
+                                    min={10}
+                                    max={365}
+                                    step={5}
+                                    value={maxDays}
+                                    onChange={(e) => setMaxDays(parseInt(e.target.value))}
                                     className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 dark:bg-gray-700"
                                 />
                                 <span className="text-xs text-gray-500">365</span>
@@ -212,6 +217,60 @@ export default function CustomerLifecyclePage() {
                                         {d}d
                                     </button>
                                 ))}
+                            </div>
+                        </div>
+
+                        {/* Segment Threshold Sliders */}
+                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Segment Thresholds</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-medium text-red-600 dark:text-red-400 mb-1 flex items-center gap-1">
+                                        <Flame size={12} /> HOT: ≤ <span className="font-bold">{hotThreshold}d</span>
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500">10</span>
+                                        <input
+                                            type="range"
+                                            min={10}
+                                            max={365}
+                                            step={5}
+                                            value={hotThreshold}
+                                            onChange={(e) => {
+                                                const v = parseInt(e.target.value);
+                                                setHotThreshold(v);
+                                                if (warmThreshold < v) setWarmThreshold(v);
+                                            }}
+                                            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-500 dark:bg-gray-700"
+                                        />
+                                        <span className="text-xs text-gray-500">365</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-yellow-600 dark:text-yellow-400 mb-1 flex items-center gap-1">
+                                        <Thermometer size={12} /> WARM: {hotThreshold + 1}–<span className="font-bold">{warmThreshold}d</span>
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500">{hotThreshold}</span>
+                                        <input
+                                            type="range"
+                                            min={hotThreshold}
+                                            max={365}
+                                            step={5}
+                                            value={warmThreshold}
+                                            onChange={(e) => setWarmThreshold(Math.max(hotThreshold, parseInt(e.target.value)))}
+                                            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-yellow-500 dark:bg-gray-700"
+                                        />
+                                        <span className="text-xs text-gray-500">365</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+                                <span className="flex items-center gap-1"><Flame size={10} className="text-red-500" /> HOT ≤ {hotThreshold}d</span>
+                                <span>|</span>
+                                <span className="flex items-center gap-1"><Thermometer size={10} className="text-yellow-500" /> WARM {hotThreshold + 1}–{warmThreshold}d</span>
+                                <span>|</span>
+                                <span className="flex items-center gap-1"><Snowflake size={10} className="text-blue-500" /> COLD &gt; {warmThreshold}d</span>
                             </div>
                         </div>
                     </CardContent>
@@ -313,24 +372,7 @@ export default function CustomerLifecyclePage() {
                     </Button>
                 </div>
 
-                {/* Segment Legend */}
-                <Card className="border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50">
-                    <CardContent className="pt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {Object.entries(SEGMENT_CONFIG).map(([key, config]) => (
-                                <div key={key} className="flex items-start gap-3">
-                                    <config.icon size={20} className="text-gray-600 dark:text-gray-400 mt-0.5 shrink-0" />
-                                    <div>
-                                        <p className="font-medium text-gray-900 dark:text-white">{config.label}</p>
-                                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                                            {config.description}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+
 
                 {/* Customers Table */}
                 <Card className="border-gray-200 dark:border-gray-800">
@@ -392,9 +434,9 @@ export default function CustomerLifecyclePage() {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <span
-                                                        className={`${customer.daysSinceLastPurchase <= 90
+                                                        className={`${customer.daysSinceLastPurchase <= hotThreshold
                                                             ? "text-green-600"
-                                                            : customer.daysSinceLastPurchase <= 180
+                                                            : customer.daysSinceLastPurchase <= warmThreshold
                                                                 ? "text-yellow-600"
                                                                 : "text-red-600"
                                                             }`}
@@ -415,11 +457,10 @@ export default function CustomerLifecyclePage() {
                 {/* Footer Note */}
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                     <p>
-                        <strong>Methodology:</strong> Customers are segmented based on purchase
-                        recency (days since last purchase) and purchase frequency (order count &
-                        average quantity per order). HOT = Recent activity + high frequency. WARM
-                        = Moderate activity. COLD = Inactive or low frequency. Analysis focuses on
-                        quantity purchased, not revenue value.
+                        <strong>Methodology:</strong> Customers are segmented by days inactive
+                        (since most recent order date in ar_invoices). HOT = ≤ {hotThreshold} days.
+                        WARM = {hotThreshold + 1}–{warmThreshold} days. COLD = &gt; {warmThreshold} days.
+                        Adjust thresholds using the sliders above.
                     </p>
                 </div>
             </div>
