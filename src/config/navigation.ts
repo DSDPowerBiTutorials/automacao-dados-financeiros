@@ -35,6 +35,7 @@ import {
   GraduationCap,
   Flame,
   Heart,
+  HardHat,
   type LucideIcon
 } from "lucide-react"
 
@@ -91,14 +92,20 @@ export const NAV: NavGroup[] = withUnderConstruction([
           {
             title: "P&L",
             href: "/pnl",
-            icon: TrendingUp,
-            underConstruction: true
+            icon: TrendingUp
           },
           {
             title: "Cashflow Summary",
             href: "/executive/cash-flow/bank",
             icon: Building
-          },
+          }
+        ]
+      },
+      {
+        title: "Under Construction",
+        href: "/under-construction",
+        icon: HardHat,
+        children: [
           {
             title: "KPIs & Ratios",
             href: "/executive/kpis",
@@ -116,28 +123,32 @@ export const NAV: NavGroup[] = withUnderConstruction([
             href: "/executive/reports",
             icon: FileText,
             underConstruction: true
+          },
+          {
+            title: "Customer Lifecycle",
+            href: "/executive-insights/customer-lifecycle",
+            icon: Flame,
+            underConstruction: true
+          },
+          {
+            title: "Revenue Trends",
+            href: "/executive-insights/revenue-trends",
+            icon: TrendingUp,
+            underConstruction: true
+          },
+          {
+            title: "Customer Health",
+            href: "/executive-insights/customer-health",
+            icon: Heart,
+            underConstruction: true
+          },
+          {
+            title: "Market Performance",
+            href: "/executive-insights/market-performance",
+            icon: BarChart3,
+            underConstruction: true
           }
         ]
-      },
-      {
-        title: "Customer Lifecycle",
-        href: "/executive-insights/customer-lifecycle",
-        icon: Flame
-      },
-      {
-        title: "Revenue Trends",
-        href: "/executive-insights/revenue-trends",
-        icon: TrendingUp
-      },
-      {
-        title: "Customer Health",
-        href: "/executive-insights/customer-health",
-        icon: Heart
-      },
-      {
-        title: "Market Performance",
-        href: "/executive-insights/market-performance",
-        icon: BarChart3
       }
     ]
   },
