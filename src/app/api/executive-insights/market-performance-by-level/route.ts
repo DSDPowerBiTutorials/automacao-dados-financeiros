@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
         // Query ar_invoices for both periods
         const query = supabaseAdmin
             .from("ar_invoices")
-            .select("customer_email, invoice_amount, invoice_date, financial_account_code");
+            .select("email, total_amount, invoice_date, source_data");
 
         const { data: allInvoices, error: invoicesError } = await query;
 
@@ -87,17 +87,18 @@ export async function GET(request: NextRequest) {
         };
 
         for (const invoice of allInvoices || []) {
-            const level = getClientLevel(invoice.financial_account_code);
+            const faCode = invoice.source_data?.financial_account_code || "";
+            const level = getClientLevel(faCode);
             if (!level) continue;
 
             // Filter by FA codes if specified
-            if (faCodeList.length > 0 && !faCodeList.includes(invoice.financial_account_code)) {
+            if (faCodeList.length > 0 && !faCodeList.includes(faCode)) {
                 continue;
             }
 
             const invoiceDate = new Date(invoice.invoice_date);
-            const email = invoice.customer_email || "unknown";
-            const revenue = invoice.invoice_amount || 0;
+            const email = invoice.email || "unknown";
+            const revenue = invoice.total_amount || 0;
 
             if (invoiceDate >= currentPeriodStart) {
                 const current = levelCurrentPeriod[level].get(email) || 0;

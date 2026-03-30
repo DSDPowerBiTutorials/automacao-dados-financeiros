@@ -74,8 +74,8 @@ export async function GET(request: NextRequest) {
         for (const row of rows || []) {
             // Extract customer identifier (use email or name as key)
             const customerId =
-                row.custom_data?.customer_email ||
-                row.custom_data?.customer_name ||
+                row.custom_data?.Email ||
+                row.custom_data?.Client_Name ||
                 "unknown";
 
             let customer = customerMap.get(customerId);
@@ -84,10 +84,9 @@ export async function GET(request: NextRequest) {
                 customer = {
                     customerId,
                     customerName:
-                        row.custom_data?.customer_name ||
-                        row.custom_data?.client ||
+                        row.custom_data?.Client_Name ||
                         "Unknown",
-                    customerEmail: row.custom_data?.customer_email || "",
+                    customerEmail: row.custom_data?.Email || "",
                     totalQuantity: 0,
                     orderCount: 0,
                     lastPurchaseDate: row.date || "",

@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
         // Query ar_invoices grouped by month and level
         const query = supabaseAdmin
             .from("ar_invoices")
-            .select("invoice_date, invoice_amount, financial_account_code")
+            .select("invoice_date, total_amount, source_data")
             .gte("invoice_date", dateRangeStart)
             .lte("invoice_date", dateRangeEnd);
 
@@ -124,17 +124,18 @@ export async function GET(request: NextRequest) {
         };
 
         for (const invoice of invoices || []) {
-            const level = getClientLevel(invoice.financial_account_code);
+            const faCode = invoice.source_data?.financial_account_code || "";
+            const level = getClientLevel(faCode);
             if (!level) continue;
 
             // Filter by FA codes if specified
-            if (faCodeList.length > 0 && !faCodeList.includes(invoice.financial_account_code)) {
+            if (faCodeList.length > 0 && !faCodeList.includes(faCode)) {
                 continue;
             }
 
             const month = formatToMonth(new Date(invoice.invoice_date));
             const currentTotal = levelData[level].get(month) || 0;
-            levelData[level].set(month, currentTotal + (invoice.invoice_amount || 0));
+            levelData[level].set(month, currentTotal + (invoice.total_amount || 0));
         }
 
         // Convert maps to sorted arrays

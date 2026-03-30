@@ -109,43 +109,10 @@ export default function CustomerHealthPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Heart className="h-8 w-8 text-red-600 dark:text-red-400" />
-                    <div>
-                        <PageHeader
-                            title="Customer Health by Level"
-                            subtitle="12-month snapshot"
-                        />
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open("#", "_blank")}
-                        className="gap-2"
-                    >
-                        <Play className="h-4 w-4" />
-                        Watch Video
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                            const tip = TOOLTIPS.customerHealthHeader;
-                            toast({
-                                title: "Customer Health",
-                                description: tip,
-                            });
-                        }}
-                        className="gap-2"
-                    >
-                        <Info className="h-4 w-4" />
-                        How It Works
-                    </Button>
-                </div>
-            </div>
+            <PageHeader
+                title="Customer Health by Level"
+                subtitle="12-month snapshot"
+            />
 
             {/* Filters */}
             <Card>

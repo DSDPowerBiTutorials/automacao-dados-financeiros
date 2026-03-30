@@ -116,43 +116,10 @@ export default function MarketPerformancePage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <BarChart3 className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-                    <div>
-                        <PageHeader
-                            title="Market Performance by Level"
-                            subtitle={`${comparisonPeriod}-month analysis`}
-                        />
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open("#", "_blank")}
-                        className="gap-2"
-                    >
-                        <Play className="h-4 w-4" />
-                        Watch Video
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                            const tip = TOOLTIPS.marketPerformanceHeader;
-                            toast({
-                                title: "Market Performance Score",
-                                description: tip,
-                            });
-                        }}
-                        className="gap-2"
-                    >
-                        <Info className="h-4 w-4" />
-                        How It Works
-                    </Button>
-                </div>
-            </div>
+            <PageHeader
+                title="Market Performance by Level"
+                subtitle={`${comparisonPeriod}-month analysis`}
+            />
 
             {/* Filters */}
             <Card>

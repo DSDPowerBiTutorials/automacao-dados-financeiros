@@ -709,6 +709,40 @@ const sheets: Record<string, DataSheetEntry> = {
         feedInstructions: { en: "Edit your profile information directly.", es: "Editar tu información de perfil directamente." },
         enrichmentChain: { en: "User edit → profiles → displayed across app", es: "Edición usuario → profiles → visualización en toda la app" },
     },
+
+    // ─── Executive Insights ────────────────────────────────
+    "executive-insights-customer-lifecycle": {
+        title: { en: "Customer Lifecycle", es: "Ciclo de Vida del Cliente" },
+        dataSources: [
+            { name: "Invoice Orders", table: "csv_rows", description: { en: "Order data (source='invoice-orders') filtered for Natural Restoration product", es: "Datos de pedidos (source='invoice-orders') filtrados para producto Natural Restoration" } },
+        ],
+        feedInstructions: { en: "Upload invoice orders CSV in Accounts Receivable → Invoice Orders. Customers are segmented by purchase recency and frequency (HOT/WARM/COLD).", es: "Subir CSV de pedidos en Cuentas por Cobrar → Invoice Orders. Los clientes se segmentan por recencia y frecuencia de compra (HOT/WARM/COLD)." },
+        enrichmentChain: { en: "csv_rows (source='invoice-orders', description LIKE 'natural restoration') → aggregate by customer email → recency/frequency segmentation → HOT/WARM/COLD", es: "csv_rows (source='invoice-orders', description LIKE 'natural restoration') → agregar por email de cliente → segmentación recencia/frecuencia → HOT/WARM/COLD" },
+    },
+    "executive-insights-revenue-trends": {
+        title: { en: "Revenue Trends by Level", es: "Tendencias de Ingresos por Nivel" },
+        dataSources: [
+            { name: "AR Invoices", table: "ar_invoices", description: { en: "Invoices grouped by client level (Lvl1/Lvl2/Lvl3) using financial_account_code from source_data", es: "Facturas agrupadas por nivel de cliente (Lvl1/Lvl2/Lvl3) usando financial_account_code de source_data" } },
+        ],
+        feedInstructions: { en: "Data comes from ar_invoices (HubSpot synced). Levels: 104.1/3=Lvl3_ROW, 104.2/4=Lvl3_AMEX, 104.5=Lvl2, 104.6=Lvl1. Trend uses linear regression with 3-month forecast.", es: "Los datos provienen de ar_invoices (sincronizado HubSpot). Niveles: 104.1/3=Lvl3_ROW, 104.2/4=Lvl3_AMEX, 104.5=Lvl2, 104.6=Lvl1. Tendencia usa regresión lineal con previsión a 3 meses." },
+        enrichmentChain: { en: "ar_invoices → source_data.financial_account_code → getClientLevel() → monthly aggregation → linear regression → forecast", es: "ar_invoices → source_data.financial_account_code → getClientLevel() → agregación mensual → regresión lineal → previsión" },
+    },
+    "executive-insights-customer-health": {
+        title: { en: "Customer Health by Level", es: "Salud del Cliente por Nivel" },
+        dataSources: [
+            { name: "AR Invoices", table: "ar_invoices", description: { en: "12-month invoice history for LTV, churn, repeat rate, and avg order value per level", es: "Historial de facturas 12 meses para LTV, churn, tasa de repetición y valor medio de pedido por nivel" } },
+        ],
+        feedInstructions: { en: "KPIs auto-calculate from 12-month ar_invoices. LTV = total revenue / unique customers. Churn = inactive >90 days. Repeat Rate = 2+ orders.", es: "Los KPIs se calculan automáticamente de 12 meses de ar_invoices. LTV = ingresos totales / clientes únicos. Churn = inactivo >90 días. Tasa de repetición = 2+ pedidos." },
+        enrichmentChain: { en: "ar_invoices (12 months) → group by level + customer → LTV, churn, AOV, repeat rate → trend indicator", es: "ar_invoices (12 meses) → agrupar por nivel + cliente → LTV, churn, AOV, tasa de repetición → indicador de tendencia" },
+    },
+    "executive-insights-market-performance": {
+        title: { en: "Market Performance by Level", es: "Rendimiento de Mercado por Nivel" },
+        dataSources: [
+            { name: "AR Invoices", table: "ar_invoices", description: { en: "All invoices split into current/previous periods for growth and risk analysis", es: "Todas las facturas divididas en períodos actual/anterior para análisis de crecimiento y riesgo" } },
+        ],
+        feedInstructions: { en: "Composite score (0-100): Revenue Growth (40%) + Customer Trend (30%) − Concentration Risk (30%). Compare periods to track market position.", es: "Puntuación compuesta (0-100): Crecimiento de Ingresos (40%) + Tendencia de Clientes (30%) − Riesgo de Concentración (30%). Comparar períodos para seguimiento de posición de mercado." },
+        enrichmentChain: { en: "ar_invoices → split current/previous period → revenue growth + customer count trend − concentration risk → composite score (0-100)", es: "ar_invoices → dividir período actual/anterior → crecimiento ingresos + tendencia clientes − riesgo concentración → puntuación compuesta (0-100)" },
+    },
 };
 
 /**
@@ -810,6 +844,11 @@ const routeToSheet: Record<string, string> = {
     "/calendar": "calendar",
     "/notifications": "notifications",
     "/profile": "profile",
+    // Executive Insights
+    "/executive-insights/customer-lifecycle": "executive-insights-customer-lifecycle",
+    "/executive-insights/revenue-trends": "executive-insights-revenue-trends",
+    "/executive-insights/customer-health": "executive-insights-customer-health",
+    "/executive-insights/market-performance": "executive-insights-market-performance",
 };
 
 /** Get a data sheet entry by explicit key */

@@ -142,40 +142,7 @@ export default function RevenueTrendsPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <TrendingUp className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-                    <div>
-                        <PageHeader title="Revenue Trends by Level" subtitle="All products" />
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open("#", "_blank")}
-                        className="gap-2"
-                    >
-                        <Play className="h-4 w-4" />
-                        Watch Video
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                            const tip = TOOLTIPS.revenueTrendsHeader;
-                            toast({
-                                title: "Revenue Trends",
-                                description: tip,
-                            });
-                        }}
-                        className="gap-2"
-                    >
-                        <Info className="h-4 w-4" />
-                        How It Works
-                    </Button>
-                </div>
-            </div>
+            <PageHeader title="Revenue Trends by Level" subtitle="All products" />
 
             {/* Filters */}
             <Card>

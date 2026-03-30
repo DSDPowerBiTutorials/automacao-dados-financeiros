@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
         const query = supabaseAdmin
             .from("ar_invoices")
-            .select("customer_email, invoice_amount, invoice_date, invoice_id, financial_account_code")
+            .select("email, total_amount, invoice_date, id, source_data")
             .gte("invoice_date", oneYearAgo.toISOString().split("T")[0]);
 
         const { data: invoices, error: invoicesError } = await query;
@@ -75,15 +75,16 @@ export async function GET(request: NextRequest) {
 
         const now = new Date();
         for (const invoice of invoices || []) {
-            const level = getClientLevel(invoice.financial_account_code);
+            const faCode = invoice.source_data?.financial_account_code || "";
+            const level = getClientLevel(faCode);
             if (!level) continue;
 
             // Filter by FA codes if specified
-            if (faCodeList.length > 0 && !faCodeList.includes(invoice.financial_account_code)) {
+            if (faCodeList.length > 0 && !faCodeList.includes(faCode)) {
                 continue;
             }
 
-            const email = invoice.customer_email || "unknown";
+            const email = invoice.email || "unknown";
             let customer = levelCustomerData[level].get(email);
 
             if (!customer) {
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
                 levelCustomerData[level].set(email, customer);
             }
 
-            customer.totalRevenue += invoice.invoice_amount || 0;
+            customer.totalRevenue += invoice.total_amount || 0;
             customer.orderCount += 1;
             customer.orderDates.push(new Date(invoice.invoice_date));
 
