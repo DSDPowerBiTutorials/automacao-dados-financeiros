@@ -21,7 +21,6 @@ const ALL_FINANCIAL_ACCOUNTS = [
     "101.3", // Mastership
     "101.4", // PC Membership
     "101.5", // Partnerships
-    "101.6", // Level 2 Allocation
     // 102.0 Delight (Clinics logic: ROW vs AMEX, Contracted vs New)
     "102.1", // Contracted ROW
     "102.2", // Contracted AMEX
@@ -38,8 +37,6 @@ const ALL_FINANCIAL_ACCOUNTS = [
     "103.5", // Level 2
     "103.6", // Level 1
     "103.7", // Not a Subscriber
-    "103.8", // Level 2 Allocation
-    "103.9", // Level 3 Allocation
     // 104.0 LAB (Clinics logic: Level 3/2/1 and ROW vs AMEX)
     "104.1", // Level 3 ROW
     "104.2", // Level 3 AMEX

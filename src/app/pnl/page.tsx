@@ -1407,7 +1407,7 @@ export default function PnLReport() {
     const revenueStructure: DRELineMonthly[] = useMemo(() => [
         {
             code: "101.0", name: "Growth", type: "revenue", level: 0,
-            monthly: sumFA("101.1", "101.2", "101.3", "101.4", "101.5", "101.6"),
+            monthly: sumFA("101.1", "101.2", "101.3", "101.4", "101.5"),
             budget: generateBudgetData(1761191),
             children: [
                 { code: "101.1", name: "DSD Courses", type: "revenue", level: 1, monthly: getFA("101.1"), budget: generateBudgetData(1127617) },
@@ -1415,7 +1415,6 @@ export default function PnLReport() {
                 { code: "101.3", name: "Mastership", type: "revenue", level: 1, monthly: getFA("101.3"), budget: generateBudgetData(-1705) },
                 { code: "101.4", name: "PC Membership", type: "revenue", level: 1, monthly: getFA("101.4"), budget: generateBudgetData(600227) },
                 { code: "101.5", name: "Partnerships", type: "revenue", level: 1, monthly: getFA("101.5"), budget: generateBudgetData(35052) },
-                { code: "101.6", name: "Level 2 Allocation", type: "revenue", level: 1, monthly: getFA("101.6"), budget: generateBudgetData(0) },
             ],
         },
         {
@@ -1434,7 +1433,7 @@ export default function PnLReport() {
         },
         {
             code: "103.0", name: "Planning Center", type: "revenue", level: 0,
-            monthly: sumFA("103.1", "103.2", "103.3", "103.4", "103.5", "103.6", "103.7", "103.8", "103.9"),
+            monthly: sumFA("103.1", "103.2", "103.3", "103.4", "103.5", "103.6", "103.7"),
             budget: generateBudgetData(1166274),
             children: [
                 { code: "103.1", name: "Level 3 ROW", type: "revenue", level: 1, monthly: getFA("103.1"), budget: generateBudgetData(274582) },
@@ -1444,8 +1443,6 @@ export default function PnLReport() {
                 { code: "103.5", name: "Level 2", type: "revenue", level: 1, monthly: getFA("103.5"), budget: generateBudgetData(325171) },
                 { code: "103.6", name: "Level 1", type: "revenue", level: 1, monthly: getFA("103.6"), budget: generateBudgetData(1090) },
                 { code: "103.7", name: "Not a Subscriber", type: "revenue", level: 1, monthly: getFA("103.7"), budget: generateBudgetData(212185) },
-                { code: "103.8", name: "Level 2 Allocation", type: "revenue", level: 1, monthly: getFA("103.8"), budget: generateBudgetData(0) },
-                { code: "103.9", name: "Level 3 Allocation", type: "revenue", level: 1, monthly: getFA("103.9"), budget: generateBudgetData(0) },
             ],
         },
         {
