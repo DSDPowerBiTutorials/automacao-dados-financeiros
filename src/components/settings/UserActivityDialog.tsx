@@ -128,7 +128,7 @@ export function UserActivityDialog({
             setData(null)
             setError(null)
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, userId])
 
     function handleOpenChange(isOpen: boolean) {

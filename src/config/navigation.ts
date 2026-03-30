@@ -34,6 +34,7 @@ import {
   UserCheck,
   GraduationCap,
   Flame,
+  Heart,
   type LucideIcon
 } from "lucide-react"
 
@@ -122,6 +123,21 @@ export const NAV: NavGroup[] = withUnderConstruction([
         title: "Customer Lifecycle",
         href: "/executive-insights/customer-lifecycle",
         icon: Flame
+      },
+      {
+        title: "Revenue Trends",
+        href: "/executive-insights/revenue-trends",
+        icon: TrendingUp
+      },
+      {
+        title: "Customer Health",
+        href: "/executive-insights/customer-health",
+        icon: Heart
+      },
+      {
+        title: "Market Performance",
+        href: "/executive-insights/market-performance",
+        icon: BarChart3
       }
     ]
   },
