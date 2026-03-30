@@ -1287,9 +1287,12 @@ export default function PnLReport() {
                 setLoading(true);
 
                 const scopeParam = selectedScope && selectedScope !== "GLOBAL" ? `&scope=${selectedScope}` : "";
+                // Revenue source (invoice-orders) is already consolidated for ES and GLOBAL.
+                // Expenses must match: only US scope filters to US-only invoices.
+                const expScopeParam = selectedScope === "US" ? "&scope=US" : "";
                 const [revenueRes, expensesRes] = await Promise.all([
                     fetch(`/api/pnl/revenue?year=${selectedYear}${scopeParam}`),
-                    fetch(`/api/pnl/expenses?year=${selectedYear}${scopeParam}`),
+                    fetch(`/api/pnl/expenses?year=${selectedYear}${expScopeParam}`),
                 ]);
 
                 const revenueResult = await revenueRes.json();
