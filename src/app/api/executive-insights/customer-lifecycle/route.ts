@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 // ============================================================
 // Executive Insights → NR Thermometer
 // Natural Restoration Product Segmentation (HOT/WARM/COLD)
-// Based on purchase QUANTITY and RECENCY, not revenue
+// Based on purchase QUANTITY and RECENCY from ar_invoices
 // ============================================================
 
 interface CustomerData {
@@ -43,6 +43,21 @@ function calculateSegment(data: {
     return "COLD";
 }
 
+// Extract NR quantity from products string
+// Products can contain multiple items comma-separated, e.g.:
+// "DSD Natural Restoration Design + Manufacture - Per Unit - DSD Natural Restorations Manufacture PER UNIT (x12), DSD Implant..."
+function extractNRQuantity(products: string): number {
+    let totalQty = 0;
+    const items = products.split(",").map((s) => s.trim());
+    for (const item of items) {
+        if (/natural restoration/i.test(item)) {
+            const qtyMatch = item.match(/\(x(\d+)\)/);
+            totalQty += qtyMatch ? parseInt(qtyMatch[1]) : 1;
+        }
+    }
+    return totalQty || 1;
+}
+
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const segment = searchParams.get("segment") || "all"; // HOT, WARM, COLD, all
@@ -50,91 +65,89 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "500");
 
     try {
-        // Query CVS rows for Natural Restoration product
-        // Source: invoice-orders, Description contains "natural restoration"
-        const { data: rows, error: rowsError } = await supabaseAdmin
-            .from("csv_rows")
-            .select("*")
-            .eq("source", "invoice-orders")
-            .ilike("description", "%natural restoration%")
-            .order("date", { ascending: false });
+        // Query ar_invoices for Natural Restoration products
+        let allData: any[] = [];
+        let offset = 0;
+        const pageSize = 1000;
 
-        if (rowsError) {
-            console.error("Error fetching csv_rows:", rowsError);
-            return NextResponse.json(
-                { error: "Failed to fetch data" },
-                { status: 500 }
-            );
+        while (true) {
+            const { data, error } = await supabaseAdmin
+                .from("ar_invoices")
+                .select("email, company_name, client_name, products, order_date, invoice_date, order_status")
+                .or("products.ilike.%natural restoration%,products.ilike.%NR %")
+                .range(offset, offset + pageSize - 1);
+
+            if (error) {
+                console.error("Error fetching ar_invoices:", error);
+                return NextResponse.json(
+                    { error: "Failed to fetch data" },
+                    { status: 500 }
+                );
+            }
+
+            if (!data || data.length === 0) break;
+            allData = allData.concat(data);
+            offset += pageSize;
+            if (data.length < pageSize) break;
         }
 
-        // Aggregate by customer
+        // Aggregate by customer (email is the unique key)
         const customerMap = new Map<string, CustomerData>();
         const now = new Date();
 
-        for (const row of rows || []) {
-            // Extract customer identifier (use email or name as key)
-            const customerId =
-                row.custom_data?.Email ||
-                row.custom_data?.Client_Name ||
-                "unknown";
+        for (const row of allData) {
+            const email = row.email;
+            if (!email) continue;
 
+            const customerId = email;
             let customer = customerMap.get(customerId);
 
             if (!customer) {
                 customer = {
                     customerId,
                     customerName:
-                        row.custom_data?.Client_Name ||
-                        "Unknown",
-                    customerEmail: row.custom_data?.Email || "",
+                        row.company_name || row.client_name || "Unknown",
+                    customerEmail: email,
                     totalQuantity: 0,
                     orderCount: 0,
-                    lastPurchaseDate: row.date || "",
-                    firstPurchaseDate: row.date || "",
+                    lastPurchaseDate: "",
+                    firstPurchaseDate: "",
                     averageQtyPerOrder: 0,
                     daysSinceLastPurchase: 999999,
                     segment: "COLD",
                 };
             }
 
-            // Parse quantity (handle European numbers)
-            let qty = 1;
-            if (row.custom_data?.quantity) {
-                const qtyStr = String(row.custom_data.quantity);
-                qty =
-                    parseInt(qtyStr.replace(/\./g, "").replace(",", ".")) ||
-                    parseInt(qtyStr) ||
-                    1;
-            }
-
+            // Extract NR quantity from products string
+            const qty = extractNRQuantity(row.products || "");
             customer.totalQuantity += qty;
             customer.orderCount += 1;
 
-            // Track dates
-            const rowDate = new Date(row.date || now);
-            if (!customer.lastPurchaseDate || new Date(row.date!) > new Date(customer.lastPurchaseDate)) {
-                customer.lastPurchaseDate = row.date || now.toISOString();
-            }
-            if (!customer.firstPurchaseDate || new Date(row.date!) < new Date(customer.firstPurchaseDate)) {
-                customer.firstPurchaseDate = row.date || now.toISOString();
+            // Use order_date, fallback to invoice_date
+            const dateStr = row.order_date || row.invoice_date;
+            if (dateStr) {
+                if (!customer.lastPurchaseDate || dateStr > customer.lastPurchaseDate) {
+                    customer.lastPurchaseDate = dateStr;
+                }
+                if (!customer.firstPurchaseDate || dateStr < customer.firstPurchaseDate) {
+                    customer.firstPurchaseDate = dateStr;
+                }
             }
 
             customerMap.set(customerId, customer);
         }
 
         // Calculate derived fields
-        const customers = Array.from(customerMap.values())
-            .map((c) => {
-                const lastDate = new Date(c.lastPurchaseDate);
-                c.daysSinceLastPurchase = Math.floor(
-                    (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
-                );
-                c.averageQtyPerOrder = Math.round(
-                    (c.totalQuantity / c.orderCount) * 100
-                ) / 100;
-                c.segment = calculateSegment(c);
-                return c;
-            });
+        const customers = Array.from(customerMap.values()).map((c) => {
+            const lastDate = new Date(c.lastPurchaseDate || now);
+            c.daysSinceLastPurchase = Math.floor(
+                (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
+            );
+            c.averageQtyPerOrder =
+                Math.round((c.totalQuantity / c.orderCount) * 100) / 100;
+            c.segment = calculateSegment(c);
+            return c;
+        });
 
         // Filter by segment
         let filtered = customers;
