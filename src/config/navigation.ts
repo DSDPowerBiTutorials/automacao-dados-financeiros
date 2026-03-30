@@ -125,7 +125,7 @@ export const NAV: NavGroup[] = withUnderConstruction([
             underConstruction: true
           },
           {
-            title: "Customer Lifecycle",
+            title: "NR Thermometer",
             href: "/executive-insights/customer-lifecycle",
             icon: Flame,
             underConstruction: true

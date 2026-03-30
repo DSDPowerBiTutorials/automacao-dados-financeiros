@@ -712,7 +712,7 @@ const sheets: Record<string, DataSheetEntry> = {
 
     // ─── Executive Insights ────────────────────────────────
     "executive-insights-customer-lifecycle": {
-        title: { en: "Customer Lifecycle", es: "Ciclo de Vida del Cliente" },
+        title: { en: "NR Thermometer", es: "NR Thermometer" },
         dataSources: [
             { name: "Invoice Orders", table: "csv_rows", description: { en: "Order data (source='invoice-orders') filtered for Natural Restoration product", es: "Datos de pedidos (source='invoice-orders') filtrados para producto Natural Restoration" } },
         ],

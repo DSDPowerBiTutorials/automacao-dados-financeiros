@@ -25,7 +25,7 @@ interface InsightCard {
 
 const INSIGHTS: InsightCard[] = [
     {
-        title: "Customer Lifecycle Analysis",
+        title: "NR Thermometer",
         description:
             "Natural Restoration product engagement segmentation. Classify customers as HOT (active), WARM (engaged), or COLD (inactive) based on purchase quantity and recency.",
         href: "/executive-insights/customer-lifecycle",

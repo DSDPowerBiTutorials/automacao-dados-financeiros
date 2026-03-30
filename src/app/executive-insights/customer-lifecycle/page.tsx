@@ -160,7 +160,7 @@ export default function CustomerLifecyclePage() {
             <div className="max-w-7xl mx-auto space-y-6">
                 {/* Header */}
                 <PageHeader
-                    title="Customer Lifecycle Analysis"
+                    title="NR Thermometer"
                     subtitle="Natural Restoration Product Engagement Segmentation (based on purchase quantity)"
                 />
 

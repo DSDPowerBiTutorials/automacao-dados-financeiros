@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // ============================================================
-// Executive Insights → Customer Lifecycle Analysis
+// Executive Insights → NR Thermometer
 // Natural Restoration Product Segmentation (HOT/WARM/COLD)
 // Based on purchase QUANTITY and RECENCY, not revenue
 // ============================================================

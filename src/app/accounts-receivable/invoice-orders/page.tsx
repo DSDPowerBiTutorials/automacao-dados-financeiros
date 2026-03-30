@@ -358,7 +358,8 @@ export default function InvoiceOrdersPage() {
             }
 
             if (selectedScope && selectedScope !== "GLOBAL") {
-                countQuery = countQuery.contains("custom_data", { scope: selectedScope });
+                const scopeCurrency = selectedScope === "US" ? "USD" : "EUR";
+                countQuery = countQuery.contains("custom_data", { Currency: scopeCurrency });
             }
 
             const { count } = await countQuery;
@@ -382,7 +383,8 @@ export default function InvoiceOrdersPage() {
             }
 
             if (selectedScope && selectedScope !== "GLOBAL") {
-                query = query.contains("custom_data", { scope: selectedScope });
+                const scopeCurrency = selectedScope === "US" ? "USD" : "EUR";
+                query = query.contains("custom_data", { Currency: scopeCurrency });
             }
 
             const { data, error: fetchError } = await query;
