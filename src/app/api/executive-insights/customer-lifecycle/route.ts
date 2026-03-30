@@ -47,6 +47,30 @@ function extractNRQuantity(products: string): number {
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
+    const action = searchParams.get("action");
+
+    // Sub-action: fetch all orders for a specific customer email
+    if (action === "orders") {
+        const email = searchParams.get("email");
+        if (!email) {
+            return NextResponse.json({ error: "Email required" }, { status: 400 });
+        }
+        try {
+            const { data, error } = await supabaseAdmin
+                .from("ar_invoices")
+                .select("id, order_date, invoice_date, invoice_number, products, total_amount, currency, order_status, payment_method")
+                .eq("email", email)
+                .order("order_date", { ascending: false });
+
+            if (error) {
+                return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
+            }
+            return NextResponse.json({ success: true, orders: data || [] });
+        } catch (error) {
+            return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        }
+    }
+
     const segment = searchParams.get("segment") || "all"; // HOT, WARM, COLD, all
     const sortBy = searchParams.get("sortBy") || "lastPurchase"; // lastPurchase, quantity, orderCount
     const limit = parseInt(searchParams.get("limit") || "500");

@@ -31,9 +31,16 @@ import {
     TrendingUp,
     Download,
     Calendar,
+    Eye,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/formatters";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 interface CustomerData {
     customerId: string;
@@ -53,6 +60,18 @@ interface Stats {
     bySegment: Record<string, number>;
     totalQuantitySold: number;
     averageQtyPerCustomer: number;
+}
+
+interface CustomerOrder {
+    id: number;
+    order_date: string;
+    invoice_date: string;
+    invoice_number: string;
+    products: string;
+    total_amount: number;
+    currency: string;
+    order_status: string;
+    payment_method: string;
 }
 
 const SEGMENT_CONFIG = {
@@ -88,6 +107,30 @@ export default function CustomerLifecyclePage() {
     const [hotThreshold, setHotThreshold] = useState(90);
     const [warmThreshold, setWarmThreshold] = useState(180);
     const [mostRecentOrderDate, setMostRecentOrderDate] = useState<string | null>(null);
+    const [selectedCustomer, setSelectedCustomer] = useState<CustomerData | null>(null);
+    const [customerOrders, setCustomerOrders] = useState<CustomerOrder[]>([]);
+    const [ordersLoading, setOrdersLoading] = useState(false);
+    const [dialogOpen, setDialogOpen] = useState(false);
+
+    const loadCustomerOrders = async (customer: CustomerData) => {
+        setSelectedCustomer(customer);
+        setDialogOpen(true);
+        setOrdersLoading(true);
+        try {
+            const res = await fetch(
+                `/api/executive-insights/customer-lifecycle?action=orders&email=${encodeURIComponent(customer.customerEmail)}`,
+                { cache: "no-store" }
+            );
+            const data = await res.json();
+            if (data.success) {
+                setCustomerOrders(data.orders);
+            }
+        } catch (error) {
+            console.error("Error loading orders:", error);
+        } finally {
+            setOrdersLoading(false);
+        }
+    };
 
     const loadData = async () => {
         setLoading(true);
@@ -409,6 +452,7 @@ export default function CustomerLifecyclePage() {
                                             <TableHead>Last Purchase</TableHead>
                                             <TableHead className="text-right">Days Inactive</TableHead>
                                             <TableHead>Segment</TableHead>
+                                            <TableHead className="w-10"></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -445,6 +489,15 @@ export default function CustomerLifecyclePage() {
                                                     </span>
                                                 </TableCell>
                                                 <TableCell>{renderSegmentBadge(customer.segment)}</TableCell>
+                                                <TableCell>
+                                                    <button
+                                                        onClick={() => loadCustomerOrders(customer)}
+                                                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                                                        title="View orders"
+                                                    >
+                                                        <Eye size={16} />
+                                                    </button>
+                                                </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -464,6 +517,72 @@ export default function CustomerLifecyclePage() {
                     </p>
                 </div>
             </div>
+
+            {/* Customer Orders Dialog */}
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Eye size={18} />
+                            Orders — {selectedCustomer?.customerName}
+                        </DialogTitle>
+                        <p className="text-sm text-gray-500">{selectedCustomer?.customerEmail}</p>
+                    </DialogHeader>
+                    {ordersLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                        </div>
+                    ) : customerOrders.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">No orders found</div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Order Date</TableHead>
+                                        <TableHead>Invoice #</TableHead>
+                                        <TableHead>Products</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Amount</TableHead>
+                                        <TableHead>Payment</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {customerOrders.map((order) => (
+                                        <TableRow key={order.id}>
+                                            <TableCell className="text-sm whitespace-nowrap">
+                                                {formatDate(order.order_date || order.invoice_date)}
+                                            </TableCell>
+                                            <TableCell className="text-sm text-gray-600 dark:text-gray-400">
+                                                {order.invoice_number || "—"}
+                                            </TableCell>
+                                            <TableCell className="text-sm max-w-xs truncate" title={order.products}>
+                                                {order.products}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline" className="text-xs">
+                                                    {order.order_status || "—"}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right text-sm font-medium whitespace-nowrap">
+                                                {order.total_amount != null
+                                                    ? `${Number(order.total_amount).toLocaleString("en", { minimumFractionDigits: 2 })} ${order.currency || ""}`
+                                                    : "—"}
+                                            </TableCell>
+                                            <TableCell className="text-xs text-gray-500">
+                                                {order.payment_method || "—"}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                            <div className="mt-3 text-xs text-gray-500 text-right">
+                                {customerOrders.length} order(s)
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
