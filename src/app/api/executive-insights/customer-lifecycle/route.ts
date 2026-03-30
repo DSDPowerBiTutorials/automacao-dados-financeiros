@@ -63,9 +63,25 @@ export async function GET(request: NextRequest) {
     const segment = searchParams.get("segment") || "all"; // HOT, WARM, COLD, all
     const sortBy = searchParams.get("sortBy") || "lastPurchase"; // lastPurchase, quantity, orderCount
     const limit = parseInt(searchParams.get("limit") || "500");
+    const maxDays = searchParams.get("maxDays") ? parseInt(searchParams.get("maxDays")!) : null;
 
     try {
-        // Query ar_invoices for Natural Restoration products
+        // 1. Find the most recent order_date across ALL ar_invoices (reference date)
+        const { data: latestRow, error: latestError } = await supabaseAdmin
+            .from("ar_invoices")
+            .select("order_date")
+            .not("order_date", "is", null)
+            .order("order_date", { ascending: false })
+            .limit(1)
+            .single();
+
+        if (latestError) {
+            console.error("Error fetching latest date:", latestError);
+        }
+        const mostRecentOrderDate = latestRow?.order_date || new Date().toISOString().slice(0, 10);
+        const referenceDate = new Date(mostRecentOrderDate);
+
+        // 2. Query ar_invoices for Natural Restoration products
         let allData: any[] = [];
         let offset = 0;
         const pageSize = 1000;
@@ -91,9 +107,8 @@ export async function GET(request: NextRequest) {
             if (data.length < pageSize) break;
         }
 
-        // Aggregate by customer (email is the unique key)
+        // 3. Aggregate by customer (email is the unique key)
         const customerMap = new Map<string, CustomerData>();
-        const now = new Date();
 
         for (const row of allData) {
             const email = row.email;
@@ -137,22 +152,27 @@ export async function GET(request: NextRequest) {
             customerMap.set(customerId, customer);
         }
 
-        // Calculate derived fields
+        // Calculate derived fields (using referenceDate instead of now)
         const customers = Array.from(customerMap.values()).map((c) => {
-            const lastDate = new Date(c.lastPurchaseDate || now);
-            c.daysSinceLastPurchase = Math.floor(
-                (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
-            );
+            const lastDate = new Date(c.lastPurchaseDate || referenceDate);
+            c.daysSinceLastPurchase = Math.max(0, Math.floor(
+                (referenceDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
+            ));
             c.averageQtyPerOrder =
                 Math.round((c.totalQuantity / c.orderCount) * 100) / 100;
             c.segment = calculateSegment(c);
             return c;
         });
 
-        // Filter by segment
+        // Filter by maxDays (inactivity threshold)
         let filtered = customers;
+        if (maxDays !== null) {
+            filtered = filtered.filter((c) => c.daysSinceLastPurchase <= maxDays);
+        }
+
+        // Filter by segment
         if (segment !== "all") {
-            filtered = customers.filter((c) => c.segment === segment);
+            filtered = filtered.filter((c) => c.segment === segment);
         }
 
         // Sort
@@ -175,28 +195,31 @@ export async function GET(request: NextRequest) {
         // Limit results
         const results = filtered.slice(0, limit);
 
-        // Calculate summary stats
+        // Calculate summary stats (based on filtered set when maxDays is applied)
+        const baseSet = maxDays !== null ? filtered : customers;
         const stats = {
-            totalCustomers: customers.length,
+            totalCustomers: baseSet.length,
             bySegment: {
-                HOT: customers.filter((c) => c.segment === "HOT").length,
-                WARM: customers.filter((c) => c.segment === "WARM").length,
-                COLD: customers.filter((c) => c.segment === "COLD").length,
+                HOT: baseSet.filter((c) => c.segment === "HOT").length,
+                WARM: baseSet.filter((c) => c.segment === "WARM").length,
+                COLD: baseSet.filter((c) => c.segment === "COLD").length,
             },
             totalQuantitySold: Math.round(
-                customers.reduce((sum, c) => sum + c.totalQuantity, 0)
+                baseSet.reduce((sum, c) => sum + c.totalQuantity, 0)
             ),
-            averageQtyPerCustomer:
-                Math.round(
-                    (customers.reduce((sum, c) => sum + c.totalQuantity, 0) /
-                        customers.length) *
+            averageQtyPerCustomer: baseSet.length > 0
+                ? Math.round(
+                    (baseSet.reduce((sum, c) => sum + c.totalQuantity, 0) /
+                        baseSet.length) *
                     100
-                ) / 100,
+                ) / 100
+                : 0,
         };
 
         return NextResponse.json({
             success: true,
             stats,
+            mostRecentOrderDate,
             customers: results,
         });
     } catch (error) {

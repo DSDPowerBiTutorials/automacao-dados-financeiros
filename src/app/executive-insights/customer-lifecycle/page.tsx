@@ -30,6 +30,7 @@ import {
     Package,
     TrendingUp,
     Download,
+    Calendar,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/formatters";
@@ -75,12 +76,16 @@ const SEGMENT_CONFIG = {
     },
 };
 
+const DAY_INTERVALS = [10, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345, 360, 365];
+
 export default function CustomerLifecyclePage() {
     const [customers, setCustomers] = useState<CustomerData[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [loading, setLoading] = useState(true);
     const [segment, setSegment] = useState("all");
     const [sortBy, setSortBy] = useState("lastPurchase");
+    const [maxDays, setMaxDays] = useState(365);
+    const [mostRecentOrderDate, setMostRecentOrderDate] = useState<string | null>(null);
 
     const loadData = async () => {
         setLoading(true);
@@ -89,6 +94,7 @@ export default function CustomerLifecyclePage() {
             if (segment !== "all") params.append("segment", segment);
             params.append("sortBy", sortBy);
             params.append("limit", "500");
+            params.append("maxDays", String(maxDays));
 
             const res = await fetch(
                 `/api/executive-insights/customer-lifecycle?${params}`,
@@ -99,6 +105,9 @@ export default function CustomerLifecyclePage() {
             if (data.success) {
                 setCustomers(data.customers);
                 setStats(data.stats);
+                if (data.mostRecentOrderDate) {
+                    setMostRecentOrderDate(data.mostRecentOrderDate);
+                }
             } else {
                 toast({
                     title: "Error loading data",
@@ -119,7 +128,7 @@ export default function CustomerLifecyclePage() {
 
     useEffect(() => {
         loadData();
-    }, [segment, sortBy]);
+    }, [segment, sortBy, maxDays]);
 
     const getSegmentStats = () => {
         if (!stats) return [];
@@ -163,6 +172,50 @@ export default function CustomerLifecyclePage() {
                     title="NR Thermometer"
                     subtitle="Natural Restoration Product Engagement Segmentation (based on purchase quantity)"
                 />
+
+                {/* Most Recent Order Date + Day Filter */}
+                <Card className="border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50">
+                    <CardContent className="pt-6 pb-4 space-y-4">
+                        {mostRecentOrderDate && (
+                            <div className="flex items-center gap-2 text-sm">
+                                <Calendar size={16} className="text-gray-500" />
+                                <span className="text-gray-600 dark:text-gray-400">Most Recent Order Date:</span>
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                    {formatDate(mostRecentOrderDate)}
+                                </span>
+                                <span className="text-xs text-gray-400 ml-1">(inactive days count from this date)</span>
+                            </div>
+                        )}
+                        <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                                Max Inactive Days: <span className="font-bold text-gray-900 dark:text-white">{maxDays}</span>
+                            </label>
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs text-gray-500">10</span>
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={DAY_INTERVALS.length - 1}
+                                    value={DAY_INTERVALS.indexOf(maxDays)}
+                                    onChange={(e) => setMaxDays(DAY_INTERVALS[parseInt(e.target.value)])}
+                                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 dark:bg-gray-700"
+                                />
+                                <span className="text-xs text-gray-500">365</span>
+                            </div>
+                            <div className="flex justify-between mt-1">
+                                {[10, 30, 90, 180, 365].map((d) => (
+                                    <button
+                                        key={d}
+                                        onClick={() => setMaxDays(d)}
+                                        className={`text-xs px-2 py-0.5 rounded ${maxDays === d ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 font-semibold" : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}
+                                    >
+                                        {d}d
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Summary Stats */}
                 {stats && (
@@ -340,10 +393,10 @@ export default function CustomerLifecyclePage() {
                                                 <TableCell className="text-right">
                                                     <span
                                                         className={`${customer.daysSinceLastPurchase <= 90
-                                                                ? "text-green-600"
-                                                                : customer.daysSinceLastPurchase <= 180
-                                                                    ? "text-yellow-600"
-                                                                    : "text-red-600"
+                                                            ? "text-green-600"
+                                                            : customer.daysSinceLastPurchase <= 180
+                                                                ? "text-yellow-600"
+                                                                : "text-red-600"
                                                             }`}
                                                     >
                                                         {customer.daysSinceLastPurchase}d
