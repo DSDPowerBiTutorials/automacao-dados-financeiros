@@ -1287,13 +1287,9 @@ export default function PnLReport() {
                 setLoading(true);
 
                 const scopeParam = selectedScope && selectedScope !== "GLOBAL" ? `&scope=${selectedScope}` : "";
-                // For expenses, GLOBAL uses scope=ES because revenue source (invoice-orders)
-                // already contains all revenue consolidated in EUR. ES expenses represent the
-                // full consolidated P&L. Adding US (USD) expenses would inflate totals incorrectly.
-                const expenseScopeParam = selectedScope === "US" ? "&scope=US" : "&scope=ES";
                 const [revenueRes, expensesRes] = await Promise.all([
                     fetch(`/api/pnl/revenue?year=${selectedYear}${scopeParam}`),
-                    fetch(`/api/pnl/expenses?year=${selectedYear}${expenseScopeParam}`),
+                    fetch(`/api/pnl/expenses?year=${selectedYear}${scopeParam}`),
                 ]);
 
                 const revenueResult = await revenueRes.json();
