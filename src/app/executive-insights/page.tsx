@@ -1,5 +1,6 @@
 "use client";
 
+// Executive Insights Hub - Deployed Mar 30, 2026
 import React from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
