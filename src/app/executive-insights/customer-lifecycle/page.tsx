@@ -520,31 +520,31 @@ export default function CustomerLifecyclePage() {
 
             {/* Customer Orders Dialog */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
+                <DialogContent className="w-[80vw] max-w-[80vw] h-[80vh] flex flex-col">
+                    <DialogHeader className="shrink-0">
+                        <DialogTitle className="flex items-center gap-2 text-lg">
                             <Eye size={18} />
                             Orders — {selectedCustomer?.customerName}
                         </DialogTitle>
                         <p className="text-sm text-gray-500">{selectedCustomer?.customerEmail}</p>
                     </DialogHeader>
                     {ordersLoading ? (
-                        <div className="flex items-center justify-center py-8">
+                        <div className="flex items-center justify-center flex-1">
                             <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                         </div>
                     ) : customerOrders.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">No orders found</div>
+                        <div className="text-center flex-1 flex items-center justify-center text-gray-500">No orders found</div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="flex-1 overflow-auto min-h-0">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Order Date</TableHead>
-                                        <TableHead>Invoice #</TableHead>
-                                        <TableHead>Products</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead className="text-right">Amount</TableHead>
-                                        <TableHead>Payment</TableHead>
+                                        <TableHead className="whitespace-nowrap">Order Date</TableHead>
+                                        <TableHead className="whitespace-nowrap">Invoice #</TableHead>
+                                        <TableHead className="min-w-[300px]">Products</TableHead>
+                                        <TableHead className="whitespace-nowrap">Status</TableHead>
+                                        <TableHead className="text-right whitespace-nowrap">Amount</TableHead>
+                                        <TableHead className="whitespace-nowrap">Payment</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -553,14 +553,14 @@ export default function CustomerLifecyclePage() {
                                             <TableCell className="text-sm whitespace-nowrap">
                                                 {formatDate(order.order_date || order.invoice_date)}
                                             </TableCell>
-                                            <TableCell className="text-sm text-gray-600 dark:text-gray-400">
+                                            <TableCell className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                                 {order.invoice_number || "—"}
                                             </TableCell>
-                                            <TableCell className="text-sm max-w-xs truncate" title={order.products}>
+                                            <TableCell className="text-sm">
                                                 {order.products}
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant="outline" className="text-xs">
+                                                <Badge variant="outline" className="text-xs whitespace-nowrap">
                                                     {order.order_status || "—"}
                                                 </Badge>
                                             </TableCell>
@@ -569,14 +569,14 @@ export default function CustomerLifecyclePage() {
                                                     ? `${Number(order.total_amount).toLocaleString("en", { minimumFractionDigits: 2 })} ${order.currency || ""}`
                                                     : "—"}
                                             </TableCell>
-                                            <TableCell className="text-xs text-gray-500">
+                                            <TableCell className="text-sm text-gray-500 whitespace-nowrap">
                                                 {order.payment_method || "—"}
                                             </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
-                            <div className="mt-3 text-xs text-gray-500 text-right">
+                            <div className="mt-3 text-xs text-gray-500 text-right sticky bottom-0 bg-white dark:bg-black py-2">
                                 {customerOrders.length} order(s)
                             </div>
                         </div>
