@@ -194,7 +194,6 @@ export async function GET(request: NextRequest) {
                 .gte("date", startStr)
                 .lte("date", endStr)
                 .neq("amount", 0)
-                .not("custom_data->>order_status", "in", "(Cancelled,Refunded,Expired,cancelled,refunded,expired)")
                 .order("amount", { ascending: false })
                 .range(startIndex, endIndex);
 
@@ -229,8 +228,7 @@ export async function GET(request: NextRequest) {
                 .select("amount")
                 .gte("date", startStr)
                 .lte("date", endStr)
-                .neq("amount", 0)
-                .not("custom_data->>order_status", "in", "(Cancelled,Refunded,Expired,cancelled,refunded,expired)");
+                .neq("amount", 0);
 
             // Revenue Import.csv contains ALL revenue (ES + US) in EUR.
             if (scope === "US") {
