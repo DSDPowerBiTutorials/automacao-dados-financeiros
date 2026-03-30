@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
                 .from("ar_invoices")
                 .select("id, order_date, invoice_date, invoice_number, products, total_amount, currency, order_status, payment_method")
                 .eq("email", email)
+                .or("products.ilike.%natural restoration%,products.ilike.%NR %")
                 .order("order_date", { ascending: false });
 
             if (error) {
