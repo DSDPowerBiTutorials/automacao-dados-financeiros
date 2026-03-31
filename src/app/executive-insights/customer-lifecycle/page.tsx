@@ -72,6 +72,7 @@ interface CustomerOrder {
     currency: string;
     order_status: string;
     payment_method: string;
+    nrQuantity: number;
 }
 
 const SEGMENT_CONFIG = {
@@ -542,6 +543,7 @@ export default function CustomerLifecyclePage() {
                                         <TableHead className="whitespace-nowrap">Order Date</TableHead>
                                         <TableHead className="whitespace-nowrap">Invoice #</TableHead>
                                         <TableHead className="min-w-[300px]">Products</TableHead>
+                                        <TableHead className="text-center whitespace-nowrap">NR Qty</TableHead>
                                         <TableHead className="whitespace-nowrap">Status</TableHead>
                                         <TableHead className="text-right whitespace-nowrap">Amount</TableHead>
                                         <TableHead className="whitespace-nowrap">Payment</TableHead>
@@ -558,6 +560,9 @@ export default function CustomerLifecyclePage() {
                                             </TableCell>
                                             <TableCell className="text-sm">
                                                 {order.products}
+                                            </TableCell>
+                                            <TableCell className="text-center text-sm font-semibold">
+                                                {order.nrQuantity ?? "—"}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant="outline" className="text-xs whitespace-nowrap">

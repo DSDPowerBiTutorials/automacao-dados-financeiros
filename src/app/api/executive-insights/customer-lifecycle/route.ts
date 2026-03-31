@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         try {
             const { data, error } = await supabaseAdmin
                 .from("ar_invoices")
-                .select("id, order_date, invoice_date, invoice_number, products, total_amount, currency, order_status, payment_method")
+                .select("id, order_date, invoice_date, invoice_number, products, total_amount, currency, order_status, payment_method, source_data")
                 .eq("email", email)
                 .or("products.ilike.%natural restoration%,products.ilike.%NR %")
                 .order("order_date", { ascending: false });
@@ -66,7 +66,17 @@ export async function GET(request: NextRequest) {
             if (error) {
                 return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
             }
-            return NextResponse.json({ success: true, orders: data || [] });
+            // Enrich each order with the resolved NR quantity
+            const enriched = (data || []).map((row: any) => {
+                const sdQty = row.source_data?.product_quantity;
+                const nrQuantity = (sdQty != null && typeof sdQty === "number" && sdQty > 0)
+                    ? sdQty
+                    : extractNRQuantity(row.products || "");
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { source_data, ...rest } = row;
+                return { ...rest, nrQuantity };
+            });
+            return NextResponse.json({ success: true, orders: enriched });
         } catch (error) {
             return NextResponse.json({ error: "Internal server error" }, { status: 500 });
         }
@@ -103,7 +113,7 @@ export async function GET(request: NextRequest) {
         while (true) {
             const { data, error } = await supabaseAdmin
                 .from("ar_invoices")
-                .select("email, company_name, client_name, products, order_date, invoice_date, order_status")
+                .select("email, company_name, client_name, products, order_date, invoice_date, order_status, source_data")
                 .or("products.ilike.%natural restoration%,products.ilike.%NR %")
                 .range(offset, offset + pageSize - 1);
 
@@ -147,8 +157,12 @@ export async function GET(request: NextRequest) {
                 };
             }
 
-            // Extract NR quantity from products string
-            const qty = extractNRQuantity(row.products || "");
+            // Extract NR quantity: prefer source_data.product_quantity (HubSpot records)
+            // falling back to (x##) text parsing (Craft CMS / WooCommerce records)
+            const sdQty = row.source_data?.product_quantity;
+            const qty = (sdQty != null && typeof sdQty === "number" && sdQty > 0)
+                ? sdQty
+                : extractNRQuantity(row.products || "");
             customer.totalQuantity += qty;
             customer.orderCount += 1;
 
